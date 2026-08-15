@@ -16,7 +16,7 @@
    ========================================================================= */
 .filter_dropdowns_row {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 9px;
     width: 95%;
     --filter_box_height: 44px; 
