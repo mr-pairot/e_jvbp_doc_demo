@@ -179,12 +179,11 @@
     </div>
 
     <!-- แถวล่าง: กลุ่ม (cache_control + sheet_status) ชิดขวา -->
-    <div style="display: flex; justify-content: flex-end;">
-        <div style="display: flex; flex-direction: row; align-items: flex-end; gap: 8px;">
+    <div class="cache_control_And_sheet_status" >
+            <div class="cacheLastUpdateText" >ข้อมูลล่าสุด : กำลังตรวจสอบ...</span>
             
             <!-- 1. Cache และปุ่ม Refresh -->
             <div class="cache_control_line" >
-                <span id="cacheLastUpdateText" style="color: var(--text-muted, #64748b); font-weight: 500;">ข้อมูลล่าสุด : กำลังตรวจสอบ...</span>
                 <button id="btnForceRefresh" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: none; background: #e0f2fe; color: #0284c7; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; transition: background 0.2s;">
                     <span>🔄</span> รีเฟรช
                 </button>
@@ -197,7 +196,6 @@
                 <a href="https://docs.google.com/spreadsheets/d/1QN-vHpbzTQKuZH_uieQ3brS-ZxS2k5ek6ECL38pswAc/edit?gid=1167974259#gid=1167974259" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
             </div>
 
-        </div>
     </div>
 
     <!-- แถวที่ 3: รายงานผลตรวจสอบระบบแคช (Cache Diagnostic Report) -->
