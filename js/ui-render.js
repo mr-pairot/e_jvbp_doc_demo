@@ -9,6 +9,7 @@
 
    หมวดหมู่ในไฟล์นี้:
      1. UI Rendering (แท็บ, ดรอปดาวน์, ช่องค้นหา, ตาราง, pagination)
+     1.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกน้อย เช่น หมวดงาน/ที่มา)
      2. Dropdown Dependency (กรองรายการ "ประเภทเอกสาร" ตาม "หมวดงาน" ที่ติ๊กไว้)
      3. Filter Status Box (กล่องสรุปสถานะการกรองใต้ช่องค้นหา)
      4. Charts (ไฮไลต์ชิ้นกราฟตามที่เลือก, ผูก Event Chart สั่ง Dropdown)
@@ -76,34 +77,44 @@ function renderDropdowns(dropdownConfigs) {
     container.innerHTML = "";
 
     dropdownConfigs.forEach(dropdownConfig => {
-        const dropdownEl = document.createElement("div");
-        dropdownEl.className = "custom_dropdown_container";
-        dropdownEl.dataset.dropdownId = dropdownConfig.id;
-
-        dropdownEl.innerHTML = `
-            <div class="dropdown_trigger" id="trig_${dropdownConfig.id}">
-                <span class="dropdown_title">${dropdownConfig.label}</span>
-                <span class="dropdown_arrow">▼</span>
-            </div>
-            <div class="dropdown_popup" id="pop_${dropdownConfig.id}">
-                <div class="popup_header">
-                    <label class="checkbox_label"><input type="checkbox" id="chkAll_${dropdownConfig.id}" checked><span><strong>${dropdownConfig.label}</strong></span></label>
-                </div>
-                ${dropdownConfig.search ? `
-                <div class="popup_search_box">
-                    <span class="search_icon">🔍</span>
-                    <input type="text" id="srch_${dropdownConfig.id}" placeholder="พิมพ์เพื่อค้นหา">
-                </div>` : ''}
-                <div class="popup_list" id="list_${dropdownConfig.id}">
-                    ${buildPopupItemsHTML(dropdownConfig)}
-                </div>
-            </div>`;
-        container.appendChild(dropdownEl);
-
-        bindDropdownEvents(dropdownConfig, dropdownEl);
+        if (dropdownConfig.renderAs === "chips") {
+            renderChipFilterGroup(dropdownConfig, container);
+        } else {
+            renderClassicDropdown(dropdownConfig, container);
+        }
     });
 
     document.addEventListener("click", () => document.querySelectorAll(".dropdown_popup").forEach(popupEl => popupEl.classList.remove("active")));
+}
+
+// ตัวกรองแบบ Dropdown ดั้งเดิม (มี popup + checkbox list + ปุ่ม "เท่านั้น")
+// ใช้กับตัวเลือกที่มีจำนวนมาก เช่น "ประเภทเอกสาร" ของ RFA และ "ประเภทงาน" ของ RFI
+function renderClassicDropdown(dropdownConfig, container) {
+    const dropdownEl = document.createElement("div");
+    dropdownEl.className = "custom_dropdown_container";
+    dropdownEl.dataset.dropdownId = dropdownConfig.id;
+
+    dropdownEl.innerHTML = `
+        <div class="dropdown_trigger" id="trig_${dropdownConfig.id}">
+            <span class="dropdown_title">${dropdownConfig.label}</span>
+            <span class="dropdown_arrow">▼</span>
+        </div>
+        <div class="dropdown_popup" id="pop_${dropdownConfig.id}">
+            <div class="popup_header">
+                <label class="checkbox_label"><input type="checkbox" id="chkAll_${dropdownConfig.id}" checked><span><strong>${dropdownConfig.label}</strong></span></label>
+            </div>
+            ${dropdownConfig.search ? `
+            <div class="popup_search_box">
+                <span class="search_icon">🔍</span>
+                <input type="text" id="srch_${dropdownConfig.id}" placeholder="พิมพ์เพื่อค้นหา">
+            </div>` : ''}
+            <div class="popup_list" id="list_${dropdownConfig.id}">
+                ${buildPopupItemsHTML(dropdownConfig)}
+            </div>
+        </div>`;
+    container.appendChild(dropdownEl);
+
+    bindDropdownEvents(dropdownConfig, dropdownEl);
 }
 
 function buildPopupItemsHTML(dropdownConfig) {
@@ -248,6 +259,91 @@ function bindDropdownEvents(dropdownConfig, dropdownEl) {
     });
 
     bindItemCheckboxEvents(dropdownConfig, dropdownEl);
+}
+
+// ---------------------------------------------------------------------------
+// 1.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip)
+// ใช้แทน Dropdown เดิมสำหรับตัวเลือกที่มีจำนวนน้อย (2-3 รายการ) เช่น
+// "หมวดงาน" ของ RFA และ "ที่มา" ของ Letter In
+// ยังคงใช้ <input type="checkbox" class="chk_item_${id}"> ตัวเดิมซ่อนอยู่ใต้การ์ด
+// เพื่อให้ filterActiveTabDocuments / updateChartsDynamic / updateFilterStatusBox
+// / refreshTypeDropdownByCategory ทำงานได้โดยไม่ต้องแก้ logic ใดๆ เพิ่ม
+// ---------------------------------------------------------------------------
+function buildChipItemsHTML(dropdownConfig) {
+    return dropdownConfig.items.map(item => `
+        <label class="chip_filter_item">
+            <input type="checkbox" class="chk_item_${dropdownConfig.id}" value="${item.code}" checked>
+            <span class="chip_filter_name">${item.name}</span>
+            <span class="chip_filter_badge">${item.count}</span>
+        </label>
+    `).join('');
+}
+
+// ไล่ toggle class .is-selected ให้ตรงกับสถานะ checkbox จริงของแต่ละ chip
+function syncChipVisualState(groupEl, dropdownId) {
+    groupEl.querySelectorAll(".chip_filter_item").forEach(labelEl => {
+        const chk = labelEl.querySelector(`.chk_item_${dropdownId}`);
+        labelEl.classList.toggle("is-selected", chk.checked);
+    });
+}
+
+// อัปเดตข้อความหัวกลุ่ม เช่น "หมวดงาน" หรือ "หมวดงาน (2/3)" เมื่อเลือกไม่ครบทุกตัว
+function updateChipHeaderLabel(dropdownConfig, groupEl) {
+    const boxes = Array.from(groupEl.querySelectorAll(`.chk_item_${dropdownConfig.id}`));
+    const checkedBoxes = boxes.filter(c => c.checked);
+    const labelEl = groupEl.querySelector(".chip_filter_label");
+    if (!labelEl) return;
+
+    labelEl.textContent = (checkedBoxes.length === boxes.length || checkedBoxes.length === 0)
+        ? dropdownConfig.label
+        : `${dropdownConfig.label} (${checkedBoxes.length}/${boxes.length})`;
+}
+
+function renderChipFilterGroup(dropdownConfig, container) {
+    const groupEl = document.createElement("div");
+    groupEl.className = "chip_filter_group";
+    groupEl.dataset.dropdownId = dropdownConfig.id;
+
+    groupEl.innerHTML = `
+        <div class="chip_filter_header" id="chipHeader_${dropdownConfig.id}" title="แตะเพื่อเลือกทั้งหมด/ไม่เลือกเลย">
+            <span class="chip_filter_label">${dropdownConfig.label}</span>
+        </div>
+        <div class="chip_filter_list">
+            ${buildChipItemsHTML(dropdownConfig)}
+        </div>`;
+
+    container.appendChild(groupEl);
+    bindChipGroupEvents(dropdownConfig, groupEl);
+}
+
+function bindChipGroupEvents(dropdownConfig, groupEl) {
+    const getBoxes = () => Array.from(groupEl.querySelectorAll(`.chk_item_${dropdownConfig.id}`));
+
+    function afterChipChange() {
+        syncChipVisualState(groupEl, dropdownConfig.id);
+        updateChipHeaderLabel(dropdownConfig, groupEl);
+        updateSelectedTypeFilterFromDOM(dropdownConfig.id, groupEl);
+        filterActiveTabDocuments();
+        if (dropdownConfig.id === "cat") refreshTypeDropdownByCategory();
+    }
+
+    getBoxes().forEach(checkboxInput => {
+        checkboxInput.addEventListener("change", afterChipChange);
+    });
+
+    // แตะที่หัวกลุ่ม (label ของหมวด) = สลับสถานะ "เลือกทั้งหมด" <-> "ไม่เลือกเลย"
+    const headerEl = groupEl.querySelector(`#chipHeader_${dropdownConfig.id}`);
+    if (headerEl) {
+        headerEl.addEventListener("click", () => {
+            const boxes = getBoxes();
+            const allChecked = boxes.length > 0 && boxes.every(c => c.checked);
+            boxes.forEach(c => { c.checked = !allChecked; });
+            afterChipChange();
+        });
+    }
+
+    syncChipVisualState(groupEl, dropdownConfig.id);
+    updateChipHeaderLabel(dropdownConfig, groupEl);
 }
 
 function refreshTypeDropdownByCategory() {
@@ -483,7 +579,7 @@ function filterActiveTabDocuments() {
 }
 
 // ---------------------------------------------------------------------------
-// Filter Status Box (กล่องสรุปสถานะการกรอง ใต้ช่องค้นหา)
+// Filter Status Box (กล่องสรุปสถานะการกรอง ใต้ search box)
 // ---------------------------------------------------------------------------
 
 // อ่านสถานะ checkbox จริงของ dropdown ตาม id ที่ระบุ
@@ -845,4 +941,3 @@ function updateChartsDynamic() {
     }
 
 }
-
