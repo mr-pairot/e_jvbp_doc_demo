@@ -16,7 +16,7 @@
    ========================================================================= */
 .filter_dropdowns_row {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 9px;
     width: 95%;
     --filter_box_height: 44px; 
@@ -267,9 +267,14 @@
 
 @media (max-width: 420px) {
  /*   .chip_filter_group {
+        display: flex;
         flex-direction: column;
         align-items: flex-start;
     } */
+   .filter_dropdowns_row {
+       display: flex;
+       flex-direction: column;
+   }
    .chip_filter_list {
        display: flex;
        flex-wrap: nowrap;
