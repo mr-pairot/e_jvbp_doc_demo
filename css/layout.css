@@ -1,0 +1,548 @@
+/* layout.css 
+   โครงสร้างหน้า (Page Skeleton / Structural Layout)
+   ต้องโหลดหลัง variables.css เพราะอ้างอิงตัวแปรจากไฟล์นั้น
+
+   หมวดหมู่ในไฟล์นี้:
+     2. Reset & Base
+     3. Utility Classes (แทนที่ inline style เดิมใน HTML/JS)
+     4. Splash Screen
+     5. App Wrapper / Dashboard Layout
+     6. Header Grid (Logo, Banner, Sheet Status, Tabs)
+     10. Update Note Line
+     12. Pagination Footer
+   ========================================================================= */
+
+/* -----------------------------------------------------------------------
+   Universal Reset
+   ----------------------------------------------------------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* =============================================================================
+   2. RESET & BASE
+   ========================================================================= */
+body {
+    font-family: var(--font-family-base);
+    background: linear-gradient(135deg, var(--color-page-bg-1) 0%, var(--color-page-bg-2) 50%, var(--color-page-bg-3) 100%);
+    background-attachment: fixed;
+    color: var(--color-text-body);
+    line-height: 1.5;
+}
+
+
+/* =============================================================================
+   3. UTILITY CLASSES (แทนที่ inline style เดิมใน HTML/JS)
+   ========================================================================= */
+.is-hidden {
+    display: none !important;
+}
+
+.is-flex {
+    display: flex !important;
+}
+
+.is-fading-out {
+    opacity: 0;
+}
+
+.is-full-width {
+    width: 100%;
+}
+
+/* สถานะข้อความ/ลิงก์เอกสารที่ไม่มีไฟล์แนบ (ไม่ใช่ hyperlink) */
+.doc_hyperlink_title--disabled {
+    color: var(--color-text-placeholder);
+}
+
+
+/* =============================================================================
+   4. SPLASH SCREEN
+   ========================================================================= */
+.splash_screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-surface-splash); 
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--transition-splash);
+    overflow: hidden;
+}
+
+.splash_rings_bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.splash_content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 600px;
+    padding: 40px;
+    width: 90%; 
+}
+
+.splash_title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #9aa5ff 0%, #4f5bd5 45%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.splash_status {
+    font-size: var(--font-size-md-alt);
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 20px;
+    line-height: 1.6;
+    letter-spacing: 0.2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Splash Progress Bar (แสดงความคืบหน้าการโหลดข้อมูลจาก Google Sheets)
+   สีไล่โทนเดียวกับ splash_title / magic rings background (#9aa5ff -> #4f5bd5 -> #22d3ee)
+   ------------------------------------------------------------------------- */
+.splash_progress_wrap {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.splash_progress_track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(154, 165, 255, 0.25);
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.splash_progress_fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #9aa5ff 0%, #4f5bd5 55%, #22d3ee 100%);
+    box-shadow: 0 0 10px rgba(79, 91, 213, 0.6), 0 0 4px rgba(34, 211, 238, 0.5);
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.splash_progress_fill::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 60%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+    animation: splashProgressShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes splashProgressShimmer {
+    0% { transform: translateX(-120%); }
+    100% { transform: translateX(220%); }
+}
+
+.splash_progress_percent {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: #dfe3ff;
+    letter-spacing: 0.3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.splash_btn {
+    background: rgba(79, 91, 213, 0.18);
+    color: #dfe3ff;
+    border: 1px solid rgba(154, 165, 255, 0.4);
+    padding: 10px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: var(--font-weight-semibold);
+    margin-top: 15px;
+    transition: background var(--transition-base), border-color var(--transition-base);
+}
+
+.splash_btn:hover {
+    background: rgba(79, 91, 213, 0.32);
+    border-color: rgba(154, 165, 255, 0.7);
+}
+
+
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--color-brand-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+/* =============================================================================
+   5. APP WRAPPER / DASHBOARD LAYOUT
+   ========================================================================= */
+.app_wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main_dashboard_wrapper {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 9px ;
+    overflow-y: auto;
+    background:
+        radial-gradient(circle at 10% 15%, var(--color-dashboard-glow-blue) 0%, transparent 45%),
+        radial-gradient(circle at 90% 85%, var(--color-dashboard-glow-cyan) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, var(--color-dashboard-glow-purple) 0%, transparent 60%),
+        linear-gradient(135deg, var(--color-dashboard-bg-1) 0%, var(--color-dashboard-bg-2) 50%, var(--color-dashboard-bg-3) 100%);
+    background-attachment: fixed;
+}
+
+.looker_dashboard_container {
+    width: 100%;
+    background: var(--color-surface-card);
+    border-radius: 16px;
+    border: 1px solid var(--color-border-container);
+    box-shadow: var(--shadow-dashboard-container);
+    padding: 20px 24px;
+}
+
+
+/* =============================================================================
+   6. HEADER GRID (Logo, Banner, Sheet Status, Tabs, Charts)
+   ========================================================================= */
+.top_header_grid {
+    display: grid;
+    grid-template-columns: var(--layout-header-grid-columns);
+    grid-template-rows: auto auto;
+    column-gap: var(--layout-header-grid-gap);
+    align-items: start;
+    padding-bottom: 10px;
+}
+
+/* 6.1 Column ซ้าย - แถวบน (Logo + Title) + Tabs  */
+.header_top_left {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2; /* ให้อยู่แถวบนสุด */
+    display: flex;
+    flex-direction: column; /* ให้โลโก้กับแท็บเรียงซ้อนกันบน-ล่าง */
+    gap: 12px; /* ระยะห่างระหว่างโลโก้กับแท็บ */
+    min-width: 0;
+}
+.logo_and_banner {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    width: 96%;
+}
+
+.jv_logo_wrap {
+    padding: 0px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.logo_image {
+    height: var(--layout-logo-height);
+    object-fit: contain;
+}
+
+.title_banner {
+    width: 80%;
+    color: var(--color-text-on-brand);
+    text-align: center;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 2px solid var(--color-text-on-brand);
+    background: linear-gradient(180deg, var(--color-brand-primary) 0%, var(--color-brand-primary-dark) 100%);
+    box-shadow: var(--shadow-title-banner);
+}
+
+.title_banner h1 {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.5px;
+    text-shadow: var(--shadow-title-banner-text);
+}
+
+/* 6.2 Column ซ้าย - แถวล่าง (Status + Dropdowns + Search) */
+.center_control {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    justify-content: space-between;
+    min-width: 0; 
+    margin-top: 9px;
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+}
+
+.center_control.unfold-in {
+    animation: unfoldDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes unfoldDown {
+    from {
+        clip-path: inset(0 0 100% 0);
+        opacity: 0;
+    }
+    to {
+        clip-path: inset(0 -50px -800px -50px); 
+        opacity: 1;
+    }
+}
+
+/* 6.3 Column ขวา - Chart Area */
+.chart_area {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+/* 6.4 Sheet Status Bar (Google Sheets Live Connection) */
+.sheet_status_bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-status-success-bg);
+    border: 1px solid var(--color-status-success-border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: var(--font-size-xs-alt);
+    color: var(--color-status-success-text);
+    gap: 8px;
+}
+
+.sheet_status_left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: var(--font-weight-semibold);
+    flex: 1;
+    min-width: 0;
+}
+
+.sheet_status_left span:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sheet_link {
+    color: var(--color-brand-primary);
+    font-weight: var(--font-weight-bold);
+    text-decoration: underline;
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 6.5 Tabs (RFA / RFI / Letter In) */
+.typeDoc_tabs {
+    display: flex;
+    gap: 10px;
+    background: var(--color-surface-tabs-bg);
+    padding: 6px;
+    border-radius: 8px;
+    width: 95%;
+}
+
+.typeDoc_tab {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.typeDoc_tab:hover {
+    background: var(--color-surface-tab-hover);
+    color: #334155;
+}
+
+.typeDoc_tab.active {
+    background: var(--color-surface-card);
+    color: var(--color-brand-primary);
+    box-shadow: var(--shadow-btn-nav);
+}
+
+.typeDoc_tab[data-tab="rfa"].active { color: var(--color-accent-rfa); }
+.typeDoc_tab[data-tab="rfi"].active { color: var(--color-accent-rfi); }
+.typeDoc_tab[data-tab="letter"].active { color: var(--color-accent-letter); }
+
+.tab_badge {
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-bold);
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: var(--color-text-on-brand);
+    display: none;
+}
+
+.badge_rfa { background: var(--color-accent-rfa); }
+.badge_rfi { background: var(--color-accent-rfi); }
+.badge_letter { background: var(--color-accent-letter); }
+
+
+/* =============================================================================
+   10. UPDATE NOTE LINE
+   ========================================================================= */
+.update_note_line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 10px 8px;
+}
+
+.dev_note {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm-alt);
+    font-style: italic;
+    font-weight: var(--font-weight-medium);
+}
+
+.red_note {
+    color: var(--color-status-danger-text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+
+/* =============================================================================
+   12. PAGINATION FOOTER
+   ========================================================================= */
+.pagination_footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px;
+    background: var(--color-surface-footer);
+    border-top: 1px solid var(--color-border-container);
+}
+
+.page_info {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.page_controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn_nav {
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-border-default);
+    color: var(--color-brand-primary);
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-btn-nav);
+}
+
+.btn_nav:hover:not(:disabled) {
+    background: var(--color-brand-primary-soft-bg);
+    border-color: var(--color-brand-primary-soft-border);
+    color: var(--color-text-link);
+}
+
+.btn_nav:disabled {
+    color: var(--color-text-disabled);
+    border-color: var(--color-border-container);
+    cursor: not-allowed;
+    background: var(--color-surface-tabs-bg);
+}
+
+.page_numbers_container {
+    display: flex;
+    gap: 4px;
+}
+
+.page_btn {
+    width: var(--layout-page-btn-size);
+    height: var(--layout-page-btn-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    background: var(--color-surface-page-btn);
+    color: #334155;
+    font-weight: var(--font-weight-medium);
+}
+
+.page_btn.active {
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
+    font-weight: var(--font-weight-bold);
+    border-color: var(--color-brand-primary);
+    box-shadow: var(--shadow-page-btn-active);
+}
+
+.page_btn:hover:not(.active) {
+    background: var(--color-surface-page-btn-hover);
+}
+
+@media (max-width: 700px) {
+    .top_header_grid {
+        grid-template-columns: 1fr;
+    }
+    .chart_area {
+        display: none;
+    }
+    .center_control {
+       margin-top: 4px;
+   }
+}
