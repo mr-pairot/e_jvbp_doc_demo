@@ -550,6 +550,14 @@ body {
 /* =============================================================================
    14. กลุ่ม (cache_control + sheet_status)
    ========================================================================= */
+.cache_control_And_sheet_status { 
+   display: flex; 
+   justify-content: flex-end; 
+   flex-direction: row; 
+   align-items: flex-end; 
+   gap: 8px;
+}
+.cacheLastUpdateText { color: var(--text-muted, #64748b); font-weight: 500; }
 .cache_control_line {
    display: flex; 
    align-items: center; 
