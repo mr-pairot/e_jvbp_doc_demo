@@ -27,11 +27,6 @@
     min-width: 0;
 }
 
-.filter_dropdowns_row .custom_dropdown_container:first-child {
-    flex: 0 0 145px; 
-    width: 145px;
-}
-
 .filter_dropdowns_row .custom_dropdown_container:last-child {
     flex: 1; 
     min-width: 0;
@@ -244,6 +239,7 @@
     margin-bottom: 0;
     display: inline-block;
     flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .chip_filter_label {
@@ -268,15 +264,11 @@
 
 @media (max-width: 430px) {
     .filter_dropdowns_row {
-        display: flex;
         flex-direction: column;
     }
-   .chip_filter_list {
-       justify-content: flex-end;
-   }
-   .filter_dropdowns_row .custom_dropdown_container:first-child {
-      width: 100%;
-   }
+    .filter_dropdowns_row .custom_dropdown_container:first-child {
+        width: 100%;
+    }
 }
 
 .chip_filter_item {
@@ -290,6 +282,7 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .chip_filter_item input[type="checkbox"] {
@@ -317,8 +310,12 @@
     transition: background var(--transition-fast);
 }
 
-.chip_filter_item:hover {
-    border-color: var(--color-brand-primary-soft-border);
+/* :hover เฉพาะอุปกรณ์ที่ hover ได้จริง (เมาส์) เท่านั้น ป้องกัน "sticky hover"
+   ค้างสถานะสีน้ำเงินบนอุปกรณ์ touch หลังแตะด้วยนิ้ว */
+@media (hover: hover) and (pointer: fine) {
+    .chip_filter_item:hover {
+        border-color: var(--color-brand-primary-soft-border);
+    }
 }
 
 .chip_filter_item.is-selected {
