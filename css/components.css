@@ -275,7 +275,7 @@
        justify-content: flex-end;
    }
    .filter_dropdowns_row .custom_dropdown_container:first-child {
-      width: 95%;
+      width: 100%;
    }
 }
 
