@@ -265,9 +265,6 @@ function bindDropdownEvents(dropdownConfig, dropdownEl) {
 // 1.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip)
 // ใช้แทน Dropdown เดิมสำหรับตัวเลือกที่มีจำนวนน้อย (2-3 รายการ) เช่น
 // "หมวดงาน" ของ RFA และ "ที่มา" ของ Letter In
-// ยังคงใช้ <input type="checkbox" class="chk_item_${id}"> ตัวเดิมซ่อนอยู่ใต้การ์ด
-// เพื่อให้ filterActiveTabDocuments / updateChartsDynamic / updateFilterStatusBox
-// / refreshTypeDropdownByCategory ทำงานได้โดยไม่ต้องแก้ logic ใดๆ เพิ่ม
 // ---------------------------------------------------------------------------
 function buildChipItemsHTML(dropdownConfig) {
     return dropdownConfig.items.map(item => `
