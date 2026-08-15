@@ -275,7 +275,7 @@
        justify-content: flex-end;
    }
    .custom_dropdown_container{
-
+      width: 95%;
    }
 }
 
