@@ -267,6 +267,10 @@
 }
 
 @media (max-width: 420px) {
+    .filter_dropdowns_row {
+        display: flex;
+        flex-direction: column;
+    }
    .chip_filter_list {
        justify-content: flex-end;
    }
