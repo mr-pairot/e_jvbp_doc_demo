@@ -181,19 +181,20 @@
     <!-- แถวล่าง: กลุ่ม (cache_control + sheet_status) ชิดขวา -->
     <div class="cache_control_And_sheet_status" >
             <div id="cacheLastUpdateText" >ข้อมูลล่าสุด : กำลังตรวจสอบ...</div>
-            <!-- 1. Cache และปุ่ม Refresh -->
-            <div class="cache_control_line" >
+           
+            <div class="Refresh_Link" >
+              <!-- 1. ปุ่ม Refresh -->   
                 <button id="btnForceRefresh" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: none; background: #e0f2fe; color: #0284c7; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; transition: background 0.2s;">
                     <span>🔄</span> รีเฟรช
                 </button>
-            </div>
 
-            <div class="separator_line"></div>
-
-            <!-- 2. Google Sheets Live Connection Status -->
-            <div class="sheet_status_bar" id="sheetStatusBar" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
-                <a href="https://docs.google.com/spreadsheets/d/1QN-vHpbzTQKuZH_uieQ3brS-ZxS2k5ek6ECL38pswAc/edit?gid=1167974259#gid=1167974259" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
-            </div>
+                <div class="separator_line"></div>
+    
+              <!-- 2. Google Sheets Live Connection Status -->
+                <div class="sheet_status_bar" id="sheetStatusBar" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                    <a href="https://docs.google.com/spreadsheets/d/1QN-vHpbzTQKuZH_uieQ3brS-ZxS2k5ek6ECL38pswAc/edit?gid=1167974259#gid=1167974259" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
+                </div>
+            </div>   
 
     </div>
 
