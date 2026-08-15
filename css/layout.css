@@ -8,8 +8,8 @@
      4. Splash Screen
      5. App Wrapper / Dashboard Layout
      6. Header Grid (Logo, Banner, Sheet Status, Tabs)
-     10. Update Note Line
-     12. Pagination Footer
+     12. Update Note Line
+     13. Pagination Footer
    ========================================================================= */
 
 /* -----------------------------------------------------------------------
@@ -430,7 +430,7 @@ body {
 
 
 /* =============================================================================
-   10. UPDATE NOTE LINE
+   12. UPDATE NOTE LINE
    ========================================================================= */
 .update_note_line {
     display: flex;
@@ -454,7 +454,7 @@ body {
 
 
 /* =============================================================================
-   12. PAGINATION FOOTER
+   13. PAGINATION FOOTER
    ========================================================================= */
 .pagination_footer {
     display: flex;
@@ -545,4 +545,17 @@ body {
     .center_control {
        margin-top: 4px;
    }
+}
+
+/* =============================================================================
+   14. กลุ่ม (cache_control + sheet_status)
+   ========================================================================= */
+.cache_control_line {
+   display: flex; 
+   align-items: center; 
+   gap: 12px; 
+   font-size: 0.8rem;
+}
+@media (max-width: 430px) {
+
 }
