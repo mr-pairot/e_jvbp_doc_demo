@@ -4,6 +4,7 @@
 
    หมวดหมู่ในไฟล์นี้:
      7. Dropdown Filters
+     7.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย)
      8. Search & Document Count
      9. Chart Area (Pie/Donut + Bar)
      10. Filter Status Box
@@ -204,6 +205,111 @@
 
 .popup_item:hover .btn_only_item {
     display: inline-block;
+}
+
+/* =============================================================================
+   7.1 CHIP FILTER GROUP (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย เช่น
+   "หมวดงาน" ของ RFA และ "ที่มา" ของ Letter In)
+   แทนที่ dropdown+popup เดิมในตำแหน่งเดียวกัน — ใช้ checkbox จริงซ่อนอยู่ใต้การ์ด
+   ========================================================================= */
+.filter_dropdowns_row .chip_filter_group:first-child {
+    flex: 0 0 auto;
+    min-width: 160px;
+}
+
+.filter_dropdowns_row .chip_filter_group:last-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.chip_filter_group {
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-border-input);
+    border-radius: 6px;
+    padding: 6px 8px;
+    box-shadow: var(--shadow-dropdown-trigger);
+    box-sizing: border-box;
+}
+
+.chip_filter_header {
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+.chip_filter_label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-dropdown-title);
+    transition: color var(--transition-fast);
+}
+
+.chip_filter_header:hover .chip_filter_label {
+    color: var(--color-brand-primary);
+}
+
+.chip_filter_list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip_filter_item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px 5px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-input);
+    background: var(--color-surface-tabs-bg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.chip_filter_item input[type="checkbox"] {
+    display: none;
+}
+
+.chip_filter_name {
+    font-size: var(--font-size-xs-alt);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* Badge วงกลม/แคปซูลเล็กแสดงจำนวนเอกสาร — ตั้งใจให้สีต่างจากชื่อรายการชัดเจน */
+.chip_filter_badge {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-on-brand);
+    background: var(--color-text-disabled);
+    border-radius: 999px;
+    padding: 3px 7px;
+    min-width: 18px;
+    text-align: center;
+    transition: background var(--transition-fast);
+}
+
+.chip_filter_item:hover {
+    border-color: var(--color-brand-primary-soft-border);
+}
+
+.chip_filter_item.is-selected {
+    background: var(--color-brand-primary-soft-bg);
+    border-color: var(--color-brand-primary);
+}
+
+.chip_filter_item.is-selected .chip_filter_name {
+    color: var(--color-brand-primary-dark);
+    font-weight: var(--font-weight-bold);
+}
+
+.chip_filter_item.is-selected .chip_filter_badge {
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
 }
 
 
