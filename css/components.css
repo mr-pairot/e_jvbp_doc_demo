@@ -237,9 +237,8 @@
     cursor: pointer;
     user-select: none;
     margin-bottom: 0;
-    display: flex;            /* เปลี่ยนจาก inline-block */
-    align-items: center;      /* เพิ่ม */
-    /*display: inline-block;*/
+    display: flex;            
+    align-items: center;      
     flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
 }
@@ -299,7 +298,7 @@
     white-space: nowrap;
 }
 
-/* Badge วงกลม/แคปซูลเล็กแสดงจำนวนเอกสาร — ตั้งใจให้สีต่างจากชื่อรายการชัดเจน */
+/* Badge วงกลม/แคปซูลเล็กแสดงจำนวนเอกสาร */
 .chip_filter_badge {
     font-size: 10px;
     line-height: 1;
