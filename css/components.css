@@ -274,7 +274,7 @@
    .chip_filter_list {
        justify-content: flex-end;
    }
-   .custom_dropdown_container{
+   .custom_dropdown_container:first-child {
       width: 95%;
    }
 }
