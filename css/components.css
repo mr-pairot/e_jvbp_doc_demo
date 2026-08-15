@@ -237,7 +237,9 @@
     cursor: pointer;
     user-select: none;
     margin-bottom: 0;
-    display: inline-block;
+    display: flex;            /* เปลี่ยนจาก inline-block */
+    align-items: center;      /* เพิ่ม */
+    /*display: inline-block;*/
     flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
 }
@@ -247,6 +249,7 @@
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-dropdown-title);
     transition: color var(--transition-fast);
+    line-height: 1; 
 }
 
 .chip_filter_header:hover .chip_filter_label {
