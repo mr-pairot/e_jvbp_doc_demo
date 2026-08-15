@@ -558,9 +558,10 @@ body {
    gap: 8px;
 }
 #cacheLastUpdateText { color: var(--text-muted, #64748b); font-weight: 500; }
-.cache_control_line {
+.Refresh_Link {
    display: flex; 
    align-items: center; 
+   flex-direction: row; 
    gap: 12px; 
    font-size: 0.8rem;
 }
