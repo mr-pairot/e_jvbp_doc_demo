@@ -690,27 +690,35 @@ function getHighlightColors(baseColors, labels, selectedLabel, isPieChart = fals
 function handlePieChartClick(clickedLabel) {
     selectedTypeFilter = (selectedTypeFilter === clickedLabel) ? null : clickedLabel;
 
-    // Sync กลับไปที่ Dropdown "ประเภทเอกสาร"
+    // Sync กลับไปที่ตัวกรอง "ประเภทเอกสาร/ที่มา" ไม่ว่าจะ render เป็น dropdown เดิม
+    // หรือ chip_filter_group ใหม่ (ทั้งสองแบบมี data-dropdown-id ตรงกับ targetDropdownId เสมอ)
     const targetDropdownId = getActivePieChartDropdownId();
     if (!targetDropdownId) return;
 
-    const dropdownEl = document.querySelector(`.custom_dropdown_container[data-dropdown-id="${targetDropdownId}"]`);
-    if (dropdownEl) {
-        const allCheckboxes = Array.from(dropdownEl.querySelectorAll(`.chk_item_${targetDropdownId}`));
-        const chkAllEl = dropdownEl.querySelector(`#chkAll_${targetDropdownId}`);
+    const containerEl = document.querySelector(`[data-dropdown-id="${targetDropdownId}"]`);
+    if (containerEl) {
+        const allCheckboxes = Array.from(containerEl.querySelectorAll(`.chk_item_${targetDropdownId}`));
 
         if (selectedTypeFilter === null) {
             allCheckboxes.forEach(chk => chk.checked = true);
-            if (chkAllEl) chkAllEl.checked = true;
         } else {
             allCheckboxes.forEach(chk => {
                 chk.checked = (chk.value === selectedTypeFilter);
             });
-            if (chkAllEl) chkAllEl.checked = false;
         }
 
         const typeConfig = TAB_CONFIGS[currentTab].dropdowns.find(d => d.id === targetDropdownId);
-        if (typeConfig) updateDropdownTitle(typeConfig, dropdownEl);
+
+        if (containerEl.classList.contains("chip_filter_group")) {
+            // กล่องแบบ chip: อัปเดตสถานะสี is-selected + label หัวกลุ่ม
+            syncChipVisualState(containerEl, targetDropdownId);
+            if (typeConfig) updateChipHeaderLabel(typeConfig, containerEl);
+        } else {
+            // Dropdown แบบเดิม: อัปเดต checkbox "เลือกทั้งหมด" + title บน trigger
+            const chkAllEl = containerEl.querySelector(`#chkAll_${targetDropdownId}`);
+            if (chkAllEl) chkAllEl.checked = (selectedTypeFilter === null);
+            if (typeConfig) updateDropdownTitle(typeConfig, containerEl);
+        }
     }
 
     filterActiveTabDocuments();
@@ -941,3 +949,4 @@ function updateChartsDynamic() {
     }
 
 }
+
