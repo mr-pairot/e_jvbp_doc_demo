@@ -569,5 +569,4 @@ body {
 
 @media (max-width: 430px) {
    .separator_line { display: none; }
-   
-}
+   .cache_control_And_sheet_status { flex-direction: column; }
