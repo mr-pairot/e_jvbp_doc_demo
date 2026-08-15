@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <defs>
+    <clipPath id="r">
+      <rect width="180" height="180" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <rect width="180" height="180" rx="24" fill="#0B3A6E"/>
+
+  <g clip-path="url(#r)">
+    <path d="M0 132C24 118 48 120 72 132S120 160 180 136V180H0Z" fill="#1E63D8"/>
+    <path d="M0 148C28 134 58 138 86 152S144 176 180 158V180H0Z" fill="#2E7BFF"/>
+  </g>
+
+  <text x="15" y="44" fill="#FFF" font-family="Arial,Helvetica,sans-serif" font-size="40" font-weight="700">BPNP</text>
+
+  <!-- เอกสาร -->
+  <path d="M50 56H110L130 76V156Q130 168 118 168H50Q38 168 38 156V68Q38 56 50 56Z"
+        fill="#FFF" stroke="#153B6F" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M110 56L130 76H110Z"
+        fill="#DCEBFF" stroke="#153B6F" stroke-width="3" stroke-linejoin="round"/>
+
+  <rect x="50" y="70" width="44" height="10" rx="3" fill="#1565D8"/>
+
+  <g stroke="#B0B7C3" stroke-width="4" stroke-linecap="round">
+    <path d="M50 94H100M50 108H100M50 122H92M50 136H100M50 150H84"/>
+  </g>
+
+  <!-- แว่นขยาย -->
+  <circle cx="100" cy="121" r="24"
+          fill="#EAF4FF" stroke="#0B3A6E" stroke-width="5"/>
+
+  <!-- เงาเลนส์ -->
+  <path d="M90 111 Q98 103 106 107"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="5"
+        stroke-linecap="round"/>
+
+  <!-- ขาแว่น -->
+  <rect x="122" y="135" width="16" height="38" rx="6"
+        transform="rotate(-45 128 147)"
+        fill="#F4B400" stroke="#0B3A6E" stroke-width="3"/>
+</svg>
