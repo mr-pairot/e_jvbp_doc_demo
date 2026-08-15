@@ -230,7 +230,7 @@
     gap: 10px;
     flex-wrap: wrap;
     min-height: var(--filter_box_height);
-    min-width: 290px;
+    min-width: 300px;
 }
 
 .chip_filter_header {
