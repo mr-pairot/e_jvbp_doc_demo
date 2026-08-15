@@ -19,6 +19,7 @@
     flex-direction: row;
     gap: 6px;
     width: 95%;
+    --filter_box_height: 34px; /* ความสูงกลางของกล่องกรองในแถวนี้ (dropdown_trigger + chip_filter_group) */
 }
 
 .custom_dropdown_container {
@@ -56,6 +57,7 @@
     width: 100%;
     box-sizing: border-box;
     min-width: 0; 
+    min-height: var(--filter_box_height);
 
 }
 
@@ -229,13 +231,19 @@
     padding: 6px 8px;
     box-shadow: var(--shadow-dropdown-trigger);
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-height: var(--filter_box_height);
 }
 
 .chip_filter_header {
     cursor: pointer;
     user-select: none;
-    margin-bottom: 6px;
+    margin-bottom: 0;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .chip_filter_label {
@@ -253,6 +261,15 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 420px) {
+    .chip_filter_group {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
 
 .chip_filter_item {
