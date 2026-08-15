@@ -556,6 +556,9 @@ body {
    gap: 12px; 
    font-size: 0.8rem;
 }
-@media (max-width: 430px) {
+.separator_line { width: 1px; height: 28px; background-color: #cbd5e1; display: block; }
 
+@media (max-width: 430px) {
+   .separator_line { display: none; }
+   
 }
