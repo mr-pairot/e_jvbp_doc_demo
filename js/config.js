@@ -106,7 +106,7 @@ const TAB_CONFIGS = {
         title: "ระบบสารบรรณอิเล็กทรอนิกส์ RFA",
         bannerClass: "banner_rfa",
         dropdowns: [
-            { id: "cat", label: "หมวดงาน", items: [] },
+            { id: "cat", label: "หมวดงาน", items: [], renderAs: "chips" },
             { id: "type", label: "ประเภทเอกสาร", search: true, items: [] }
         ],
         searchStyle: "yellow",
@@ -131,7 +131,7 @@ const TAB_CONFIGS = {
         title: "ระบบสารบรรณอิเล็กทรอนิกส์ Letter In",
         bannerClass: "banner_letter",
         dropdowns: [
-            { id: "source", label: "ที่มา", items: [] }
+            { id: "source", label: "ที่มา", items: [], renderAs: "chips" }
         ],
         searchStyle: "lightblue",
         searchLabel: 'กรอกคำค้นหา',
