@@ -17,9 +17,9 @@
 .filter_dropdowns_row {
     display: flex;
     flex-direction: row;
-    gap: 6px;
+    gap: 9px;
     width: 95%;
-    --filter_box_height: 44px; /* ความสูงกลางของกล่องกรองในแถวนี้ (dropdown_trigger + chip_filter_group) */
+    --filter_box_height: 44px; 
 }
 
 .custom_dropdown_container {
