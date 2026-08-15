@@ -557,7 +557,7 @@ body {
    align-items: flex-end; 
    gap: 8px;
 }
-.cacheLastUpdateText { color: var(--text-muted, #64748b); font-weight: 500; }
+#cacheLastUpdateText { color: var(--text-muted, #64748b); font-weight: 500; }
 .cache_control_line {
    display: flex; 
    align-items: center; 
