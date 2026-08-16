@@ -580,7 +580,7 @@ body {
 }
 .separator_line { width: 1px; height: 28px; background-color: #cbd5e1; display: block; }
 
-@media (max-width: 430px) {
+@media (max-width: 450px) {
     .pagination_footer { flex-direction: column; }
     .cache_control_And_sheet_status { flex-direction: column; }
 }
