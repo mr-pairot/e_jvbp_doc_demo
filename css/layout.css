@@ -336,6 +336,10 @@ body {
     align-items: flex-start;
     justify-content: flex-start;
     width: 100%;
+    /* .top_header_grid ตั้ง align-items: start ทำให้ grid item หดตามเนื้อหา
+       และไม่มีพื้นที่ว่างเหลือให้ justify-content ทำงาน จึงต้อง override
+       เฉพาะ item นี้ให้ยืดเต็มความสูงของ grid area ที่ span อยู่ (row 1/3) */
+    align-self: stretch;
 }
 
 /* ใช้เมื่อไม่มี bar chart แสดงอยู่ (เช่นแท็บ Letter In ที่ hideBarChart: true)
