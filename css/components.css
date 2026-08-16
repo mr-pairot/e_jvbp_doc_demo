@@ -252,7 +252,7 @@
 }
 
 .chip_filter_header:hover .chip_filter_label {
-    color: var(--color-brand-primary);
+    color: var(--color-brand-primary-violet);
 }
 
 .chip_filter_list {
@@ -322,7 +322,7 @@
 
 .chip_filter_item.is-selected {
     background: var(--color-brand-primary-soft-bg);
-    border-color: var(--color-brand-primary);
+    border-color: var(--color-brand-primary-violet);
 }
 
 .chip_filter_item.is-selected .chip_filter_name {
