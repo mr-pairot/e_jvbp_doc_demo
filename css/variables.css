@@ -44,7 +44,7 @@
     /* -------------------------------------------------------------------
        1.2 สี — แบรนด์หลัก (Brand / Primary)
        ------------------------------------------------------------------- */
-    --color-brand-primary-violet: #7a35ff;
+    --color-brand-primary-violet: #6c25d4;
     --color-brand-primary: #0d6efd;
     --color-brand-primary-dark: #0a58ca;
     --color-brand-primary-darker: #0b5ed7;
@@ -127,7 +127,7 @@
        ------------------------------------------------------------------- */
     --color-code-badge-bg: #ff6600;
     --color-code-badge-shadow: rgba(255, 102, 0, 0.35);
-    --color-doc-count-text: #7a35ff;
+    --color-doc-count-text: #6c25d4;
 
     /* -------------------------------------------------------------------
        1.10 สี — กราฟ (Chart Palette & Elements)
