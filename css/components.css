@@ -264,7 +264,7 @@
     justify-content: flex-end;
 }
 
-@media (max-width: 430px) {
+@media (max-width: 450px) {
     .filter_dropdowns_row {
         flex-direction: column;
     }
