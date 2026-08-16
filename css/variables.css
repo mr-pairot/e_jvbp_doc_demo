@@ -44,6 +44,7 @@
     /* -------------------------------------------------------------------
        1.2 สี — แบรนด์หลัก (Brand / Primary)
        ------------------------------------------------------------------- */
+    --color-brand-primary-chip: #7a35ff;
     --color-brand-primary: #0d6efd;
     --color-brand-primary-dark: #0a58ca;
     --color-brand-primary-darker: #0b5ed7;
