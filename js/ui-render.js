@@ -786,6 +786,11 @@ function renderCharts(config) {
 
     const barCanvas = document.getElementById("codeBarChart");
     const barContainer = document.getElementById("barColContainer");
+    const chartAreaEl = document.getElementById("chartsContainer");
+
+    // เมื่อไม่มี bar chart (เช่นแท็บ Letter In) ให้ .chart_area จัด donut ไว้กึ่งกลางแนวตั้ง
+    // ของพื้นที่ grid ด้านขวา แทนที่จะชิดบนแบบตอนมี bar chart อยู่ด้วย
+    if (chartAreaEl) chartAreaEl.classList.toggle("chart_area--center", !!config.hideBarChart);
 
     if (config.hideBarChart) {
         if (barContainer) barContainer.classList.add("is-hidden");
@@ -946,4 +951,3 @@ function updateChartsDynamic() {
     }
 
 }
-
