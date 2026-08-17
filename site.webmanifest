@@ -1,6 +1,6 @@
 {
   "name": "BPNP E-Document by Mr.Pairot",
-  "short_name": "BPNP Doc",
+  "short_name": "BPNP Doc [Demo]",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#F5FBFF",
