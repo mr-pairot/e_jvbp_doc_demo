@@ -312,7 +312,7 @@ body {
 }
 
 .center_control.unfold-in {
-    animation: unfoldDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: unfoldDown 4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes unfoldDown {
