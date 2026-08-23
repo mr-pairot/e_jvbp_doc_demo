@@ -620,7 +620,7 @@
     background-color: var(--color-surface-table-header);
     color: var(--color-text-heading);
     font-weight: var(--font-weight-bold);
-    padding: 12px 18px;
+    padding: 7px 8px 6px 19px;
     border-bottom: 2px solid var(--color-border-default);
     text-align: left;
     font-size: var(--font-size-md);
