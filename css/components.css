@@ -625,7 +625,7 @@
     color: var(--color-text-heading);
     font-weight: var(--font-weight-bold);
     padding: 7px 8px 6px 19px;
-    border-top: 1px solid var(--color-border-default); /* เพิ่มเส้นขอบบนให้หัวตารางตอนที่มันลอยตัว */
+    box-shadow: 0 -1px 0 0 var(--color-border-default); /* ใช้ box-shadow แทน border-top เพื่อให้ซ่อนได้ตอนไม่ได้เลื่อน (ไม่ซ้อนกับขอบการ์ด) */
     border-bottom: 2px solid var(--color-border-default);
     text-align: left;
     font-size: var(--font-size-md);
