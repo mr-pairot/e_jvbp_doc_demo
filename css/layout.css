@@ -219,7 +219,7 @@ body {
     width: 100%;
     min-width: 0;
     padding: 9px ;
-    overflow-y: auto;
+    
     background:
         radial-gradient(circle at 10% 15%, var(--color-dashboard-glow-blue) 0%, transparent 45%),
         radial-gradient(circle at 90% 85%, var(--color-dashboard-glow-cyan) 0%, transparent 45%),
