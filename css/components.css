@@ -613,12 +613,13 @@
 
 .document_table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate; /* เปลี่ยนจาก collapse เพื่อให้รองรับ border-radius */
+    border-spacing: 0;
 }
 
 .document_table th {
     position: sticky;
-    top: 0;
+    top: 5px; /* ห่างจากขอบจอ 5px */
     z-index: 5;
     background-color: var(--color-surface-table-header);
     color: var(--color-text-heading);
@@ -627,6 +628,14 @@
     border-bottom: 2px solid var(--color-border-default);
     text-align: left;
     font-size: var(--font-size-md);
+}
+
+.document_table th:first-child {
+    border-top-left-radius: 6px;
+}
+
+.document_table th:last-child {
+    border-top-right-radius: 6px;
 }
 
 .col_title { width: auto; }
