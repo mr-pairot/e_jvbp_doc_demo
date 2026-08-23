@@ -993,3 +993,244 @@
 @keyframes update_notify_spin {
     100% { transform: rotate(360deg); }
 }
+
+/* =============================================================================
+   15. ABOUT DEVELOPER MODAL (Popup ข้อมูลผู้พัฒนา — เปิดจากข้อความ "mr.pairot")
+   ========================================================================= */
+
+/* จุดคลิก "mr.pairot" ใต้ Footer */
+.dev_attribution {
+    color: var(--color-text-link);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: rgba(29, 78, 216, 0.4);
+    text-underline-offset: 2px;
+    transition: color var(--transition-fast);
+}
+
+.dev_attribution:hover {
+    color: var(--color-text-link-hover);
+    text-decoration-color: var(--color-text-link-hover);
+}
+
+/* Overlay พื้นหลังทั้งหน้าจอ */
+.about-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-base) ease, visibility 0s linear var(--transition-base);
+}
+
+.about-modal-overlay.is-active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity var(--transition-base) ease, visibility 0s linear;
+}
+
+/* กล่องเนื้อหา modal */
+.about-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    max-height: 88vh;
+    overflow-y: auto;
+    background: var(--color-surface-card);
+    border-radius: 16px;
+    box-shadow: var(--shadow-dropdown-popup);
+    padding: 24px 22px 18px;
+    font-family: var(--font-family-base);
+    transform: scale(0.95) translateY(8px);
+    transition: transform var(--transition-base) ease;
+}
+
+.about-modal-overlay.is-active .about-modal-content {
+    transform: scale(1) translateY(0);
+}
+
+/* ปุ่มปิด (×) มุมขวาบน */
+.about-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--color-border-default);
+    background: var(--color-surface-page-btn);
+    color: var(--color-text-secondary);
+    border-radius: 50%;
+    font-size: var(--font-size-lg);
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.about-close-btn:hover {
+    background: var(--color-surface-page-btn-hover);
+    color: var(--color-status-danger-text);
+}
+
+/* แถวบน: รูปโปรไฟล์ + ข้อมูลผู้พัฒนา */
+.about-header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border-header);
+}
+
+.profile-img-container {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-surface-tabs-bg);
+    border: 2px solid var(--color-brand-primary-soft-border);
+}
+
+.profile-img-container.skeleton {
+    animation: aboutSkeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes aboutSkeletonPulse {
+    0%, 100% { background-color: var(--color-surface-tabs-bg); }
+    50% { background-color: var(--color-surface-table-stripe); }
+}
+
+.profile-img-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.profile-img-container img.loaded {
+    opacity: 1;
+}
+
+.dev-info-box {
+    min-width: 0;
+}
+
+.dev-info-box h2 {
+    font-size: var(--font-size-md-alt);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-heading);
+}
+
+.dev-role {
+    font-size: var(--font-size-xs-alt);
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+}
+
+.dev-contact-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.dev-email,
+.dev-line-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 999px;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+}
+
+.dev-email {
+    color: var(--color-brand-primary-dark);
+    background: var(--color-brand-primary-soft-bg);
+}
+
+.dev-email:hover {
+    background: #dbeafe;
+}
+
+.dev-line-btn {
+    color: #ffffff;
+    background: #06c755; /* สีทางการของ LINE */
+}
+
+.dev-line-btn:hover {
+    background: #05a648;
+}
+
+/* กล่องวัตถุประสงค์โครงการ (Auto-Scroll) */
+.dev-purpose-box {
+    margin-top: 14px;
+}
+
+.dev-purpose-box h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-sm-alt);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-brand-primary-dark);
+    margin-bottom: 6px;
+}
+
+.purpose-scroll-container {
+    height: 130px;
+    overflow-y: hidden; /* เลื่อนด้วย JS เท่านั้น ซ่อน scrollbar เพื่อความสวยงาม */
+    background: var(--color-brand-primary-soft-bg);
+    border: 1px solid var(--color-brand-primary-soft-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.purpose-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.purpose-text.sm {
+    font-size: var(--font-size-xs-alt);
+}
+
+.purpose-cta p {
+    font-size: var(--font-size-xs-alt);
+    color: var(--color-brand-primary-dark);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.6;
+}
+
+/* Footer เล็กท้าย modal */
+.about-footer {
+    margin-top: 14px;
+    text-align: center;
+    font-size: var(--font-size-2xs);
+    color: var(--color-text-placeholder);
+}
+
+@media (max-width: 450px) {
+    .about-header-top {
+        flex-direction: column;
+        text-align: center;
+    }
+    .dev-contact-group {
+        justify-content: center;
+    }
+}
+
