@@ -628,10 +628,9 @@
 
 .col_title { width: auto; }
 .col_update { width: var(--layout-col-update-width); text-align: right !important; white-space: nowrap; }
-.col_letter_code { width: var(--layout-col-letter-code-width); }
-.col_letter_book { width: var(--layout-col-letter-book-width); }
-.col_letter_subject { width: auto; }
-.col_letter_update { width: var(--layout-col-update-width); text-align: right !important; white-space: nowrap; }
+
+.col_receive { width: 80px; white-space: nowrap; }
+.col_letterno { width: 120px; }
 
 .sortable {
     cursor: pointer;
