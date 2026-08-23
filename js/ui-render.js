@@ -417,7 +417,7 @@ function renderTableHeader(tabId) {
         headContainer.innerHTML = `
             <tr>
                 <th class="col_title">ชื่อเอกสาร</th>
-                <th class="col_update sortable" onclick="toggleSort()"><span class="arrow_sort">${arrow}</span> Update</th>
+                <th class="col_update sortable" onclick="toggleSort()"> Update <span class="arrow_sort">${arrow}</span></th>
             </tr>
         `;
     }
