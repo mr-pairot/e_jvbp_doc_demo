@@ -32,6 +32,7 @@ function openAboutModal() {
     if (modal) {
         // Modal มีอยู่แล้ว: แสดงซ้ำ แล้วเริ่ม auto-scroll ใหม่
         modal.classList.add("is-active");
+        lockBackgroundScroll();
         startPurposeScroll();
         return;
     }
@@ -107,6 +108,7 @@ function openAboutModal() {
 
     // เปิดในเฟรมถัดไปเพื่อให้ transition (opacity/scale) ทำงาน
     requestAnimationFrame(() => modal.classList.add("is-active"));
+    lockBackgroundScroll();
 
     // ปิด Modal เมื่อคลิกที่ overlay (นอกกล่องเนื้อหา)
     modal.addEventListener("click", (e) => {
@@ -125,6 +127,19 @@ function closeAboutModal() {
 
     modal.classList.remove("is-active");
     if (purposeScrollRAF) cancelAnimationFrame(purposeScrollRAF);
+    unlockBackgroundScroll();
+}
+
+// ป้องกันไม่ให้ .main_dashboard_wrapper (scroll container จริงของหน้า) เลื่อนได้
+// ระหว่างที่ modal เปิดอยู่ — แก้ปัญหา scroll ทะลุไปโดนตารางด้านหลัง
+function lockBackgroundScroll() {
+    const scrollWrap = document.querySelector(".main_dashboard_wrapper");
+    if (scrollWrap) scrollWrap.classList.add("about-modal-open");
+}
+
+function unlockBackgroundScroll() {
+    const scrollWrap = document.querySelector(".main_dashboard_wrapper");
+    if (scrollWrap) scrollWrap.classList.remove("about-modal-open");
 }
 
 // ---------------------------------------------------------------------------
