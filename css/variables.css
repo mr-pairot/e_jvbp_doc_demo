@@ -204,9 +204,7 @@
     --layout-page-btn-size: 34px;
     --layout-pie-date-gap: 6px;
 
-    --layout-col-update-width: 115px;
-    --layout-col-letter-code-width: 14%;
-    --layout-col-letter-book-width: 16%;
+    --layout-col-update-width: 100px;
 
     /* -------------------------------------------------------------------
        1.15 กราฟ — พฤติกรรมการแสดงผลข้อมูล (Chart Data Display Rules)
