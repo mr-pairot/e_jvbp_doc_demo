@@ -954,3 +954,11 @@ function updateChartsDynamic() {
     }
 
 }
+
+// เมื่อ hash เปลี่ยน (ผู้ใช้แก้ URL เอง หรือกด back/forward) ให้สลับแท็บตาม
+window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (['rfa', 'rfi', 'letter'].includes(hash) && hash !== currentTab) {
+        switchTab(hash);
+    }
+});
