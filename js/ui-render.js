@@ -34,6 +34,9 @@ function updateTabBadges() {
 function switchTab(tabId) {
     currentTab = tabId;
     currentPage = 1;
+    if (window.location.hash.replace('#', '').toLowerCase() !== tabId) {
+        history.replaceState(null, '', '#' + tabId);
+    }
     selectedTypeFilter = null;
     selectedCxFilter = null;
     const config = TAB_CONFIGS[tabId];
