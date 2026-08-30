@@ -12,7 +12,7 @@
     <path d="M0 148C28 134 58 138 86 152S144 176 180 158V180H0Z" fill="#2E7BFF"/>
   </g>
 
-  <text x="15" y="40" fill="#6c25d4" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="700">BPNP</text>
+  <text x="15" y="55" fill="#6c25d4" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="700">BPNP</text>
 
   <!-- เอกสาร -->
   <path d="M50 56H110L130 76V156Q130 168 118 168H50Q38 168 38 156V68Q38 56 50 56Z"
