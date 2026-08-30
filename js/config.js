@@ -20,7 +20,12 @@ const APP_CACHE_VERSION = "260820.1600";
 // ---------------------------------------------------------------------------
 // App State (สถานะการทำงานของแอป)
 // ---------------------------------------------------------------------------
-let currentTab = "rfa";
+// อ่านแท็บเริ่มต้นจาก URL hash เช่น #rfi หรือ #letter (ถ้าไม่ตรง/ไม่มี ใช้ rfa)
+function getInitialTabFromURL() {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    return ['rfa', 'rfi', 'letter'].includes(hash) ? hash : 'rfa';
+}
+let currentTab = getInitialTabFromURL();
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 let isSortOrderDescending = true;
