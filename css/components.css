@@ -1264,6 +1264,7 @@
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
     white-space: nowrap;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 @media (hover: hover) and (pointer: fine) {
