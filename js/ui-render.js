@@ -387,6 +387,7 @@ function refreshTypeDropdownByCategory() {
     filterActiveTabDocuments();
 }
 
+
 function renderSearchAndCount(config) {
     const row = document.getElementById("searchCountRow");
     if (!row) return;
@@ -396,7 +397,13 @@ function renderSearchAndCount(config) {
     row.innerHTML = `
         <div class="search_box_area">
             <div class="${config.searchStyle}_search_box">
-                <label class="search_label">${config.searchLabel}</label>
+                <label class="search_label">
+                    ${config.searchLabel}
+                    <button type="button" class="copy_search_link_btn" id="btnCopySearchLink" title="คัดลอกลิงก์พร้อมคำค้นหา/ตัวกรองปัจจุบัน">
+                        <img src="img/share_link.png" alt="" class="copy_search_link_icon">
+                        <span class="copy_search_link_text">คัดลอก Link ค้นหา</span>
+                    </button>
+                </label>
                 <input type="text" class="main_search_input" id="mainSearchInput" placeholder="พิมพ์คำค้นหา [กรณีหาหลายคำให้เว้นวรรค, ค้นหากลุ่มคำให้ครอบด้วยคำพูด เช่น คอนกรีต สะพาน &quot;14 วัน&quot;]">
             </div>
             <div class="filter_status_box" id="filterStatusBox">
@@ -406,7 +413,64 @@ function renderSearchAndCount(config) {
         ${config.showDocCountBox ? `<div class="${docCountClass}"><div class="count_title">จำนวนเอกสาร</div><div class="count_value" id="totalDocNumber">${activeDocuments.length.toLocaleString()}</div></div>` : '<div></div>'}
     `;
     document.getElementById("mainSearchInput").addEventListener("input", filterActiveTabDocuments);
+    initCopySearchLinkButton();
     updateFilterStatusBox();
+}
+
+// ผูก event ปุ่ม "คัดลอก Link ค้นหา" — คัดลอก URL ปัจจุบัน (มี hash ของแท็บ/คำค้นหา/
+// ตัวกรองที่ sync ไว้แล้วโดย syncURLHash()) เข้าคลิปบอร์ด พร้อมแสดงสถานะสำเร็จ/ล้มเหลวชั่วคราวบนปุ่ม
+function initCopySearchLinkButton() {
+    const btn = document.getElementById("btnCopySearchLink");
+    if (!btn) return;
+
+    const textSpan = btn.querySelector(".copy_search_link_text");
+    const defaultLabel = textSpan ? textSpan.textContent : "คัดลอก Link ค้นหา";
+    let resetTimer = null;
+
+    function flashLabel(label, isError) {
+        if (!textSpan) return;
+        if (resetTimer) clearTimeout(resetTimer);
+
+        textSpan.textContent = label;
+        btn.classList.toggle("is-copy-error", !!isError);
+        btn.classList.toggle("is-copy-success", !isError);
+
+        resetTimer = setTimeout(() => {
+            textSpan.textContent = defaultLabel;
+            btn.classList.remove("is-copy-error", "is-copy-success");
+        }, 2000);
+    }
+
+    async function copyCurrentURL() {
+        // เขียน URL ปัจจุบันให้ตรงที่สุดก่อนคัดลอก เผื่อผู้ใช้พิมพ์ค้นหาแต่ยัง
+        // ไม่ทัน trigger event "input" ล่าสุด (เช่น auto-fill / กดคัดลอกทันทีหลังพิมพ์)
+        if (typeof syncURLHash === "function") syncURLHash();
+
+        const urlToCopy = window.location.href;
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(urlToCopy);
+            } else {
+                // Fallback สำหรับเบราว์เซอร์/บริบทที่ไม่รองรับ Clipboard API (เช่น http ที่ไม่ใช่ localhost)
+                const tempInput = document.createElement("textarea");
+                tempInput.value = urlToCopy;
+                tempInput.style.position = "fixed";
+                tempInput.style.opacity = "0";
+                document.body.appendChild(tempInput);
+                tempInput.focus();
+                tempInput.select();
+                document.execCommand("copy");
+                document.body.removeChild(tempInput);
+            }
+            flashLabel("คัดลอกลิงก์แล้ว ✓", false);
+        } catch (err) {
+            console.warn("คัดลอกลิงก์ไม่สำเร็จ:", err);
+            flashLabel("คัดลอกไม่สำเร็จ ✕", true);
+        }
+    }
+
+    btn.addEventListener("click", copyCurrentURL);
 }
 
 function renderTableHeader(tabId) {
