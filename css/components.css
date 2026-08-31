@@ -1273,6 +1273,14 @@
         background: linear-gradient(135deg, var(--color-brand-primary-dark), var(--color-brand-primary-darker));
     }
 }
+/* ปากกา/สไตลัสที่ pointer:fine แต่ไม่มี hover จริง (ส่วนใหญ่ของปากกา tablet) */
+@media (hover: none) and (pointer: fine) {
+    .copy_search_link_btn:active {
+        transform: translateY(-1px) scale(0.98);
+        box-shadow: 0 4px 10px rgba(13, 110, 253, 0.45);
+        background: linear-gradient(135deg, var(--color-brand-primary-dark), var(--color-brand-primary-darker));
+    }
+}
 .copy_search_link_btn.is-pen-hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(13, 110, 253, 0.45);
