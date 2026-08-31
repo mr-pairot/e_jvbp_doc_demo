@@ -386,13 +386,13 @@
 
 .search_label {
     display: flex;
-    align-items: center;
+    /* align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: wrap; */
     gap: 8px;
     font-size: var(--font-size-sm-alt);
     color: var(--color-text-dropdown-title);
-    margin-bottom: 3px;
+    margin-bottom: 2px;
 }
 
 .sub_label {
