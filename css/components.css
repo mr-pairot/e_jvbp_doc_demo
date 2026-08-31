@@ -385,7 +385,11 @@
 }
 
 .search_label {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     font-size: var(--font-size-sm-alt);
     color: var(--color-text-dropdown-title);
     margin-bottom: 3px;
