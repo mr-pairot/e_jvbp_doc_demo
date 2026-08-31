@@ -4,28 +4,68 @@
    ไฟล์นี้ต้องถูกโหลดเป็นไฟล์ "แรก" ก่อน data-service.js และ ui-render.js
    เพราะอีก 2 ไฟล์ใช้ตัวแปร/ฟังก์ชันจากไฟล์นี้ (เช่น TAB_CONFIGS, DOCUMENTS_BY_TAB,
    activeDocuments, buildChartTheme, formatCount, escapeHTML, toDisplayString,
-   generateDropdownItems, donutCenterTextPlugin, matchesAllSearchTerms)
+   generateDropdownItems, donutCenterTextPlugin, matchesAllSearchTerms,
+   parseHashState, pendingFilterStateFromURL)
 
    หมวดหมู่ในไฟล์นี้:
      1. App State (สถานะการทำงานของแอป)
-     2. Chart Theme (ธีมกราฟที่อ่านค่าจาก CSS Custom Properties)
-     3. Donut Center Text Plugin (วาดตัวเลขรวมตรงกลางวงแหวนบน Canvas โดยตรง)
-     4. Tab Configs (ค่าตั้งต้นของแต่ละแท็บเอกสาร)
-     5. Helper Functions (ฟังก์ชันช่วยเหลือทั่วไป)
+     2. URL Hash State (อ่านแท็บ + คำค้นหา + ตัวกรองทั้งหมดจาก URL hash)
+     3. Chart Theme (ธีมกราฟที่อ่านค่าจาก CSS Custom Properties)
+     4. Donut Center Text Plugin (วาดตัวเลขรวมตรงกลางวงแหวนบน Canvas โดยตรง)
+     5. Tab Configs (ค่าตั้งต้นของแต่ละแท็บเอกสาร)
+     6. Helper Functions (ฟังก์ชันช่วยเหลือทั่วไป)
    ========================================================================= */
 
 // App Version 
 const APP_CACHE_VERSION = "260820.1600";
 
 // ---------------------------------------------------------------------------
+// URL Hash State (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash)
+// รูปแบบ: #tab?q=...&cat=A,B&type=X,Y&workType=...&source=...&cx=CODE
+// ตัวอย่าง:
+//   #rfi
+//   #rfa?q=คอนกรีต
+//   #rfa?cat=SUB,DWG&type=B-SUB&cx=C1
+// ---------------------------------------------------------------------------
+function parseHashState() {
+    const rawHash = window.location.hash.replace('#', '');
+    const qIndex = rawHash.indexOf('?');
+    const tabPart = qIndex === -1 ? rawHash : rawHash.slice(0, qIndex);
+    const queryPart = qIndex === -1 ? '' : rawHash.slice(qIndex + 1);
+
+    const tab = ['rfa', 'rfi', 'letter'].includes((tabPart || '').toLowerCase())
+        ? tabPart.toLowerCase()
+        : 'rfa';
+
+    const params = new URLSearchParams(queryPart);
+
+    // null = ไม่ได้ระบุ key นี้ใน URL เลย -> ไม่ยุ่งกับตัวกรองนี้ ใช้ค่า default (เลือกทั้งหมด)
+    // []   = ระบุมาแต่เป็นค่าว่าง -> ผู้แชร์ตั้งใจไม่เลือกอะไรเลยในตัวกรองนี้
+    const parseListParam = (key) => {
+        if (!params.has(key)) return null;
+        const raw = params.get(key);
+        return raw === '' ? [] : raw.split(',');
+    };
+
+    return {
+        tab,
+        query: params.has('q') ? params.get('q') : '',
+        cat: parseListParam('cat'),
+        type: parseListParam('type'),
+        workType: parseListParam('workType'),
+        source: parseListParam('source'),
+        cx: params.has('cx') ? params.get('cx') : null
+    };
+}
+
+// สถานะจาก URL ตอนโหลดหน้า/ตอน hash เปลี่ยน — ใช้ครั้งเดียวแล้วเคลียร์ทิ้งใน applyFilterStateToTab()
+// (ดูฟังก์ชัน applyFilterStateToTab และ switchTab ใน ui-render.js)
+let pendingFilterStateFromURL = parseHashState();
+
+// ---------------------------------------------------------------------------
 // App State (สถานะการทำงานของแอป)
 // ---------------------------------------------------------------------------
-// อ่านแท็บเริ่มต้นจาก URL hash เช่น #rfi หรือ #letter (ถ้าไม่ตรง/ไม่มี ใช้ rfa)
-function getInitialTabFromURL() {
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    return ['rfa', 'rfi', 'letter'].includes(hash) ? hash : 'rfa';
-}
-let currentTab = getInitialTabFromURL();
+let currentTab = pendingFilterStateFromURL.tab;
 let currentPage = 1;
 const ITEMS_PER_PAGE = 50;
 let isSortOrderDescending = true;
@@ -219,3 +259,4 @@ function matchesAllSearchTerms(doc, tabId, searchQuery) {
 
     return terms.every(term => combinedText.includes(term));
 }
+
