@@ -1243,16 +1243,6 @@
     color: var(--color-text-placeholder);
 }
 
-@media (max-width: 450px) {
-    .about-header-top {
-        flex-direction: column;
-        text-align: center;
-    }
-    .dev-contact-group {
-        justify-content: center;
-    }
-}
-
 .copy_search_link_btn {
     display: inline-flex;
     align-items: center;
@@ -1299,5 +1289,18 @@
     background: #fee2e2;
     border-color: #fca5a5;
     color: var(--color-status-danger-text);
+}
+
+@media (max-width: 450px) {
+    .about-header-top {
+        flex-direction: column;
+        text-align: center;
+    }
+    .dev-contact-group {
+        justify-content: center;
+    }
+   .copy_search_link_text {
+        display: none;
+   }
 }
 
