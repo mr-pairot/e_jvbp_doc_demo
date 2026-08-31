@@ -421,6 +421,12 @@ function renderSearchAndCount(config) {
 // ตัวกรองที่ sync ไว้แล้วโดย syncURLHash()) เข้าคลิปบอร์ด พร้อมแสดงสถานะสำเร็จ/ล้มเหลวชั่วคราวบนปุ่ม
 function initCopySearchLinkButton() {
     const btn = document.getElementById("btnCopySearchLink");
+    btn.addEventListener("pointerenter", (e) => {
+       if (e.pointerType === "pen") btn.classList.add("is-pen-hover");
+    });
+    btn.addEventListener("pointerleave", (e) => {
+       if (e.pointerType === "pen") btn.classList.remove("is-pen-hover");
+    });
     if (!btn) return;
 
     const textSpan = btn.querySelector(".copy_search_link_text");
