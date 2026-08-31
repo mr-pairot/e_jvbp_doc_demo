@@ -4,7 +4,7 @@
 
    ต้องโหลดหลัง config.js (ใช้ TAB_CONFIGS, DOCUMENTS_BY_TAB, activeDocuments,
    ITEMS_PER_PAGE, formatCount, generateDropdownItems, chartTheme, buildChartTheme,
-   donutCenterTextPlugin, matchesAllSearchTerms)
+   donutCenterTextPlugin, matchesAllSearchTerms, parseHashState, pendingFilterStateFromURL)
    และหลัง data-service.js (ใช้ updateLatestDateDisplay)
 
    หมวดหมู่ในไฟล์นี้:
@@ -13,6 +13,8 @@
      2. Dropdown Dependency (กรองรายการ "ประเภทเอกสาร" ตาม "หมวดงาน" ที่ติ๊กไว้)
      3. Filter Status Box (กล่องสรุปสถานะการกรองใต้ช่องค้นหา)
      4. Charts (ไฮไลต์ชิ้นกราฟตามที่เลือก, ผูก Event Chart สั่ง Dropdown)
+     5. URL Hash Sync (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash
+        เพื่อให้แชร์ลิงก์แล้วเปิดตรงแท็บ/ตัวกรองที่ต้องการได้)
 
    หมายเหตุการค้นหา:
      ช่องค้นหาใช้เงื่อนไข "AND" แบบหลายคำ ผ่านฟังก์ชัน matchesAllSearchTerms()
@@ -34,9 +36,6 @@ function updateTabBadges() {
 function switchTab(tabId) {
     currentTab = tabId;
     currentPage = 1;
-    if (window.location.hash.replace('#', '').toLowerCase() !== tabId) {
-        history.replaceState(null, '', '#' + tabId);
-    }
     selectedTypeFilter = null;
     selectedCxFilter = null;
     const config = TAB_CONFIGS[tabId];
@@ -68,9 +67,17 @@ function switchTab(tabId) {
     if (tabId === "rfa") refreshTypeDropdownByCategory();
 
     renderTableHeader(tabId);
-    renderTableBody();
     renderCharts(config);
-    updateChartsDynamic();
+
+    // ถ้ามีสถานะตัวกรองจาก URL (ตอนโหลดหน้าแรก หรือ hashchange) ที่ตรงกับแท็บนี้
+    // ให้นำมาตั้งค่าตัวกรอง/ช่องค้นหาทั้งหมด แล้ว filter ทันที
+    // ถ้าไม่มี ให้ filter ตามค่า default (เลือกทั้งหมด) ตามปกติ
+    if (pendingFilterStateFromURL && pendingFilterStateFromURL.tab === tabId) {
+        applyFilterStateToTab(pendingFilterStateFromURL);
+        pendingFilterStateFromURL = null;
+    } else {
+        filterActiveTabDocuments();
+    }
 }
 
 
@@ -576,6 +583,7 @@ function filterActiveTabDocuments() {
     renderTableBody();
     updateChartsDynamic();
     updateFilterStatusBox();
+    syncURLHash();
 }
 
 // ---------------------------------------------------------------------------
@@ -955,10 +963,101 @@ function updateChartsDynamic() {
 
 }
 
-// เมื่อ hash เปลี่ยน (ผู้ใช้แก้ URL เอง หรือกด back/forward) ให้สลับแท็บตาม
-window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (['rfa', 'rfi', 'letter'].includes(hash) && hash !== currentTab) {
-        switchTab(hash);
+// ---------------------------------------------------------------------------
+// 5. URL Hash Sync (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash)
+//
+// รูปแบบ URL: #tab?q=...&cat=A,B&type=X,Y&workType=...&source=...&cx=CODE
+// เขียนเฉพาะพารามิเตอร์ที่ "เลือกไม่ครบทุกตัว" (หรือมีค่า) เท่านั้น เพื่อให้ URL สั้น
+//
+// การไหลของข้อมูล:
+//   1) โหลดหน้า / ผู้ใช้แก้ hash เอง / กด back-forward
+//        -> parseHashState() (config.js) อ่านค่าเป็น pendingFilterStateFromURL
+//        -> switchTab() เรียก applyFilterStateToTab() เพื่อตั้งค่า UI ให้ตรง แล้ว filter
+//   2) ผู้ใช้ติ๊ก/คลิก/พิมพ์เปลี่ยนตัวกรองใดๆ ในหน้าเว็บ
+//        -> ทุกจุด (checkbox, "เท่านั้น", chip, bar/pie chart, ช่องค้นหา) เรียก
+//           filterActiveTabDocuments() อยู่แล้วในโค้ดเดิม -> ท้ายฟังก์ชันเรียก syncURLHash()
+//           เพื่อเขียนสถานะปัจจุบันกลับลง URL ให้คัดลอกไปแชร์ได้ทันที
+// ---------------------------------------------------------------------------
+
+// นำสถานะตัวกรองจาก URL (parseHashState) มาตั้งค่า checkbox/chip/ช่องค้นหา/bar chart
+// ของแท็บปัจจุบัน แล้ว filter ตาราง+กราฟให้ตรงกันทันที
+function applyFilterStateToTab(state) {
+    const searchInputEl = document.getElementById("mainSearchInput");
+    if (searchInputEl) searchInputEl.value = state.query || "";
+
+    selectedCxFilter = state.cx || null;
+
+    // ตั้ง checkbox ของ dropdown/chip หนึ่งตัวให้ตรงกับ codes ที่ระบุ (null = ไม่ยุ่ง ใช้ default)
+    function applyCheckboxState(dropdownId, codes) {
+        if (codes === null || codes === undefined) return false;
+
+        const containerEl = document.querySelector(`[data-dropdown-id="${dropdownId}"]`);
+        if (!containerEl) return false;
+
+        const boxes = Array.from(containerEl.querySelectorAll(`.chk_item_${dropdownId}`));
+        boxes.forEach(box => { box.checked = codes.includes(box.value); });
+
+        const dropdownConfig = TAB_CONFIGS[currentTab].dropdowns.find(d => d.id === dropdownId);
+
+        if (containerEl.classList.contains("chip_filter_group")) {
+            syncChipVisualState(containerEl, dropdownId);
+            if (dropdownConfig) updateChipHeaderLabel(dropdownConfig, containerEl);
+        } else {
+            const chkAllEl = containerEl.querySelector(`#chkAll_${dropdownId}`);
+            const allChecked = boxes.length > 0 && boxes.every(b => b.checked);
+            if (chkAllEl) chkAllEl.checked = allChecked;
+            if (dropdownConfig) updateDropdownTitle(dropdownConfig, containerEl);
+        }
+
+        updateSelectedTypeFilterFromDOM(dropdownId, containerEl);
+        return true;
     }
+
+    if (currentTab === "rfa") {
+        // ต้องตั้ง "หมวดงาน" ก่อน เพราะมันไป regenerate ตัวเลือก "ประเภทเอกสาร" ใหม่
+        applyCheckboxState("cat", state.cat);
+        refreshTypeDropdownByCategory(); // สร้างรายการ type ใหม่ตามหมวดงาน (จะรีเซ็ต type เป็นเลือกทั้งหมดชั่วคราว)
+        applyCheckboxState("type", state.type); // ทับด้วยค่าจาก URL อีกที
+    } else if (currentTab === "rfi") {
+        applyCheckboxState("workType", state.workType);
+    } else if (currentTab === "letter") {
+        applyCheckboxState("source", state.source);
+    }
+
+    filterActiveTabDocuments();
+}
+
+// รวม tab + คำค้นหา + ตัวกรองทั้งหมดของแท็บปัจจุบัน เขียนกลับเป็น URL hash เดียว
+// ใช้ replaceState เสมอ (ไม่เพิ่ม history entry ทุกครั้งที่พิมพ์/ติ๊กตัวกรอง)
+function syncURLHash() {
+    const params = new URLSearchParams();
+
+    const searchInputEl = document.getElementById("mainSearchInput");
+    const query = searchInputEl ? searchInputEl.value.trim() : "";
+    if (query) params.set('q', query);
+
+    TAB_CONFIGS[currentTab].dropdowns.forEach(dropdownConfig => {
+        const boxes = Array.from(document.querySelectorAll(`.chk_item_${dropdownConfig.id}`));
+        if (boxes.length === 0) return;
+        const checked = boxes.filter(b => b.checked).map(b => b.value);
+        if (checked.length < boxes.length) {
+            params.set(dropdownConfig.id, checked.join(','));
+        }
+    });
+
+    if (selectedCxFilter) params.set('cx', selectedCxFilter);
+
+    const paramString = params.toString();
+    const newHash = paramString ? `#${currentTab}?${paramString}` : `#${currentTab}`;
+
+    if (window.location.hash !== newHash) {
+        history.replaceState(null, '', newHash);
+    }
+}
+
+// เมื่อ hash เปลี่ยน (ผู้ใช้แก้ URL เอง หรือกด back/forward) ให้สลับแท็บ+ตัวกรองทั้งหมดตาม URL ใหม่
+window.addEventListener('hashchange', () => {
+    pendingFilterStateFromURL = parseHashState();
+    switchTab(pendingFilterStateFromURL.tab);
 });
+
