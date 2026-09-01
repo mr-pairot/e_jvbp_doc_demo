@@ -1257,14 +1257,13 @@
     gap: 0;
     padding: 2px;
     border: none;
-    background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-primary-dark));
+    background: var(--color-dashboard-glow-blue);
     border-radius: 999px;
     cursor: pointer;
     font-family: inherit;
     font-size: var(--font-size-xs-alt);
     font-weight: var(--font-weight-bold);
     color: var(--color-text-on-brand);
-    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35);
     transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), gap 0.3s ease, padding 0.3s ease;
     white-space: nowrap;
     flex-shrink: 0;
