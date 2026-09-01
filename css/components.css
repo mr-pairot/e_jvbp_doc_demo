@@ -1255,7 +1255,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0;
-    padding: 4px;
+    padding: 2px;
     border: none;
     background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-primary-dark));
     border-radius: 999px;
