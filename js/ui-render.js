@@ -398,7 +398,7 @@ function renderSearchAndCount(config) {
         <div class="search_box_area">
             <div class="${config.searchStyle}_search_box">
                 <label class="search_label">
-                    ${config.searchLabel}
+                    <span>${config.searchLabel}</span>
                     <button type="button" class="copy_search_link_btn" id="btnCopySearchLink" title="คัดลอกลิงก์พร้อมคำค้นหา/ตัวกรองปัจจุบัน">
                         <img src="img/share_link.png" alt="" class="copy_search_link_icon">
                         <span class="copy_search_link_text">คัดลอก Link ค้นหา</span>
