@@ -404,7 +404,12 @@ function renderSearchAndCount(config) {
                         <span class="copy_search_link_text">คัดลอก Link ค้นหา</span>
                     </button>
                 </label>
-                <input type="text" class="main_search_input" id="mainSearchInput" placeholder="พิมพ์คำค้นหา [กรณีหาหลายคำให้เว้นวรรค, ค้นหากลุ่มคำให้ครอบด้วยคำพูด เช่น คอนกรีต สะพาน &quot;14 วัน&quot;]">
+                <div class="search_input_wrapper">
+                    <input type="text" class="main_search_input" id="mainSearchInput" placeholder="พิมพ์คำค้นหา [กรณีหาหลายคำให้เว้นวรรค, ค้นหากลุ่มคำให้ครอบด้วยคำพูด เช่น คอนกรีต สะพาน &quot;14 วัน&quot;]">
+                    <button type="button" class="clear_search_btn" id="btnClearSearch" title="ล้างข้อความค้นหา">
+                        &#10006;
+                    </button>
+                </div>
             </div>
             <div class="filter_status_box" id="filterStatusBox">
                 <div class="filter_status_inner" id="filterStatusInner"></div>
@@ -413,6 +418,13 @@ function renderSearchAndCount(config) {
         ${config.showDocCountBox ? `<div class="${docCountClass}"><div class="count_title">จำนวนเอกสาร</div><div class="count_value" id="totalDocNumber">${activeDocuments.length.toLocaleString()}</div></div>` : '<div></div>'}
     `;
     document.getElementById("mainSearchInput").addEventListener("input", filterActiveTabDocuments);
+    document.getElementById("btnClearSearch").addEventListener("click", () => {
+        const input = document.getElementById("mainSearchInput");
+        if(input) {
+            input.value = "";
+            filterActiveTabDocuments();
+        }
+    });
     initCopySearchLinkButton();
     updateFilterStatusBox();
 }
@@ -718,13 +730,17 @@ function updateFilterStatusBox() {
     if (!hasAnyFilter) {
         box.classList.remove("has-filter");
         inner.innerHTML = "";
-        return;
+    } else {
+        box.classList.add("has-filter");
+        inner.innerHTML = lines
+            .map(line => `<div class="filter_status_line" title="${escapeHTML(line)}">${escapeHTML(line)}</div>`)
+            .join('');
     }
 
-    box.classList.add("has-filter");
-    inner.innerHTML = lines
-        .map(line => `<div class="filter_status_line" title="${escapeHTML(line)}">${escapeHTML(line)}</div>`)
-        .join('');
+    const btnClear = document.getElementById("btnClearSearch");
+    if (btnClear) {
+        btnClear.classList.toggle("is-visible", hasAnyFilter);
+    }
 }
 
 // ---------------------------------------------------------------------------
