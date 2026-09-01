@@ -438,7 +438,7 @@
     background: var(--color-code-badge-bg);
     color: #fff;
     border: none;
-    border-radius: 50%;
+    border-radius: 4px;
     height: 22px;
     cursor: pointer;
     font-size: 14px;
