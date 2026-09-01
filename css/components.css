@@ -426,7 +426,7 @@
 .search_input_wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
 .search_input_wrapper .main_search_input {
@@ -439,7 +439,7 @@
     color: #fff;
     border: none;
     border-radius: 4px;
-    height: 32px;
+    height: 22px;
     cursor: pointer;
     font-size: 14px;
     display: flex;
@@ -457,7 +457,7 @@
 .clear_search_btn.is-visible {
     transform: scale(1);
     opacity: 1;
-    width: 32px;
+    width: 22px;
 }
 
 .clear_search_btn:hover {
