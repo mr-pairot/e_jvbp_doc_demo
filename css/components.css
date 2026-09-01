@@ -388,7 +388,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap; 
+    flex-wrap: wrap;
     gap: 8px;
     font-size: var(--font-size-sm-alt);
     color: var(--color-text-dropdown-title);
@@ -1245,13 +1245,17 @@
 
 .copy_search_link_text {
     line-height: 1;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 0.3s ease, opacity 0.3s ease;
 }
 
 .copy_search_link_btn {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 4px 10px 4px 6px;
+    gap: 0;
+    padding: 4px;
     border: none;
     background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-primary-dark));
     border-radius: 999px;
@@ -1261,10 +1265,28 @@
     font-weight: var(--font-weight-bold);
     color: var(--color-text-on-brand);
     box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), gap 0.3s ease, padding 0.3s ease;
     white-space: nowrap;
     flex-shrink: 0;
     margin-left: auto;
+}
+
+.copy_search_link_btn:hover,
+.copy_search_link_btn:active,
+.copy_search_link_btn.is-pen-hover,
+.copy_search_link_btn.is-copy-success,
+.copy_search_link_btn.is-copy-error {
+    gap: 7px;
+    padding: 2px 10px 2px 4px;
+}
+
+.copy_search_link_btn:hover .copy_search_link_text,
+.copy_search_link_btn:active .copy_search_link_text,
+.copy_search_link_btn.is-pen-hover .copy_search_link_text,
+.copy_search_link_btn.is-copy-success .copy_search_link_text,
+.copy_search_link_btn.is-copy-error .copy_search_link_text {
+    max-width: 150px;
+    opacity: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {
