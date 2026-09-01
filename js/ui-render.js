@@ -407,7 +407,10 @@ function renderSearchAndCount(config) {
                 <div class="search_input_wrapper">
                     <input type="text" class="main_search_input" id="mainSearchInput" placeholder="พิมพ์คำค้นหา [กรณีหาหลายคำให้เว้นวรรค, ค้นหากลุ่มคำให้ครอบด้วยคำพูด เช่น คอนกรีต สะพาน &quot;14 วัน&quot;]">
                     <button type="button" class="clear_search_btn" id="btnClearSearch" title="ล้างข้อความค้นหา">
-                        &#10006;
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="1" y1="1" x2="9" y2="9"></line>
+                            <line x1="9" y1="1" x2="1" y2="9"></line>
+                        </svg>
                     </button>
                 </div>
             </div>
