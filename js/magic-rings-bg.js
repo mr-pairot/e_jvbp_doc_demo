@@ -3,6 +3,25 @@
    Mounts into #splashRingsBg as an ambient background for the splash screen.
    Params locked to the "Deep" preset — edit the CONFIG object below to change them.
    Requires three.js (r128) loaded beforehand — see index.html <script> order.
+
+   หมายเหตุการโหลด (แก้ไขจากเดิม):
+   ไฟล์นี้ต้องถูกโหลดแบบ "static" ใน <body> ของ index.html (ไม่ใช่ dynamic bundle
+   ที่โหลดหลัง login สำเร็จเหมือนเดิม) เพราะเหตุผล 2 ข้อ:
+
+   1) mount point #splashRingsBg อยู่ในหน้า splash ซึ่งต้องแสดงผล "ก่อน" login
+      เสร็จด้วยซ้ำ (ตอนกำลังตรวจสอบสิทธิ์ LINE) — ถ้าไฟล์นี้ถูก bundle ไว้ให้โหลด
+      หลัง login สำเร็จ ring จะไม่มีวันได้เริ่มทำงานทันเวลาที่ splash ปรากฏจริง
+
+   2) เมื่อเป็น static script (อยู่ใน <body> ของ index.html ตั้งแต่ต้น ไม่ได้ถูก
+      appendChild แบบ dynamic ทีหลัง) DOMContentLoaded ของหน้าเว็บจะยิงถูกจังหวะ
+      พอดี (เป็น DOMContentLoaded จริงครั้งแรกและครั้งเดียวของหน้า) จึงยังคงใช้
+      listener แบบเดิมได้โดยไม่ต้องแก้ trigger เป็นแบบอื่น
+
+   ฟังก์ชัน mount ถูก expose ออกมาเป็น window.startMagicRingsBg() เพิ่มเติม เพื่อให้
+   ไฟล์อื่น (เช่น data-service.js ตอนกดปุ่ม "รีเฟรช" บังคับดึงข้อมูลใหม่) เรียก
+   ให้ ring วิ่งซ้ำได้อีกครั้งหลังจากที่เคยถูก destroy ไปแล้วตอนข้อมูลชุดแรกพร้อม
+   (destroy function ถูกเก็บไว้ที่ window.__magicRingsDestroy ให้ data-service.js
+   เรียกตอน startApp() เพื่อหยุด animation ทันทีที่ splash เริ่ม fade-out จริง)
 */
 
 (function () {
@@ -214,8 +233,21 @@
     };
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  // เริ่ม/รี-เมาท์ ring background — เรียกได้จากภายนอกไฟล์นี้ผ่าน window.startMagicRingsBg()
+  // ใช้ตอน splash โผล่ขึ้นมาอีกครั้ง (เช่นตอนกดปุ่ม "รีเฟรช" บังคับดึงข้อมูลใหม่ ใน
+  // data-service.js) เพราะรอบแรกจะถูก destroy ทิ้งไปแล้วตอนข้อมูลชุดแรกพร้อมแสดง
+  window.startMagicRingsBg = function () {
+    if (window.__magicRingsDestroy) return; // กำลังรันอยู่แล้ว ไม่ต้องเมาท์ซ้ำ
     const mount = document.getElementById('splashRingsBg');
-    mountMagicRings(mount, CONFIG);
+    const destroy = mountMagicRings(mount, CONFIG);
+    if (destroy) window.__magicRingsDestroy = destroy;
+  };
+
+  // เริ่มทำงานทันทีตอนโหลดหน้าแรกสุด — ใช้ได้เพราะไฟล์นี้เป็น static script ใน
+  // index.html แล้ว (ไม่ใช่ dynamic bundle หลัง login เหมือนเดิม) จึงรับ
+  // DOMContentLoaded จริงของหน้าเว็บได้ตรงจังหวะ
+  document.addEventListener('DOMContentLoaded', function () {
+    window.startMagicRingsBg();
   });
 })();
+
