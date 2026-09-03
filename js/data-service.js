@@ -2,11 +2,23 @@
    จุดเริ่มต้นการทำงานของแอป (Bootstrap) + การดึงและแปลงข้อมูลจาก Google Sheets + ระบบ Cache
 
    ต้องโหลดหลัง config.js (ใช้ SPREADSHEET_ID, DOCUMENTS_BY_TAB, buildChartTheme,
-   toDisplayString, APP_CACHE_VERSION) และก่อน/หลัง ui-render.js ก็ได้ เพราะฟังก์ชันทั้งหมดถูกเรียกใช้
-   งานจริงหลังเหตุการณ์ DOMContentLoaded
+   toDisplayString, APP_CACHE_VERSION) และก่อน ui-render.js เพราะ initAppFlow()
+   จะเรียก switchTab() ซึ่งนิยามอยู่ใน ui-render.js
+
+   หมายเหตุสำคัญเรื่อง Bootstrap (แก้ไขจากเดิม):
+   ฟังก์ชันเริ่มต้นของแอปหลัก "ไม่" ผูกกับ document.addEventListener("DOMContentLoaded", ...)
+   อีกต่อไป เพราะไฟล์นี้ถูกโหลดแบบ dynamic (ผ่าน loadAppAssets() ใน auth.js) หลัง
+   login สำเร็จ ซึ่งเกิดขึ้น "หลังจาก" DOMContentLoaded ตัวจริงของหน้าเว็บได้ยิง
+   ไปแล้วเสมอ (มันยิงครั้งเดียวตอน parse HTML เริ่มต้นเสร็จ) — ถ้ายังผูกกับ
+   event นี้อยู่ ฟังก์ชันเหล่านี้จะไม่มีวันถูกเรียกเลยหลัง login
+
+   แทนที่ด้วยการ expose เป็น window.initDashboardApp แล้วให้ auth.js เรียกตรงๆ
+   ใน showApp() ทันทีหลัง loadAppAssets() โหลดสคริปต์ทุกไฟล์ (รวม ui-render.js
+   ซึ่ง initAppFlow() ต้องใช้ฟังก์ชัน switchTab จากไฟล์นั้น) เสร็จเรียบร้อยแล้ว
+   จึงการันตีได้ว่า switchTab, ui-render อื่นๆ ถูกนิยามพร้อมใช้งานแล้วแน่นอน
 
    หมวดหมู่ในไฟล์นี้:
-     1. DOM Ready & Init (จุดเริ่มต้นแอป)
+     1. Bootstrap (window.initDashboardApp / window.startApp)
      2. IndexedDB Wrapper (เปิด DB / อ่าน-เขียนข้อมูลพื้นฐาน)
      3. Cache Management & Force Refresh (ระบบแคชและปุ่มรีเฟรช)
      4. Cache Diagnostic Report (รายงานตรวจสอบระบบแคชแบบแสดงผลบนหน้าจอ)
@@ -17,19 +29,30 @@
    ========================================================================= */
 
 // ---------------------------------------------------------------------------
-// DOM Ready & Init
+// 1. Bootstrap
 // ---------------------------------------------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+
+// เรียกจาก auth.js -> showApp() ทันทีหลัง loadAppAssets() โหลดสคริปต์ทุกไฟล์
+// (รวม ui-render.js/about-popup.js) เสร็จสมบูรณ์แล้วเท่านั้น
+window.initDashboardApp = function () {
     initPaginationButtons();
     initCacheEvents(); // ผูก Event สำหรับปุ่ม Force Refresh
     initDiagnosticToggle(); // ผูก Event สำหรับปุ่มซ่อน/แสดงรายงานตรวจสอบแคช
     createUpdateNotifyButton(); // สร้างปุ่มแจ้งเตือนข้อมูลใหม่ไว้ล่วงหน้า (ยังซ่อนอยู่จนกว่าจะพบข้อมูลใหม่)
     initAppFlow();
-});
+};
 
 window.startApp = function (tabId) {
     const splashScreen = document.getElementById("splashScreen");
     splashScreen.classList.add("is-fading-out");
+
+    // ข้อมูลพร้อมแสดงผลแล้ว ณ จุดนี้ (จุดเดียวในทั้งแอปที่ตัดสินใจซ่อน splash จริง)
+    // -> หยุด ring animation background ของ splash และคืนทรัพยากร GPU/battery
+    if (window.__magicRingsDestroy) {
+        window.__magicRingsDestroy();
+        window.__magicRingsDestroy = null;
+    }
+
     setTimeout(() => {
         splashScreen.classList.add("is-hidden");
         switchTab(tabId);
@@ -202,6 +225,11 @@ function initCacheEvents() {
             const splashStatus = document.getElementById("splashStatus");
             splashScreen.classList.remove("is-hidden", "is-fading-out");
             if (splashStatus) splashStatus.textContent = "กำลังอัปเดตข้อมูลจากฐานข้อมูล...";
+
+            // Splash โผล่ขึ้นมาอีกครั้ง -> รัน ring background ซ้ำ (ถูกทำลายไปแล้ว
+            // ตอนโหลดข้อมูลครั้งก่อนใน startApp()) ให้ผู้ใช้เห็น animation
+            // ระหว่างรอข้อมูลใหม่รอบนี้ด้วยเช่นกัน
+            if (typeof window.startMagicRingsBg === "function") window.startMagicRingsBg();
 
             // บังคับดึงข้อมูลใหม่ (ส่งค่า true)
             await initAppFlow(true);
@@ -478,7 +506,7 @@ function parseRowToDoc(rowObj, id, category) {
     }
 
     // กำหนดหมวดงาน (Category) จาก 3 ตัวอักษรสุดท้ายของ parsedCode
-    let docCategory = category; 
+    let docCategory = category;
     if (parsedCode && parsedCode.length >= 3) {
         const suffix = parsedCode.slice(-3).toUpperCase();
         if (suffix === "SUB" || suffix === "DWG") {
@@ -598,12 +626,12 @@ async function fetchLiveGoogleSheets() {
         subRows.forEach(row => { const doc = parseRowToDoc(row, idCounter++, "SUB"); if (doc) liveRFA.push(doc); });
         dwgRows.forEach(row => { const doc = parseRowToDoc(row, idCounter++, "DWG"); if (doc) liveRFA.push(doc); });
         rfiRows.forEach(row => { const doc = parseRowToDoc(row, idCounter++, "RFI"); if (doc) liveRFI.push(doc); });
-        
-        // Loop ของ Letter 
-        letterRows.forEach(row => { 
-            const doc = parseLetterRowToDoc(row, idCounter++); 
+
+        // Loop ของ Letter
+        letterRows.forEach(row => {
+            const doc = parseLetterRowToDoc(row, idCounter++);
             // เช็คว่าไม่ใช่บรรทัดว่าง
-            if (doc && (doc.receiveNo || doc.title)) liveLetter.push(doc); 
+            if (doc && (doc.receiveNo || doc.title)) liveLetter.push(doc);
         });
 
         updateLoadProgressUI(100, "โหลดข้อมูลสำเร็จ");
@@ -714,7 +742,7 @@ function hideNoDataState() {
 }
 
 // ---------------------------------------------------------------------------
-// Update Notify Button 
+// Update Notify Button
 // ---------------------------------------------------------------------------
 let updateNotifyBtnEl = null;
 let pendingUpdateData = null; // { rfa, rfi, letter } ที่ fetch มาแล้ว รอผู้ใช้กดยืนยัน
@@ -782,14 +810,14 @@ async function applyPendingUpdate() {
 // ใหม่ทุกครั้งที่กลับมาโฟกัส (ไม่นับเวลาที่พักหน้าต่างไว้)
 // ---------------------------------------------------------------------------
 let backgroundCheckIntervalId = null;
-let appHasEverLoadedData = false; 
+let appHasEverLoadedData = false;
 
 function startBackgroundCacheCheck() {
     stopBackgroundCacheCheck();
     backgroundCheckIntervalId = setInterval(() => {
-        if (document.hidden) return; 
+        if (document.hidden) return;
         performBackgroundCheck();
-    }, CACHE_DURATION_MS); 
+    }, CACHE_DURATION_MS);
 }
 
 function stopBackgroundCacheCheck() {
@@ -804,7 +832,7 @@ async function performBackgroundCheck() {
     if (document.hidden) return;
 
     const liveResult = await fetchLiveGoogleSheets();
-    const baselineRecord = await getRawCacheRecord(); 
+    const baselineRecord = await getRawCacheRecord();
 
     if (liveResult.success && liveResult.totalRows > 0) {
         const validation = validateLiveDataAgainstBaseline(liveResult.data, baselineRecord);
@@ -1005,3 +1033,4 @@ function updateLatestDateDisplay() {
         globalLatestEl.textContent = getLatestUpdateDate(activeDocuments);
     }
 }
+
