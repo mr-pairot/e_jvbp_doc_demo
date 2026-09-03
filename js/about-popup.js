@@ -82,7 +82,7 @@ function openAboutModal() {
                     </p>
                     <p class="purpose-text sm">
                         <strong>วัตถุประสงค์:</strong><br>
-                        เพื่อใช้เป็นเครื่องมือสนับสนุนการทำงานภายในโครงการของ
+                        เพื่อใช้เป็นเครื่องมือสนับสนุนการทำงานภายในโครงการรถไฟทางคู่ของ
                         AS - CH and Associates Joint Venture ช่วยให้ทีมงานสามารถติดตามสถานะเอกสาร
                         Request for Approval (RFA), Request for Information (RFI)
                         และหนังสือรับเข้า (Letter In) ได้อย่างสะดวก รวดเร็ว และเป็นระบบมากขึ้น
