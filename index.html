@@ -20,58 +20,83 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- Minimal styles for Auth & Splash (Main styles loaded dynamically) -->
+    <style>
+        body { margin: 0; font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
+        
+        /* Splash Screen */
+        .splash_screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        .splash_content { text-align: center; z-index: 2; }
+        .splash_title { font-size: 2rem; margin-bottom: 1rem; color: #38bdf8; }
+        .splash_status { font-size: 1.1rem; color: #94a3b8; }
+        
+        /* Loading Spinner */
+        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #38bdf8; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
+        /* Login & Error Pages */
+        .auth_page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: white; padding: 20px; }
+        .auth_box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 400px; width: 100%; }
+        .auth_box img.logo { max-width: 150px; margin-bottom: 20px; }
+        .auth_box h1 { font-size: 1.5rem; color: #1e293b; margin-bottom: 10px; }
+        .auth_box p { color: #64748b; margin-bottom: 30px; }
+        .btn_line { background-color: #06C755; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: background-color 0.2s; }
+        .btn_line:hover { background-color: #05b04c; }
+        .btn_logout { background-color: #ef4444; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 15px; }
+
+        .is-hidden { display: none !important; }
+    </style>
 </head>
 <body>
 
-    <!-- Splash Screen Overlay -->
+    <!-- 1. Splash Screen -->
     <div id="splashScreen" class="splash_screen">
-        <div id="splashRingsBg" class="splash_rings_bg"></div>
         <div class="splash_content">
             <h1 class="splash_title">BPNP DOCUMENT</h1>
-            <p id="splashStatus" class="splash_status">กำลังเชื่อมต่อกับฐานข้อมูล...</p>
-
-            <div id="splashProgressWrap" class="splash_progress_wrap is-hidden">
-                <div class="splash_progress_track">
-                    <div id="splashProgressFill" class="splash_progress_fill" style="width: 0%;"></div>
-                </div>
-                <div id="splashProgressPercent" class="splash_progress_percent">0%</div>
-            </div>
-
-            <button id="splashOfflineBtn" class="splash_btn is-hidden">เข้าสู่ระบบด้วยข้อมูลออฟไลน์ (Cache)</button>
+            <div id="splashSpinner" class="spinner"></div>
+            <p id="splashStatus" class="splash_status">กำลังเตรียมระบบและตรวจสอบสิทธิ์...</p>
         </div>
     </div>
 
-    <!-- App Wrapper -->
-    <div class="app_wrapper">
-        <!-- Main Dashboard Area (Full Width Looker Studio UI) -->
+    <!-- 2. Landing Page (Login) -->
+    <div id="loginPage" class="auth_page is-hidden">
+        <div class="auth_box">
+            <!-- <img src="img/logo_JV.png" alt="Logo" class="logo"> -->
+            <h1>เข้าสู่ระบบสารบรรณ</h1>
+            <p>กรุณายืนยันตัวตนผ่าน LINE เพื่อใช้งานระบบ</p>
+            <button id="lineLoginBtn" class="btn_line">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M24 10.304c0-4.364-4.524-8.082-10.418-8.082C7.689 2.222 3.165 5.94 3.165 10.304c0 3.896 3.518 7.159 8.271 7.91 3.23.473 3.655.882 3.791 1.954.128 1.01.69 3.018.69 3.018s.22 1.341 1.76.69c1.54-.651 8.354-4.887 10.428-8.995.836-1.637 1.295-3.376 1.295-5.187v-.39z" fill="#06C755"/></svg>
+                เข้าสู่ระบบด้วย LINE
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. Error Page -->
+    <div id="errorPage" class="auth_page is-hidden">
+        <div class="auth_box">
+            <h1 style="color: #ef4444;">ไม่ได้รับสิทธิ์เข้าใช้งาน</h1>
+            <p id="errorReason">คุณไม่มีสิทธิ์เข้าถึงระบบนี้ กรุณาติดต่อผู้ดูแลระบบ</p>
+            <button id="lineLogoutBtn" class="btn_logout">ออกจากระบบ</button>
+        </div>
+    </div>
+
+    <!-- 4. App Wrapper (Main Application - Hidden initially) -->
+    <div id="appWrapper" class="app_wrapper is-hidden">
         <div class="main_dashboard_wrapper is-full-width">
             <div class="looker_dashboard_container" id="dashboardContainer">
-
                 <!-- Top Section Grid (2 Columns Layout) -->
                 <header class="top_header_grid">
-
-                    <!-- (Logo + Title) + (3 Navigation Tabs) -->
                     <div class="header_top_left">
-                        <!-- Column ซ้าย: แถวบน (Logo + Title) -->
                         <div class="logo_and_banner">
                             <div class="jv_logo_wrap">
-                                <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image">
+                                <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
                             </div>
                             <div class="title_banner">
                                 <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
                             </div>
                         </div>
-                        <!-- Column ซ้าย: แถวสอง (3 Navigation Tabs) -->
                         <div class="typeDoc_tabs">
                             <button class="typeDoc_tab active" data-tab="rfa" onclick="switchTab('rfa')">
                                 <span>RFA</span>
@@ -88,19 +113,12 @@
                         </div>
                     </div>
                     
-                    <!-- Column ซ้าย: แถวสาม (Status + Dropdowns + Search) -->
                     <div class="center_control">
-                        <!-- Dropdown Filter Row -->
                         <div class="filter_dropdowns_row" id="dropdownsContainer"></div>
-
-                        <!-- Search Box Row & Count -->
                         <div class="search_and_count_row" id="searchCountRow"></div>
-                        
                     </div>
 
-                    <!-- Column ขวา: Charts -->
                     <div class="chart_area" id="chartsContainer">
-                        <!-- Bar Chart / CODE Text Header Badge -->
                         <div class="chart_col bar_col" id="barColContainer">
                             <div class="code_btn_wrapper">
                                 <div class="code_header_badge">CODE</div>
@@ -109,58 +127,39 @@
                                 <canvas id="codeBarChart"></canvas>
                             </div>
                         </div>
-
-                        <!-- Pie / Donut Chart -->
                         <div class="chart_col pie_col">
                             <div class="pie_chart_wrapper" id="pieWrapper">
                                 <canvas id="typePieChart"></canvas>
                             </div>
                             <div class="pie_update_date">
                                 <span>Update :</span>
-                                <strong id="globalLatestUpdate">27/07/2026</strong>
+                                <strong id="globalLatestUpdate">--/--/----</strong>
                             </div>
                         </div>
-
                     </div>
-
                 </header>
 
-                <!-- แถบเตือนข้อมูลผิดปกติจาก Google Sheets (แสดง/ซ่อนโดย JS: showDataWarningBanner / hideDataWarningBanner) -->
                 <div id="dataWarningBanner" class="data_warning_banner is-hidden">
                     <span class="data_warning_icon">⚠️</span>
-                    <div id="dataWarningBannerText" class="data_warning_text_group">
-                        <!-- Injected by JS -->
-                    </div>
+                    <div id="dataWarningBannerText" class="data_warning_text_group"></div>
                 </div>
 
-                <!-- Document List Table Section -->
                 <main class="table_section_container">
                     <div class="table_card">
                         <table class="document_table" id="mainDocTable">
-                            <thead id="tableHeadContainer">
-                                <!-- Injected by JS depending on tab (RFA/RFI vs Letter In) -->
-                            </thead>
-                            <tbody id="documentTableBody">
-                                <!-- Items injected dynamically -->
-                            </tbody>
+                            <thead id="tableHeadContainer"></thead>
+                            <tbody id="documentTableBody"></tbody>
                         </table>
-
-                        <!-- Pagination Bottom Panel -->
                         <div class="pagination_footer">
-                            <div class="page_info" id="pageInfoText">
-                                แสดง 0 ถึง 0 รายการ
-                            </div>
+                            <div class="page_info" id="pageInfoText">แสดง 0 ถึง 0 รายการ</div>
                             <div class="page_controls">
                                 <button class="btn_nav" id="btnPrev" disabled>◀ </button>
-                                <div class="page_numbers_container" id="pageNumbers">
-                                    <!-- Page numbers -->
-                                </div>
+                                <div class="page_numbers_container" id="pageNumbers"></div>
                                 <button class="btn_nav" id="btnNext"> ▶</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- กรณีไม่มีข้อมูลใดๆ เลย (ดึงสดล้มเหลว + ไม่มีแคชสำรอง) -->
                     <div id="noDataBox" class="no_data_box is-hidden">
                         <div class="no_data_icon">📭</div>
                         <div class="no_data_title">ไม่พบข้อมูล</div>
@@ -169,59 +168,31 @@
                     </div>
                 </main>
 
-                <!-- กล่องหลัก (พื้นหลังโทนเทาอมฟ้า) -->
-<div class="system_info_box" style="background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;">
-
-    <!-- แถวแรก: dev_note ชิดซ้าย / red_note ชิดขวา -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
-        <span class="dev_note" style="font-size: 0.8rem; color: #64748b;">Dev. by monkeyole X <span class="dev_attribution">mr.pairot</span></span>
-        <span class="red_note" style="font-size: 0.8rem; color: #ef4444;">* วันที่ Update เป็นวันที่ Upload เอกสาร</span>
-    </div>
-
-    <!-- แถวล่าง: กลุ่ม (cache_control + sheet_status) ชิดขวา -->
-    <div class="cache_control_And_sheet_status" >
-            <div id="cacheLastUpdateText" >ข้อมูลล่าสุด : กำลังตรวจสอบ...</div>
-           
-            <div class="Refresh_Link" >
-              <!-- 1. ปุ่ม Refresh -->   
-                <button id="btnForceRefresh" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: none; background: #e0f2fe; color: #0284c7; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; transition: background 0.2s;">
-                    <span>🔄</span> รีเฟรช
-                </button>
-
-                <div class="separator_line"></div>
-    
-              <!-- 2. Google Sheets Live Connection Status -->
-                <div class="sheet_status_bar" id="sheetStatusBar" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
-                    <a href="https://docs.google.com/spreadsheets/d/1QN-vHpbzTQKuZH_uieQ3brS-ZxS2k5ek6ECL38pswAc/edit?gid=1167974259#gid=1167974259" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
+                <div class="system_info_box" style="background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                        <span class="dev_note" style="font-size: 0.8rem; color: #64748b;">Dev. by monkeyole X <span class="dev_attribution">mr.pairot</span></span>
+                        <span class="red_note" style="font-size: 0.8rem; color: #ef4444;">* วันที่ Update เป็นวันที่ Upload เอกสาร</span>
+                    </div>
+                    <div class="cache_control_And_sheet_status" >
+                        <div id="cacheLastUpdateText" >ข้อมูลล่าสุด : กำลังตรวจสอบ...</div>
+                        <div class="Refresh_Link" >
+                            <button id="btnForceRefresh" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: none; background: #e0f2fe; color: #0284c7; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; transition: background 0.2s;">
+                                <span>🔄</span> รีเฟรช
+                            </button>
+                            <div class="separator_line"></div>
+                            <div class="sheet_status_bar" id="sheetStatusBar" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <a href="#" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
+                            </div>
+                        </div>   
+                    </div>
                 </div>
-            </div>   
-
+            </div> 
+        </div> 
     </div>
 
-    <!-- แถวที่ 3: รายงานผลตรวจสอบระบบแคช (Cache Diagnostic Report) -->
-    <!--
-    <div id="cacheDiagnosticBox" class="cache_diagnostic_box is-hidden">
-        <div class="cache_diagnostic_header">
-            <span>🔎 รายงานตรวจสอบระบบแคช (Cache Diagnostic)</span>
-            <button id="btnToggleDiagnostic" type="button" class="cache_diagnostic_toggle_btn">แสดง</button>
-        </div>
-        <div id="cacheDiagnosticContent" class="cache_diagnostic_content is-hidden">
-        </div>
-    </div>
-    -->
+    <!-- Required Scripts for Authentication -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="js/auth.js"></script>
 
-</div>
-                
-            </div> <!-- ปิด looker_dashboard_container -->
-        </div> <!-- ปิด main_dashboard_wrapper -->
-    </div> <!-- ปิด app_wrapper -->
-
-    <!-- Script Connection -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/magic-rings-bg.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/data-service.js"></script>
-    <script src="js/ui-render.js"></script>
-    <script src="js/about-popup.js"></script>
 </body>
 </html>
