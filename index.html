@@ -25,23 +25,11 @@
     <!-- =========================================================================
          สำคัญ: variables.css และ layout.css ถูกย้ายมาโหลดแบบ "static" (blocking)
          ที่นี่ แทนที่จะโหลดแบบ dynamic หลัง login สำเร็จเหมือนเดิม
-
-         เหตุผล:
-         1) ทำให้หน้า splash / login / error / follow ใช้ธีมสี ฟอนต์ (Sarabun) และ
-            ค่าตัวแปรเดียวกับแอปหลักได้ตั้งแต่เฟรมแรกที่วาดหน้าจอ ไม่ต้องเดาสีเอง
-            แยกชุดกับธีมหลักเหมือนที่ผ่านมา
-         2) layout.css มี class ที่เตรียมไว้ให้แล้ว (.splash_rings_bg,
-            .splash_progress_wrap, .loader ฯลฯ) ซึ่งไม่เคยถูกใช้งานจริงเพราะ
-            ไฟล์นี้โหลดช้าเกินไป (หลัง login) จึงต้องดึงมาโหลดก่อนแทน
-
-         components.css ยังคงโหลดแบบ dynamic ตามเดิม (ผ่าน auth.js) เพราะเป็น
-         style เฉพาะของ dropdown/ตาราง/กราฟ ที่ใช้หลัง login+ข้อมูลพร้อมแล้วเท่านั้น
          ========================================================================= -->
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/layout.css">
 
-    <!-- Auth pages (Login / Error / Follow) — ใช้ var(--...) จาก variables.css
-         ที่โหลดไว้ด้านบนแล้ว จึงเข้าธีมเดียวกับแอปหลักโดยอัตโนมัติ -->
+    <!-- Auth pages (Login / Error / Follow) + Profile & Modal UI -->
     <style>
         .auth_page {
             display: flex;
@@ -74,7 +62,7 @@
             line-height: 1.6;
         }
         .btn_line {
-            background-color: #06C755; /* สีทางการของ LINE คงไว้ตามแบรนด์ LINE ไม่ใช้ธีมของเรา */
+            background-color: #06C755;
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -120,25 +108,206 @@
             font-family: inherit;
         }
         .btn_recheck:hover { background: var(--color-brand-primary-dark); }
+
+        /* =========================================
+           ส่วน UI ของ Profile ผู้ใช้ (มุมขวาบน)
+           ========================================= */
+        .user_profile_area {
+            position: relative;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+        }
+        .user_profile_img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--color-brand-primary, #0d6efd);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: #fff;
+        }
+        .user_profile_img:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .user_tooltip {
+            position: absolute;
+            bottom: -32px;
+            right: 0;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 100;
+        }
+        .user_profile_area:hover .user_tooltip {
+            opacity: 1;
+        }
+        .user_dropdown {
+            position: absolute;
+            top: 55px;
+            right: 0;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+            z-index: 1000;
+            overflow: hidden;
+            border: 1px solid var(--color-border-default, #cbd5e1);
+        }
+        .user_dropdown.is-active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .user_dropdown_name {
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--color-text-heading, #1e293b);
+            font-size: 14px;
+            text-align: center;
+            background: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .user_dropdown hr {
+            margin: 0;
+            border: none;
+            border-top: 1px solid var(--color-border-default, #cbd5e1);
+        }
+        .user_dropdown_btn {
+            background: transparent;
+            border: none;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s ease;
+            color: var(--color-text-body, #333);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        .user_dropdown_btn:hover {
+            background: #f1f5f9;
+        }
+        .text-danger {
+            color: var(--color-status-danger-text, #d93025);
+        }
+        .text-danger:hover {
+            background: #fef2f2;
+        }
+
+        /* =========================================
+           ส่วน UI ของ Popup ยืนยัน Logout
+           ========================================= */
+        .custom_modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .custom_modal.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .custom_modal_content {
+            background: #fff;
+            padding: 24px 24px 30px;
+            border-radius: 12px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: scale(1);
+            transition: transform 0.2s ease;
+        }
+        .custom_modal.is-hidden .custom_modal_content {
+            transform: scale(0.95);
+        }
+        .custom_modal_content h3 {
+            margin-top: 0;
+            color: var(--color-text-heading, #1e293b);
+            font-size: 18px;
+        }
+        .custom_modal_content p {
+            color: var(--color-text-body, #333);
+            margin-bottom: 24px;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        .custom_modal_actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .btn_modal_cancel {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+        .btn_modal_cancel:hover {
+            background: #e2e8f0;
+        }
+        .btn_modal_confirm {
+            background: var(--color-status-danger-text, #d93025);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+        .btn_modal_confirm:hover {
+            background: #b91c1c;
+        }
     </style>
 </head>
 <body>
 
     <!-- 1. Splash Screen -->
     <div id="splashScreen" class="splash_screen">
-        <!-- Ring background — mount point ให้ magic-rings-bg.js (โหลดแบบ static
-             ด้านล่างสุดของ body) วิ่งอยู่เบื้องหลังตั้งแต่เฟรมแรก จนกว่าข้อมูล
-             จริงจาก Google Sheets จะพร้อมแสดง (ดู startApp() ใน data-service.js) -->
         <div id="splashRingsBg" class="splash_rings_bg"></div>
-
         <div class="splash_content">
             <h1 class="splash_title">BPNP DOCUMENT</h1>
             <div id="splashSpinner" class="loader"></div>
             <p id="splashStatus" class="splash_status">กำลังเตรียมระบบและตรวจสอบสิทธิ์...</p>
 
-            <!-- แถบความคืบหน้าโหลดข้อมูล — ควบคุมโดย showLoadProgressUI() /
-                 updateLoadProgressUI() / hideLoadProgressUI() ใน data-service.js
-                 ซ่อนอยู่จนกว่าจะเริ่มขั้นตอนดึงข้อมูลจริงจาก Google Sheets -->
             <div id="splashProgressWrap" class="splash_progress_wrap is-hidden">
                 <div class="splash_progress_track">
                     <div id="splashProgressFill" class="splash_progress_fill"></div>
@@ -151,7 +320,6 @@
     <!-- 2. Landing Page (Login) -->
     <div id="loginPage" class="auth_page is-hidden">
         <div class="auth_box">
-            <!-- <img src="img/logo_JV.png" alt="Logo" class="logo"> -->
             <h1>เข้าสู่ระบบสารบรรณ</h1>
             <p>กรุณายืนยันตัวตนผ่าน LINE เพื่อใช้งานระบบ</p>
             <button id="lineLoginBtn" class="btn_line">
@@ -170,8 +338,7 @@
         </div>
     </div>
 
-    <!-- 3.1 Follow Page (login LINE ผ่านแล้ว แต่ยังไม่ได้ add friend LINE OA)
-         แยกจาก errorPage เพราะเหตุผล + ปุ่มที่ต้องแสดงเป็นคนละแบบกัน -->
+    <!-- 3.1 Follow Page -->
     <div id="followPage" class="auth_page is-hidden">
         <div class="auth_box">
             <h1>กรุณาเพิ่มเพื่อน LINE OA</h1>
@@ -187,17 +354,42 @@
     <div id="appWrapper" class="app_wrapper is-hidden">
         <div class="main_dashboard_wrapper is-full-width">
             <div class="looker_dashboard_container" id="dashboardContainer">
-                <!-- Top Section Grid (2 Columns Layout) -->
+                <!-- Top Section Grid -->
                 <header class="top_header_grid">
                     <div class="header_top_left">
-                        <div class="logo_and_banner">
-                            <div class="jv_logo_wrap">
-                                <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
+                        
+                        <!-- ปรับปรุง: ห่อ Logo และ Profile ให้อยู่บรรทัดเดียวกัน -->
+                        <div class="logo_and_banner" style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px; flex-wrap: wrap;">
+                            
+                            <!-- ส่วนของ Logo เดิม -->
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="jv_logo_wrap">
+                                    <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
+                                </div>
+                                <div class="title_banner">
+                                    <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
+                                </div>
                             </div>
-                            <div class="title_banner">
-                                <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
+
+                            <!-- ส่วนของ Profile (เพิ่มใหม่) -->
+                            <div class="user_profile_area" id="userProfileArea">
+                                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" id="userProfileImg" class="user_profile_img">
+                                <div class="user_tooltip" id="userTooltip">ผู้ใช้งาน</div>
+                                <div class="user_dropdown" id="userDropdown">
+                                    <div class="user_dropdown_name" id="userDropdownName">ผู้ใช้งาน</div>
+                                    <hr>
+                                    <button id="btnProfileRefresh" class="user_dropdown_btn">
+                                        <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
+                                    </button>
+                                    <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
+                                        <span style="font-size: 16px;">🚪</span> ออกจากระบบ
+                                    </button>
+                                </div>
                             </div>
+
                         </div>
+                        
+                        <!-- Tabs เดิม -->
                         <div class="typeDoc_tabs">
                             <button class="typeDoc_tab active" data-tab="rfa" onclick="switchTab('rfa')">
                                 <span>RFA</span>
@@ -291,11 +483,19 @@
         </div>
     </div>
 
-    <!-- =========================================================================
-         Scripts — โหลดแบบ static เรียงลำดับที่จำเป็น (LIFF -> three.js -> rings -> auth)
-         magic-rings-bg.js ต้องมาหลัง three.js (ใช้ THREE global) และมาหลัง markup
-         ของ #splashRingsBg ด้านบน (เพื่อให้ getElementById หาเจอทันทีตอน DOMContentLoaded)
-         ========================================================================= -->
+    <!-- Modal Popup ยืนยันการออกจากระบบ (เพิ่มใหม่) -->
+    <div id="logoutConfirmModal" class="custom_modal is-hidden">
+        <div class="custom_modal_content">
+            <h3>ยืนยันการออกจากระบบ</h3>
+            <p>คุณ <span id="logoutModalUserName" style="font-weight:bold; color:var(--color-brand-primary);"></span><br>ต้องการออกจากระบบใช่หรือไม่?</p>
+            <div class="custom_modal_actions">
+                <button id="btnCancelLogout" class="btn_modal_cancel">ยกเลิก</button>
+                <button id="btnConfirmLogout" class="btn_modal_confirm">ออกจากระบบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/magic-rings-bg.js"></script>
@@ -303,4 +503,3 @@
 
 </body>
 </html>
-
