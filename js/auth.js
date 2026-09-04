@@ -8,17 +8,10 @@ const AUTH_CONFIG = {
 const APP_ASSETS = {
     css: [
         'css/components.css'
-        // หมายเหตุ: variables.css และ layout.css ถูกย้ายไปโหลดแบบ static (blocking)
-        // ใน <head> ของ index.html แล้ว เพื่อให้หน้า splash/login/error/follow
-        // ใช้ธีมสี/ฟอนต์เดียวกับแอปหลักได้ตั้งแต่เฟรมแรก ไม่ต้องรอโหลดหลัง login
     ],
     js: [
         'https://cdn.jsdelivr.net/npm/chart.js',
         'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js',
-        // หมายเหตุ: three.js และ js/magic-rings-bg.js ถูกย้ายไปโหลดแบบ static
-        // ใน <body> ของ index.html แล้ว (ก่อน auth.js) เพื่อให้ ring animation
-        // เริ่มทำงานได้ตั้งแต่ splash screen ตัวแรกสุด (ตอนกำลังตรวจสอบสิทธิ์)
-        // ไม่ใช่รอโหลดพร้อม dashboard bundle หลัง login สำเร็จเหมือนเดิม
         'js/config.js',
         'js/data-service.js',
         'js/ui-render.js',
@@ -41,13 +34,14 @@ const ui = {
     recheckFriendBtn: document.getElementById('btnRecheckFriend')
 };
 
-// Event Listeners
+// Event Listeners สำหรับหน้า Login / Error
 ui.loginBtn.addEventListener('click', () => {
     if (liff && !liff.isLoggedIn()) {
         liff.login();
     }
 });
 
+// อันนี้สำหรับปุ่ม Logout ในหน้า Error Page (กรณีสิทธิ์ไม่ผ่าน)
 ui.logoutBtn.addEventListener('click', () => {
     if (liff && liff.isLoggedIn()) {
         liff.logout();
@@ -58,20 +52,12 @@ ui.logoutBtn.addEventListener('click', () => {
 
 if (ui.recheckFriendBtn) {
     ui.recheckFriendBtn.addEventListener('click', () => {
-        // ผู้ใช้เพิ่มเพื่อนแล้วกดตรวจสอบอีกครั้ง -> reload หน้าใหม่ทั้งหมด
-        // ให้ initApp() รันซ้ำตั้งแต่ต้น (ผ่าน liff.init + verifyWithBackend ใหม่)
         window.location.reload();
     });
 }
 
 // ---------------------------------------------------------------------------
-// Friendship Check (ตรวจสอบว่าผู้ใช้ add เพื่อน LINE OA แล้วหรือยัง)
-//
-// ชั้นนี้เป็นการเช็คแบบเร็วฝั่ง client (liff.getFriendship()) เพื่อลดเวลารอ
-// backend โดยไม่จำเป็นในกรณีที่ชัดเจนอยู่แล้วว่ายังไม่ได้ add friend
-// ความถูกต้อง "จริง" ยังคงอ้างอิงจากผลของ backend (verifyWithBackend /
-// backgroundVerify) ซึ่งเรียก LINE Messaging API ที่เชื่อถือได้กว่าเสมอ เพราะ
-// ค่าจาก client แก้ไขได้ผ่าน dev tools ห้ามเชื่อ 100%
+// Friendship Check
 // ---------------------------------------------------------------------------
 async function checkFriendshipClientSide() {
     try {
@@ -79,7 +65,7 @@ async function checkFriendshipClientSide() {
         return friendship.friendFlag; // true / false
     } catch (error) {
         console.warn('ไม่สามารถตรวจสอบสถานะเพื่อนฝั่ง client ได้', error);
-        return null; // ไม่ทราบสถานะ -> ปล่อยให้ backend เป็นผู้ตัดสินแทน
+        return null; 
     }
 }
 
@@ -92,14 +78,9 @@ async function initApp() {
             const cachedUser = JSON.parse(cachedUserStr);
             console.log('Cache Hit: Loading App immediately for', cachedUser.displayName);
 
-            // โหลด Script หลักทันทีเพื่อความรวดเร็ว (ring background ที่ splash
-            // ยังคงทำงานต่อเนื่องอยู่ระหว่างขั้นตอนนี้ทั้งหมด)
             await loadAppAssets();
             showApp();
 
-            // Background Verify กับ Backend (เงียบๆ) — backend จะเช็ค friendship
-            // ไปพร้อมกับ role/สิทธิ์ในคราวเดียว ถ้าโดนตัดสิทธิ์หรือ unfriend
-            // บอทไปแล้วจะถูกเด้งออกผ่าน backgroundVerify() ด้านล่าง
             if (liff) {
                 await liff.init({ liffId: AUTH_CONFIG.liffId });
                 if (liff.isLoggedIn()) {
@@ -118,9 +99,6 @@ async function initApp() {
         } else {
             ui.splashStatus.innerText = 'กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...';
 
-            // เช็คสถานะเพื่อนฝั่ง client ก่อน (เร็วกว่า) — ถ้าพบว่าไม่ได้เป็น
-            // เพื่อนแน่ชัด (false) ให้เด้งไปหน้า "เพิ่มเพื่อน" ทันที ไม่ต้องเสีย
-            // เวลารอ backend fetch โปรไฟล์+role ก่อน
             const isFriendClientSide = await checkFriendshipClientSide();
             if (isFriendClientSide === false) {
                 showFollowPrompt();
@@ -137,11 +115,6 @@ async function initApp() {
 }
 
 // ตรวจสอบสิทธิ์กับ Backend (สำหรับ First Login)
-// Backend เป็นผู้ตัดสินสุดท้ายว่า friend หรือยัง + มี role/สิทธิ์หรือไม่
-// คาดหวังรูปแบบผลลัพธ์จาก GAS:
-//   success = true  -> { success: true, role: "..." }
-//   success = false, ยังไม่ได้ friend -> { success: false, needFollow: true, reason: "..." }
-//   success = false, เหตุผลอื่น (ไม่มีสิทธิ์/role ไม่ผ่าน) -> { success: false, reason: "..." }
 async function verifyWithBackend(profile) {
     try {
         const response = await fetch(AUTH_CONFIG.gasUrl, {
@@ -157,10 +130,11 @@ async function verifyWithBackend(profile) {
         const result = await response.json();
 
         if (result.success) {
-            // บันทึก Cache
+            // บันทึก Cache (เพิ่ม pictureUrl เข้าไปเก็บด้วย เพื่อดึงมาโชว์ใน Profile)
             localStorage.setItem('app_user_cache', JSON.stringify({
                 userId: profile.userId,
                 displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl, 
                 role: result.role,
                 timestamp: new Date().getTime()
             }));
@@ -169,8 +143,6 @@ async function verifyWithBackend(profile) {
             await loadAppAssets();
             showApp();
         } else if (result.needFollow) {
-            // Backend ยืนยันว่ายังไม่ได้ add friend -> แสดงหน้าเชิญ add friend
-            // (แยกจาก error ทั่วไป เพราะเหตุผลและปุ่มที่ต้องโชว์คนละแบบ)
             showFollowPrompt(result.reason);
         } else {
             showError(result.reason || 'ไม่ได้รับสิทธิ์เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
@@ -181,7 +153,7 @@ async function verifyWithBackend(profile) {
     }
 }
 
-// ตรวจสอบสิทธิ์แบบ Background (ถ้าสิทธิ์โดนตัด หรือ unfriend บอทไปแล้ว ให้เด้งออก)
+// ตรวจสอบสิทธิ์แบบ Background
 async function backgroundVerify() {
     try {
         const profile = await liff.getProfile();
@@ -197,7 +169,6 @@ async function backgroundVerify() {
         const result = await response.json();
 
         if (!result.success) {
-            // โดนตัดสิทธิ์ หรือ unfriend บอทไปแล้ว
             localStorage.removeItem('app_user_cache');
             if (liff.isLoggedIn()) liff.logout();
 
@@ -215,22 +186,18 @@ async function backgroundVerify() {
 
 // Dynamic Loader แบบเรียงลำดับ
 async function loadAppAssets() {
-    // โหลด CSS ทั้งหมดพร้อมกัน (เหลือแค่ components.css เพราะ variables.css/layout.css
-    // ถูกย้ายไปโหลดแบบ static ใน <head> ของ index.html แล้ว)
     const cssPromises = APP_ASSETS.css.map(href => {
         return new Promise((resolve) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = href;
             link.onload = resolve;
-            link.onerror = resolve; // ข้ามถ้ามีปัญหา
+            link.onerror = resolve; 
             document.head.appendChild(link);
         });
     });
     await Promise.all(cssPromises);
 
-    // โหลด JS เรียงตามลำดับ (เพื่อไม่ให้พังเรื่อง Dependency เช่น Chart.js ต้องมาก่อน
-    // config.js ต้องมาก่อน data-service.js/ui-render.js เป็นต้น)
     for (const src of APP_ASSETS.js) {
         await new Promise((resolve) => {
             const script = document.createElement('script');
@@ -238,6 +205,99 @@ async function loadAppAssets() {
             script.onload = resolve;
             script.onerror = resolve;
             document.body.appendChild(script);
+        });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// จัดการ UI โปรไฟล์ผู้ใช้ (ดึงข้อมูลจาก Cache ที่บันทึกไว้ตอน Login)
+// ---------------------------------------------------------------------------
+function initProfileUI() {
+    const cachedUserStr = localStorage.getItem('app_user_cache');
+    if (!cachedUserStr) return;
+    const user = JSON.parse(cachedUserStr);
+
+    // ดึง Elements
+    const profileImg = document.getElementById('userProfileImg');
+    const tooltip = document.getElementById('userTooltip');
+    const dropdownName = document.getElementById('userDropdownName');
+    const modalUserName = document.getElementById('logoutModalUserName');
+
+    // ใส่ข้อมูลผู้ใช้ (รูป และ ชื่อ)
+    if (profileImg && user.pictureUrl) profileImg.src = user.pictureUrl;
+    if (tooltip) tooltip.innerText = user.displayName;
+    if (dropdownName) dropdownName.innerText = user.displayName;
+    if (modalUserName) modalUserName.innerText = user.displayName;
+
+    // ป้องกันการผูก Event Listener ซ้ำ (กรณีถูกเรียกหลายรอบ)
+    if (window.__profileEventsBound) return;
+    window.__profileEventsBound = true;
+
+    const profileArea = document.getElementById('userProfileArea');
+    const dropdown = document.getElementById('userDropdown');
+    const btnProfileRefresh = document.getElementById('btnProfileRefresh');
+    const btnProfileLogout = document.getElementById('btnProfileLogout');
+    const logoutModal = document.getElementById('logoutConfirmModal');
+    const btnCancelLogout = document.getElementById('btnCancelLogout');
+    const btnConfirmLogout = document.getElementById('btnConfirmLogout');
+
+    // คลิกเพื่อเปิด/ปิดเมนู Dropdown
+    if (profileArea && dropdown) {
+        profileArea.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('is-active');
+            
+            // ซ่อน Tooltip ชั่วคราวเวลาเมนูเปิดอยู่ เพื่อความสวยงาม
+            if(tooltip) {
+                tooltip.style.display = dropdown.classList.contains('is-active') ? 'none' : '';
+            }
+        });
+
+        // คืนค่า Tooltip เผื่อผู้ใช้ Hover อีกครั้ง
+        profileArea.addEventListener('mouseleave', () => {
+            if(tooltip) tooltip.style.display = '';
+        });
+    }
+
+    // คลิกนอกกล่องโปรไฟล์ให้ปิดเมนู
+    document.addEventListener('click', (e) => {
+        if (dropdown && dropdown.classList.contains('is-active') && profileArea && !profileArea.contains(e.target)) {
+            dropdown.classList.remove('is-active');
+        }
+    });
+
+    // ปุ่มรีเฟรชในเมนู (โยงไปเรียกปุ่ม Refresh ดั้งเดิม)
+    if (btnProfileRefresh) {
+        btnProfileRefresh.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            const mainRefreshBtn = document.getElementById('btnForceRefresh');
+            if (mainRefreshBtn) mainRefreshBtn.click();
+        });
+    }
+
+    // ปุ่ม Logout ในเมนู (เปิด Popup)
+    if (btnProfileLogout) {
+        btnProfileLogout.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            logoutModal.classList.remove('is-hidden');
+        });
+    }
+
+    // กดยกเลิกใน Popup (ปิด Popup)
+    if (btnCancelLogout) {
+        btnCancelLogout.addEventListener('click', () => {
+            logoutModal.classList.add('is-hidden');
+        });
+    }
+
+    // กดยืนยันใน Popup (เคลียร์ข้อมูลและกลับไป Login)
+    if (btnConfirmLogout) {
+        btnConfirmLogout.addEventListener('click', () => {
+            if (liff && liff.isLoggedIn()) {
+                liff.logout();
+            }
+            localStorage.removeItem('app_user_cache');
+            window.location.reload();
         });
     }
 }
@@ -250,15 +310,9 @@ function showApp() {
     ui.app.classList.remove('is-hidden');
     ui.app.style.display = 'block';
 
-    // สำคัญ: "ไม่" ซ่อน splash ที่นี่โดยเจตนา — appWrapper ถูกวาดอยู่ข้างใต้
-    // splash (z-index: 9999) จึงยังไม่เห็นภาพซ้อนใดๆ ให้ผู้ใช้เห็น
-    // splash (และ ring background ข้างหลัง) ต้องคงอยู่ต่อจนกว่าข้อมูลจริงจาก
-    // Google Sheets จะพร้อมแสดงผลจริง ซึ่งควบคุมโดย startApp() ใน
-    // js/data-service.js เพียงจุดเดียวเท่านั้น (ไม่ใช่ที่นี่)
+    // เรียกฟังก์ชันเตรียม UI โปรไฟล์มุมขวาบนเมื่อแสดงแอปหลัก
+    initProfileUI();
 
-    // เริ่ม flow การโหลดข้อมูล/สร้าง UI ของแอปหลัก — ฟังก์ชันนี้ถูก expose มาจาก
-    // data-service.js ที่เพิ่งโหลดเสร็จผ่าน loadAppAssets() ด้านบน (รวมถึง
-    // ui-render.js ที่ initAppFlow() ต้องใช้ก็โหลดเสร็จแล้วเช่นกัน ณ จุดนี้)
     if (typeof window.initDashboardApp === 'function') {
         window.initDashboardApp();
     } else {
@@ -283,8 +337,6 @@ function showError(reasonText) {
     ui.errorReason.innerText = reasonText;
 }
 
-// หน้าเชิญ "เพิ่มเพื่อน LINE OA" — แยกจาก showError เพราะเหตุผล/ปุ่มที่ต้องใช้
-// คนละแบบ (ปุ่ม "เพิ่มเพื่อน" + "ตรวจสอบอีกครั้ง" แทนที่จะเป็น "ออกจากระบบ")
 function showFollowPrompt(reasonText) {
     ui.splash.classList.add('is-hidden');
     ui.login.classList.add('is-hidden');
