@@ -19,6 +19,15 @@ const APP_ASSETS = {
     ]
 };
 
+// ---------------------------------------------------------------------------
+// Auth / Login state guards
+// ---------------------------------------------------------------------------
+const LOGIN_PENDING_KEY = 'line_login_pending';
+
+let loginInProgress = false;   // ป้องกันการกด Login ซ้ำ / เรียก liff.login() ซ้ำ
+let authInitializing = false;  // ป้องกัน initApp() ทำงานซ้อนกันหลาย instance
+let authCompleted = false;     // true เมื่อเข้าสู่ showApp() แล้ว (ห้าม showLogin() อีก)
+
 // UI Elements
 const ui = {
     splash: document.getElementById('splashScreen'),
@@ -34,11 +43,44 @@ const ui = {
     recheckFriendBtn: document.getElementById('btnRecheckFriend')
 };
 
+// เก็บ HTML เดิมของปุ่ม Login ไว้ (มี SVG + <span>ข้อความ</span>) เพื่อใช้ restore
+// หลังจากสลับไปเป็นสถานะ Loading แล้วต้องการคืนกลับ (กรณี login ถูกยกเลิก)
+const LOGIN_BTN_DEFAULT_HTML = ui.loginBtn ? ui.loginBtn.innerHTML : '';
+
+// สลับสถานะปุ่ม Login <-> Loading โดยไม่สร้าง/clone ปุ่มใหม่ ใช้ปุ่มเดิมตัวเดียว (#lineLoginBtn)
+function setLoginButtonLoading(isLoading) {
+    if (!ui.loginBtn) return;
+
+    if (isLoading) {
+        ui.loginBtn.disabled = true;
+        ui.loginBtn.innerHTML =
+            '<span class="btn_line_spinner" aria-hidden="true"></span>' +
+            '<span>กำลังเชื่อมต่อ LINE...</span>';
+    } else {
+        ui.loginBtn.disabled = false;
+        ui.loginBtn.innerHTML = LOGIN_BTN_DEFAULT_HTML;
+    }
+}
+
 // Event Listeners สำหรับหน้า Login / Error
 ui.loginBtn.addEventListener('click', () => {
-    if (liff && !liff.isLoggedIn()) {
-        liff.login();
+    // ป้องกันกดซ้ำ / เรียก liff.login() ซ้ำ
+    if (loginInProgress) return;
+    if (!liff || liff.isLoggedIn()) return;
+
+    loginInProgress = true;
+    setLoginButtonLoading(true); // เปลี่ยนเป็นสถานะ Loading + disable ปุ่มทันที
+
+    // เก็บสถานะไว้ข้าม redirect ว่ากำลังอยู่ระหว่าง Login
+    try {
+        sessionStorage.setItem(LOGIN_PENDING_KEY, '1');
+    } catch (e) {
+        console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', e);
     }
+
+    liff.login({
+        redirectUri: window.location.href
+    });
 });
 
 // อันนี้สำหรับปุ่ม Logout ในหน้า Error Page (กรณีสิทธิ์ไม่ผ่าน)
@@ -65,12 +107,35 @@ async function checkFriendshipClientSide() {
         return friendship.friendFlag; // true / false
     } catch (error) {
         console.warn('ไม่สามารถตรวจสอบสถานะเพื่อนฝั่ง client ได้', error);
-        return null; 
+        return null;
+    }
+}
+
+function isLoginPending() {
+    try {
+        return sessionStorage.getItem(LOGIN_PENDING_KEY) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearLoginPending() {
+    try {
+        sessionStorage.removeItem(LOGIN_PENDING_KEY);
+    } catch (e) {
+        // ignore
     }
 }
 
 // Initialization Flow
 async function initApp() {
+    // ป้องกัน initApp() ทำงานซ้อนกันหลาย instance
+    if (authInitializing) {
+        console.log('Auth initialization already running.');
+        return;
+    }
+    authInitializing = true;
+
     try {
         // ตรวจสอบ Cache (Offline-First)
         const cachedUserStr = localStorage.getItem('app_user_cache');
@@ -83,6 +148,10 @@ async function initApp() {
 
             if (liff) {
                 await liff.init({ liffId: AUTH_CONFIG.liffId });
+
+                console.log('LIFF initialized:', liff.isLoggedIn());
+                console.log('LOGIN BUTTON COUNT:', document.querySelectorAll('#lineLoginBtn').length);
+
                 if (liff.isLoggedIn()) {
                     backgroundVerify();
                 }
@@ -94,9 +163,26 @@ async function initApp() {
         ui.splashStatus.innerText = 'กำลังเชื่อมต่อ LINE...';
         await liff.init({ liffId: AUTH_CONFIG.liffId });
 
+        console.log('LIFF initialized:', liff.isLoggedIn());
+        console.log('LOGIN BUTTON COUNT:', document.querySelectorAll('#lineLoginBtn').length);
+
+        // ต้องตรวจ liff.isLoggedIn() หลัง liff.init() เสร็จก่อนเสมอ
+        // ถ้า true ห้ามเรียก showLogin() ไม่ว่ากรณีใด ๆ
         if (!liff.isLoggedIn()) {
+            // กลับมาจาก LINE แต่ยังไม่ login แปลว่าผู้ใช้กดยกเลิก/ล้มเหลว
+            if (isLoginPending()) {
+                clearLoginPending();
+                loginInProgress = false;
+                setLoginButtonLoading(false); // คืนปุ่มกลับสถานะปกติ ห้ามค้าง Loading
+            }
             showLogin();
         } else {
+            // Login สำเร็จแล้ว (ปกติ หรือกลับจาก redirect) -> ดำเนิน flow ต่อทันที ห้ามแสดงหน้า Login
+            if (isLoginPending()) {
+                clearLoginPending();
+            }
+            loginInProgress = false;
+
             ui.splashStatus.innerText = 'กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...';
 
             const isFriendClientSide = await checkFriendshipClientSide();
@@ -106,11 +192,13 @@ async function initApp() {
             }
 
             const profile = await liff.getProfile();
-            verifyWithBackend(profile);
+            await verifyWithBackend(profile);
         }
     } catch (error) {
         console.error('LIFF Init Error:', error);
         showError('ไม่สามารถเชื่อมต่อระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+        authInitializing = false;
     }
 }
 
@@ -134,7 +222,7 @@ async function verifyWithBackend(profile) {
             localStorage.setItem('app_user_cache', JSON.stringify({
                 userId: profile.userId,
                 displayName: profile.displayName,
-                pictureUrl: profile.pictureUrl, 
+                pictureUrl: profile.pictureUrl,
                 role: result.role,
                 timestamp: new Date().getTime()
             }));
@@ -192,7 +280,7 @@ async function loadAppAssets() {
             link.rel = 'stylesheet';
             link.href = href;
             link.onload = resolve;
-            link.onerror = resolve; 
+            link.onerror = resolve;
             document.head.appendChild(link);
         });
     });
@@ -246,16 +334,16 @@ function initProfileUI() {
         profileArea.addEventListener('click', (e) => {
             e.stopPropagation();
             dropdown.classList.toggle('is-active');
-            
+
             // ซ่อน Tooltip ชั่วคราวเวลาเมนูเปิดอยู่ เพื่อความสวยงาม
-            if(tooltip) {
+            if (tooltip) {
                 tooltip.style.display = dropdown.classList.contains('is-active') ? 'none' : '';
             }
         });
 
         // คืนค่า Tooltip เผื่อผู้ใช้ Hover อีกครั้ง
         profileArea.addEventListener('mouseleave', () => {
-            if(tooltip) tooltip.style.display = '';
+            if (tooltip) tooltip.style.display = '';
         });
     }
 
@@ -304,6 +392,8 @@ function initProfileUI() {
 
 // การแสดงผลหน้าต่างๆ
 function showApp() {
+    authCompleted = true; // ล็อกไม่ให้ showLogin() แสดงซ้ำได้อีกหลังเข้าแอปแล้ว
+
     ui.login.classList.add('is-hidden');
     ui.error.classList.add('is-hidden');
     if (ui.follow) ui.follow.classList.add('is-hidden');
@@ -321,6 +411,11 @@ function showApp() {
 }
 
 function showLogin() {
+    // Guard: ห้ามแสดงหน้า Login ระหว่างกำลัง Login อยู่ หรือหลังเข้าแอปสำเร็จแล้ว
+    if (loginInProgress || authCompleted) {
+        return;
+    }
+
     ui.splash.classList.add('is-hidden');
     ui.error.classList.add('is-hidden');
     if (ui.follow) ui.follow.classList.add('is-hidden');
