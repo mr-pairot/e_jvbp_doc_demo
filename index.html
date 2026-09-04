@@ -16,20 +16,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="site.webmanifest">
-    <meta name="theme-color" content="#0d6efd" > <!-- ปรับให้ตรงกับ --color-brand-primary ใน variables.css -->
+    <meta name="theme-color" content="#0d6efd" >
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- =========================================================================
-         สำคัญ: variables.css และ layout.css ถูกย้ายมาโหลดแบบ "static" (blocking)
-         ที่นี่ แทนที่จะโหลดแบบ dynamic หลัง login สำเร็จเหมือนเดิม
-         ========================================================================= -->
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/layout.css">
 
-    <!-- Auth pages (Login / Error / Follow) + Profile & Modal UI -->
+    <!-- Auth pages, Profile, & Modal Styles -->
     <style>
         .auth_page {
             display: flex;
@@ -110,19 +107,21 @@
         .btn_recheck:hover { background: var(--color-brand-primary-dark); }
 
         /* =========================================
-           ส่วน UI ของ Profile ผู้ใช้ (มุมขวาบน)
+           ส่วน UI ของ Profile ผู้ใช้ (มุมขวาบน - Absolute)
            ========================================= */
         .user_profile_area {
-            position: relative;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 9000;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-left: auto;
         }
         .user_profile_img {
-            width: 45px;
-            height: 45px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid var(--color-brand-primary, #0d6efd);
@@ -154,7 +153,7 @@
         }
         .user_dropdown {
             position: absolute;
-            top: 55px;
+            top: 52px;
             right: 0;
             background: #fff;
             border-radius: 8px;
@@ -351,45 +350,40 @@
     </div>
 
     <!-- 4. App Wrapper (Main Application - Hidden initially) -->
-    <div id="appWrapper" class="app_wrapper is-hidden">
+    <div id="appWrapper" class="app_wrapper is-hidden" style="position: relative;">
+        
+        <!-- =========================================================================
+             กล่องโปรไฟล์ลอยอิสระ (มุมขวาบน - Absolute ไม่อิง Scroll)
+             ========================================================================= -->
+        <div class="user_profile_area" id="userProfileArea">
+            <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" id="userProfileImg" class="user_profile_img">
+            <div class="user_tooltip" id="userTooltip">ผู้ใช้งาน</div>
+            <div class="user_dropdown" id="userDropdown">
+                <div class="user_dropdown_name" id="userDropdownName">ผู้ใช้งาน</div>
+                <hr>
+                <button id="btnProfileRefresh" class="user_dropdown_btn">
+                    <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
+                </button>
+                <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
+                    <span style="font-size: 16px;">🚪</span> ออกจากระบบ
+                </button>
+            </div>
+        </div>
+        <!-- ========================================================================= -->
+
         <div class="main_dashboard_wrapper is-full-width">
             <div class="looker_dashboard_container" id="dashboardContainer">
-                <!-- Top Section Grid -->
+                <!-- Top Section Grid (2 Columns Layout) -->
                 <header class="top_header_grid">
                     <div class="header_top_left">
-                        
-                        <!-- ปรับปรุง: ห่อ Logo และ Profile ให้อยู่บรรทัดเดียวกัน -->
-                        <div class="logo_and_banner" style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px; flex-wrap: wrap;">
-                            
-                            <!-- ส่วนของ Logo เดิม -->
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <div class="jv_logo_wrap">
-                                    <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
-                                </div>
-                                <div class="title_banner">
-                                    <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
-                                </div>
+                        <div class="logo_and_banner">
+                            <div class="jv_logo_wrap">
+                                <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
                             </div>
-
-                            <!-- ส่วนของ Profile (เพิ่มใหม่) -->
-                            <div class="user_profile_area" id="userProfileArea">
-                                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" id="userProfileImg" class="user_profile_img">
-                                <div class="user_tooltip" id="userTooltip">ผู้ใช้งาน</div>
-                                <div class="user_dropdown" id="userDropdown">
-                                    <div class="user_dropdown_name" id="userDropdownName">ผู้ใช้งาน</div>
-                                    <hr>
-                                    <button id="btnProfileRefresh" class="user_dropdown_btn">
-                                        <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
-                                    </button>
-                                    <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
-                                        <span style="font-size: 16px;">🚪</span> ออกจากระบบ
-                                    </button>
-                                </div>
+                            <div class="title_banner">
+                                <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
                             </div>
-
                         </div>
-                        
-                        <!-- Tabs เดิม -->
                         <div class="typeDoc_tabs">
                             <button class="typeDoc_tab active" data-tab="rfa" onclick="switchTab('rfa')">
                                 <span>RFA</span>
@@ -483,7 +477,7 @@
         </div>
     </div>
 
-    <!-- Modal Popup ยืนยันการออกจากระบบ (เพิ่มใหม่) -->
+    <!-- Modal Popup ยืนยันการออกจากระบบ -->
     <div id="logoutConfirmModal" class="custom_modal is-hidden">
         <div class="custom_modal_content">
             <h3>ยืนยันการออกจากระบบ</h3>
@@ -503,3 +497,4 @@
 
 </body>
 </html>
+
