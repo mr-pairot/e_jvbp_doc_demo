@@ -3,6 +3,7 @@
 const AUTH_CONFIG = {
     liffId: '2007032148-vWobwLNE', // Demo
     gasUrl: 'https://script.google.com/macros/s/AKfycbwrnLHNeNb6GHCwVVQF0EGRzxUPrwHjk-Sosg-Wwt9DossOLeZ-nuul2McpLWBhFliP/exec',
+    //Url: https://script.google.com/home/projects/1pZbca-IQ9peOsYBflHbdq1L4xTmHQAHQhY2hPA93skMRk9Dg5KePNZUU/edit
 };
 
 const APP_ASSETS = {
