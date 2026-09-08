@@ -1184,6 +1184,7 @@ window.openDocumentLink = async function(btnEl) {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
             <title>กำลังเปิดเอกสาร...</title>
+            <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
                 :root { --ink: #4b5563; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
                 .fx-chrome {
