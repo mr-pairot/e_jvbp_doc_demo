@@ -79,8 +79,12 @@ ui.loginBtn.addEventListener('click', () => {
         console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', e);
     }
 
+    // [แก้ไข PWA Issue]: ให้ Redirect กลับมาที่ URL หลักที่ไม่มี Hash เสมอ 
+    // เพื่อให้ Android จับ Intent กลับเข้าสู่ PWA (Standalone) ได้อย่างถูกต้อง ไม่เด้งไป Chrome
+    const cleanRedirectUrl = window.location.origin + window.location.pathname;
+
     liff.login({
-        redirectUri: window.location.href
+        redirectUri: cleanRedirectUrl
     });
 });
 
@@ -228,7 +232,7 @@ async function verifyWithBackend(profile) {
                 timestamp: new Date().getTime()
             }));
 
-            // [แก้ไขใหม่: Proxy Flow] เซ็ตเวลาตรวจสอบล่าสุด สำหรับ Session Guard
+            // เซ็ตเวลาตรวจสอบล่าสุด สำหรับ Session Guard
             if (typeof window.setLastVerifiedAt === 'function') {
                 window.setLastVerifiedAt(Date.now());
             }
@@ -247,7 +251,7 @@ async function verifyWithBackend(profile) {
     }
 }
 
-// [แก้ไขใหม่: Proxy Flow] ตรวจสอบสิทธิ์แบบ Background (บังคับ Logout ออกทันทีถ้าสถานะถูกระงับ)
+// ตรวจสอบสิทธิ์แบบ Background (บังคับ Logout ออกทันทีถ้าสถานะถูกระงับ)
 async function backgroundVerify() {
     try {
         const profile = await liff.getProfile();
@@ -460,3 +464,4 @@ function showFollowPrompt(reasonText) {
 
 // เริ่มการทำงานเมื่อโหลดหน้าเสร็จ
 window.addEventListener('DOMContentLoaded', initApp);
+
