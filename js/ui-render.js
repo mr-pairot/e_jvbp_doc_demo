@@ -6,19 +6,6 @@
    ITEMS_PER_PAGE, formatCount, generateDropdownItems, chartTheme, buildChartTheme,
    donutCenterTextPlugin, matchesAllSearchTerms, parseHashState, pendingFilterStateFromURL)
    และหลัง data-service.js (ใช้ updateLatestDateDisplay)
-
-   หมวดหมู่ในไฟล์นี้:
-     1. UI Rendering (แท็บ, ดรอปดาวน์, ช่องค้นหา, ตาราง, pagination)
-     1.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกน้อย เช่น หมวดงาน/ที่มา)
-     2. Dropdown Dependency (กรองรายการ "ประเภทเอกสาร" ตาม "หมวดงาน" ที่ติ๊กไว้)
-     3. Filter Status Box (กล่องสรุปสถานะการกรองใต้ช่องค้นหา)
-     4. Charts (ไฮไลต์ชิ้นกราฟตามที่เลือก, ผูก Event Chart สั่ง Dropdown)
-     5. URL Hash Sync (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash
-        เพื่อให้แชร์ลิงก์แล้วเปิดตรงแท็บ/ตัวกรองที่ต้องการได้)
-
-   หมายเหตุการค้นหา:
-     ช่องค้นหาใช้เงื่อนไข "AND" แบบหลายคำ ผ่านฟังก์ชัน matchesAllSearchTerms()
-     (นิยามอยู่ใน config.js) 
    ========================================================================= */
 
 // ---------------------------------------------------------------------------
@@ -553,10 +540,14 @@ function renderTableBody() {
         pageDocs.forEach((doc, idx) => {
             const rowEl = document.createElement("tr");
             const safeTitle = escapeHTML(doc.title);
-            const hasLink = doc.link && doc.link.startsWith("http");
+            
+            // [แก้ไขใหม่: Proxy Flow] เช็คว่ามี link ไหมจากตัวแปร hasLink ที่มาจาก config
+            const hasLink = doc.hasLink;
 
+            // [แก้ไขใหม่: Proxy Flow] เปลี่ยน <a> เป็น <button> เพื่อดัก onclick ยิงเรียก GAS
+            // ป้องกันปัญหา single/double quotes ในชื่อเอกสารด้วยการใส่เป็น data-* attribute แทน
             const linkHTML = hasLink
-                ? `<a class="doc_hyperlink_title" href="${doc.link}" target="_blank" title="${safeTitle}">${safeTitle}</a>`
+                ? `<button type="button" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="openDocumentLink(this)" title="คลิกเพื่อเปิด ${safeTitle}" style="background:none; border:none; padding:0; cursor:pointer; font-family:inherit; font-size:inherit; text-align:left; color:var(--color-brand-primary, #0d6efd); text-decoration:none;">${safeTitle}</button>`
                 : `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
 
             if (currentTab === "letter") {
@@ -1060,10 +1051,10 @@ function updateChartsDynamic() {
 //
 // การไหลของข้อมูล:
 //   1) โหลดหน้า / ผู้ใช้แก้ hash เอง / กด back-forward
-//        -> parseHashState() (config.js) อ่านค่าเป็น pendingFilterStateFromURL
-//        -> switchTab() เรียก applyFilterStateToTab() เพื่อตั้งค่า UI ให้ตรง แล้ว filter
+//       -> parseHashState() (config.js) อ่านค่าเป็น pendingFilterStateFromURL
+//       -> switchTab() เรียก applyFilterStateToTab() เพื่อตั้งค่า UI ให้ตรง แล้ว filter
 //   2) ผู้ใช้ติ๊ก/คลิก/พิมพ์เปลี่ยนตัวกรองใดๆ ในหน้าเว็บ
-//        -> ทุกจุด (checkbox, "เท่านั้น", chip, bar/pie chart, ช่องค้นหา) เรียก
+//       -> ทุกจุด (checkbox, "เท่านั้น", chip, bar/pie chart, ช่องค้นหา) เรียก
 //           filterActiveTabDocuments() อยู่แล้วในโค้ดเดิม -> ท้ายฟังก์ชันเรียก syncURLHash()
 //           เพื่อเขียนสถานะปัจจุบันกลับลง URL ให้คัดลอกไปแชร์ได้ทันที
 // ---------------------------------------------------------------------------
@@ -1150,3 +1141,58 @@ window.addEventListener('hashchange', () => {
     switchTab(pendingFilterStateFromURL.tab);
 });
 
+
+// ---------------------------------------------------------------------------
+// [เพิ่มใหม่] Document Link Opener (Proxy Flow B)
+// ---------------------------------------------------------------------------
+window.openDocumentLink = async function(btnEl) {
+    const docTitle = btnEl.dataset.title;
+    const docCategory = btnEl.dataset.category;
+
+    if (!docTitle || !docCategory) return;
+
+    // 1. ป้องกันกดซ้ำ และแสดง Spinner (หรือข้อความ)
+    btnEl.disabled = true;
+    const originalText = btnEl.innerHTML;
+    btnEl.innerHTML = `⏳ กำลังตรวจสอบสิทธิ์...`; 
+
+    try {
+        // 2. ตรวจสอบ Session Guard (5 นาที)
+        if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
+            const isOk = await window.verifyStatus();
+            if (!isOk) return; // verifyStatus จะเด้งไปหน้า Error ให้เองถ้าตกแบน
+        }
+
+        // 3. ขอ Document Link จริงจาก GAS
+        const profile = await liff.getProfile();
+        const response = await fetch(AUTH_CONFIG.gasUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: 'get_document_link',
+                userId: profile.userId,
+                docTitle: docTitle,
+                docCategory: docCategory
+            })
+        });
+        
+        const result = await response.json();
+
+        // 4. ถ้าได้ Link คืนมา -> Window Open
+        if (result.success && result.link) {
+            window.open(result.link, '_blank');
+        } else {
+            if (result.reason === 'banned') {
+                window.handleBannedUser('สิทธิ์การเข้าใช้งานของคุณถูกระงับ (ตรวจสอบพบขณะเปิดเอกสาร)');
+            } else {
+                alert(`ไม่สามารถเปิดเอกสารได้: ${result.reason || 'ไม่พบไฟล์ที่ร้องขอ'}`);
+            }
+        }
+    } catch (err) {
+        console.error("Link fetch error:", err);
+        alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+        // คืนปุ่มกลับสู่สภาพเดิม
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalText;
+    }
+};
