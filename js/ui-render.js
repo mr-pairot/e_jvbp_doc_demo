@@ -1186,7 +1186,7 @@ window.openDocumentLink = async function(btnEl) {
             </head>
             <body style="background:#f3f4f6; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
                 <div style="text-align:center; color:#4b5563;">
-                    <h2 style="margin:0 0 10px 0; font-size:18px;">กำลังพาไปยังเอกสาร...</h2>
+                    <h2 style="margin:0 0 10px 0; font-size:18px;">กำลังเปิดเอกสาร...</h2>
                     <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
                 </div>
             </body>
