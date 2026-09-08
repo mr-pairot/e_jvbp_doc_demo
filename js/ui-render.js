@@ -1173,6 +1173,8 @@ window.openDocumentLink = async function(btnEl) {
 
     // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup
     const newTab = window.open('', '_blank');
+    const baseFont = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--font-family-base').trim() || 'sans-serif';
 
     // [แก้ไขหน้าจอซ้อนทับ]: ใส่ HTML5 เต็มรูปแบบ พร้อม Meta Viewport และสั่ง document.close()
     if (newTab) {
@@ -1184,7 +1186,7 @@ window.openDocumentLink = async function(btnEl) {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
                 <title>กำลังเปิดเอกสาร...</title>
             </head>
-            <body style="background:#f3f4f6; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
+            <body style="background:#f3f4f6; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
                 <div style="text-align:center; color:#4b5563;">
                     <h2 style="margin:0 0 10px 0; font-size:18px;">กำลังเปิดเอกสาร...</h2>
                     <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
