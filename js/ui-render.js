@@ -541,13 +541,13 @@ function renderTableBody() {
             const rowEl = document.createElement("tr");
             const safeTitle = escapeHTML(doc.title);
             
-            // [แก้ไขใหม่: Proxy Flow] เช็คว่ามี link ไหมจากตัวแปร hasLink ที่มาจาก config
+            // เช็คว่ามี link ไหมจากตัวแปร hasLink ที่มาจาก config
             const hasLink = doc.hasLink;
 
-            // [แก้ไขใหม่: Proxy Flow] เปลี่ยน <a> เป็น <button> เพื่อดัก onclick ยิงเรียก GAS
+            // เปลี่ยน <a> เป็น <button> เพื่อดัก onclick ยิงเรียก GAS
             // ป้องกันปัญหา single/double quotes ในชื่อเอกสารด้วยการใส่เป็น data-* attribute แทน
             const linkHTML = hasLink
-                ? `<button type="button" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="openDocumentLink(this)" title="คลิกเพื่อเปิด ${safeTitle}" style="background:none; border:none; padding:0; cursor:pointer; font-family:inherit; font-size:inherit; text-align:left; color:var(--color-brand-primary, #0d6efd); text-decoration:none;">${safeTitle}</button>`
+                ? `<button type="button" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="openDocumentLink(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</button>`
                 : `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
 
             if (currentTab === "letter") {
@@ -1143,10 +1143,8 @@ window.addEventListener('hashchange', () => {
 
 
 // ---------------------------------------------------------------------------
-// Document Link Opener (Proxy Flow B - ปรับปรุงใหม่ แสดง Modal กลางจอ + แก้ไขการเปิดหน้าต่าง)
+// Document Link Opener (Proxy Flow B - เปิดหน้าต่างทันทีก่อนยิง Fetch แก้อาการโดนบล็อก Popup)
 // ---------------------------------------------------------------------------
-
-// สร้างหรือดึง Overlay กลางจอสำหรับแสดงสถานะโหลด
 function getOrCreateDocLoadingOverlay() {
     let overlay = document.getElementById("docLoadingOverlay");
     if (!overlay) {
@@ -1156,7 +1154,7 @@ function getOrCreateDocLoadingOverlay() {
         overlay.innerHTML = `
             <div class="doc_loading_box">
                 <div class="doc_loading_spinner"></div>
-                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์การเปิดไฟล์...</p>
+                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์...</p>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -1170,25 +1168,43 @@ window.openDocumentLink = async function(btnEl) {
 
     if (!docTitle || !docCategory) return;
 
-    // ป้องกันการคลิกซ้ำระหว่างรอ
     btnEl.disabled = true;
 
-    // แสดง Overlay เบลอพื้นหลังสีเข้มกลางจอ (ชื่อไฟล์ในตารางจะไม่เปลี่ยน)
+    // [แก้ไข Popup Blocker]: เปิดแท็บว่างเปล่ารอไว้ทันทีที่เกิด Event Click (Synchronous)
+    // เบราว์เซอร์จะไม่มองว่าเป็น Popup เพราะเกิดจากนิ้ว/เมาส์กดโดยตรง
+    const newTab = window.open('about:blank', '_blank');
+
+    // ตกแต่งหน้าจอของแท็บใหม่ที่เพิ่งเปิดรอไว้ให้ดูเรียบร้อย ไม่ขาวโพลน
+    if (newTab) {
+        newTab.document.write(`
+            <html style="background:#f3f4f6;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+                <body>
+                    <div style="text-align:center;color:#4b5563;">
+                        <h2 style="margin:0 0 10px 0;">กำลังเปิดเอกสาร...</h2>
+                        <p style="margin:0;font-size:14px;">กรุณารอสักครู่ หากหน้าต่างไม่โหลด กรุณาปิดแล้วลองใหม่อีกครั้ง</p>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+
+    // แสดง Overlay บนตารางตึกหลัก
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
     try {
-        // 1. ตรวจสอบ Session Guard (5 นาที)
+        // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
             if (!isOk) {
+                if (newTab) newTab.close();
                 overlay.classList.remove("is-active");
                 btnEl.disabled = false;
-                return; // ถ้าแบน ระบบจะเด้งออกไปหน้า Error ให้อัตโนมัติ
+                return;
             }
         }
 
-        // 2. ขอ Document Link จริงจาก GAS
+        // 2. ขอ Document Link จริงจาก GAS (ใช้เวลาโหลด Asynchronous)
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1201,22 +1217,20 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
-
-        // ซ่อน Overlay ทันทีก่อนเปิดหน้าต่าง
         overlay.classList.remove("is-active");
 
-        // 3. ถ้าได้ Link คืนมา -> เปิดหน้าต่างเอกสาร
+        // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
-            // แก้ไขปัญหาหน้าต่างไม่แสดง: สร้างแท็ก <a> หลอกแล้วสั่งคลิกโปรแกรมเมติกส์ 
-            // ช่วยเลี่ยงการถูก Block จาก Popup Blocker ของเบราว์เซอร์มือถือ/LIFF Browser ได้ดีขึ้น
-            const openLink = document.createElement('a');
-            openLink.href = result.link;
-            openLink.target = '_blank';
-            openLink.rel = 'noopener noreferrer';
-            document.body.appendChild(openLink);
-            openLink.click();
-            document.body.removeChild(openLink);
+            if (newTab) {
+                newTab.location.href = result.link;
+            } else {
+                // เผื่อเจอเบราว์เซอร์สายแข็งสุดๆ ที่บล็อกตั้งแต่บรรทัดแรก ให้เปิดทับหน้าเดิม
+                window.location.href = result.link; 
+            }
         } else {
+            // ดึงลิงก์ไม่ได้ (หาไม่เจอ/โดนแบน) ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
+            if (newTab) newTab.close();
+            
             if (result.reason === 'banned') {
                 window.handleBannedUser('สิทธิ์การเข้าใช้งานของคุณถูกระงับ (ตรวจสอบพบขณะเปิดเอกสาร)');
             } else {
@@ -1225,10 +1239,11 @@ window.openDocumentLink = async function(btnEl) {
         }
     } catch (err) {
         console.error("Link fetch error:", err);
+        if (newTab) newTab.close();
         overlay.classList.remove("is-active");
         alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
-        // คืนสถานะปุ่มในตารางให้กดได้ปกติ
         btnEl.disabled = false;
     }
 };
+
