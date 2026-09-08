@@ -1156,7 +1156,7 @@ function getOrCreateDocLoadingOverlay() {
         overlay.innerHTML = `
             <div class="doc_loading_box">
                 <div class="doc_loading_spinner"></div>
-                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์...</p>
+                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์การเปิดไฟล์...</p>
             </div>
         `;
         document.body.appendChild(overlay);
