@@ -1471,3 +1471,9 @@ button.doc_hyperlink_title.btn-as-link:disabled {
    }
 }
 
+
+.document_table .doc_hyperlink_title,
+.document_table button.doc_hyperlink_title.btn-as-link,
+.document_table span.doc_hyperlink_title {
+    font-size: var(--font-size-2xs) !important;
+}
