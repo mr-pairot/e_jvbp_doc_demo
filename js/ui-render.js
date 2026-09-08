@@ -1145,6 +1145,7 @@ window.addEventListener('hashchange', () => {
 // ---------------------------------------------------------------------------
 // Document Link Opener (Proxy Flow B - เปิดหน้าต่างทันทีก่อนยิง Fetch แก้อาการโดนบล็อก Popup)
 // ---------------------------------------------------------------------------
+
 function getOrCreateDocLoadingOverlay() {
     let overlay = document.getElementById("docLoadingOverlay");
     if (!overlay) {
@@ -1170,25 +1171,31 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    // [แก้ไข Popup Blocker]: เปิดแท็บว่างเปล่ารอไว้ทันทีที่เกิด Event Click (Synchronous)
-    // เบราว์เซอร์จะไม่มองว่าเป็น Popup เพราะเกิดจากนิ้ว/เมาส์กดโดยตรง
-    const newTab = window.open('about:blank', '_blank');
+    // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup
+    const newTab = window.open('', '_blank');
 
-    // ตกแต่งหน้าจอของแท็บใหม่ที่เพิ่งเปิดรอไว้ให้ดูเรียบร้อย ไม่ขาวโพลน
+    // [แก้ไขหน้าจอซ้อนทับ]: ใส่ HTML5 เต็มรูปแบบ พร้อม Meta Viewport และสั่ง document.close()
     if (newTab) {
         newTab.document.write(`
-            <html style="background:#f3f4f6;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-                <body>
-                    <div style="text-align:center;color:#4b5563;">
-                        <h2 style="margin:0 0 10px 0;">กำลังเปิดเอกสาร...</h2>
-                        <p style="margin:0;font-size:14px;">กรุณารอสักครู่ หากหน้าต่างไม่โหลด กรุณาปิดแล้วลองใหม่อีกครั้ง</p>
-                    </div>
-                </body>
+            <!DOCTYPE html>
+            <html lang="th">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+                <title>กำลังเปิดเอกสาร...</title>
+            </head>
+            <body style="background:#f3f4f6; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
+                <div style="text-align:center; color:#4b5563;">
+                    <h2 style="margin:0 0 10px 0; font-size:18px;">กำลังพาไปยังเอกสาร...</h2>
+                    <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
+                </div>
+            </body>
             </html>
         `);
+        newTab.document.close(); // สำคัญมาก: บอกเบราว์เซอร์ว่าเขียน HTML เสร็จแล้ว เพื่อให้คำนวณ Viewport หน้าจอใหม่
     }
 
-    // แสดง Overlay บนตารางตึกหลัก
+    // แสดง Overlay บนหน้าจอแอปหลัก
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
@@ -1204,7 +1211,7 @@ window.openDocumentLink = async function(btnEl) {
             }
         }
 
-        // 2. ขอ Document Link จริงจาก GAS (ใช้เวลาโหลด Asynchronous)
+        // 2. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1222,13 +1229,14 @@ window.openDocumentLink = async function(btnEl) {
         // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
             if (newTab) {
-                newTab.location.href = result.link;
+                // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
+                // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
+                newTab.location.replace(result.link);
             } else {
-                // เผื่อเจอเบราว์เซอร์สายแข็งสุดๆ ที่บล็อกตั้งแต่บรรทัดแรก ให้เปิดทับหน้าเดิม
                 window.location.href = result.link; 
             }
         } else {
-            // ดึงลิงก์ไม่ได้ (หาไม่เจอ/โดนแบน) ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
+            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
@@ -1246,4 +1254,5 @@ window.openDocumentLink = async function(btnEl) {
         btnEl.disabled = false;
     }
 };
+
 
