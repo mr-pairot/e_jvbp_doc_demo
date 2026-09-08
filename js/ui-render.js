@@ -1189,19 +1189,20 @@ window.openDocumentLink = async function(btnEl) {
                 :root { --ink: #4b5563; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
                 .fx-chrome {
                     font: 600 20px/1.3 ${baseFont}, monospace;
-                    letter-spacing: .02em;
-                    background: linear-gradient(105deg,
-                        color-mix(in srgb, var(--ink) 40%, transparent) 0 38%,
-                        var(--ink) 47%, #fff 50%, var(--ink) 53%,
-                        color-mix(in srgb, var(--ink) 40%, transparent) 62% 100%
-                    ) 0 0 / 260% 100%;
-                    -webkit-background-clip: text; background-clip: text;
+                    letter-spacing: .06em;
                     color: transparent;
-                    animation: fx-chrome 2.8s ease-in-out infinite;
+                    background: linear-gradient(90deg,
+                        color-mix(in srgb, var(--ink) 16%, transparent) 0 40%,
+                        color-mix(in srgb, var(--ink) 55%, transparent) 46%,
+                        #fff 50%,
+                        color-mix(in srgb, var(--ink) 55%, transparent) 54%,
+                        color-mix(in srgb, var(--ink) 16%, transparent) 60% 100%
+                    ) 0 0 / 300% 100%;
+                    -webkit-background-clip: text; background-clip: text;
+                    animation: fx-shimmer 2.8s linear infinite;
                 }
-                @keyframes fx-chrome {
-                    0% { background-position: 130% 0; }
-                    60%, 100% { background-position: -130% 0; }
+                @keyframes fx-shimmer {
+                    to { background-position: 300% 0; }
                 }
             </style>
         </head>
