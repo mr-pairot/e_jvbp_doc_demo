@@ -6,18 +6,10 @@
    activeDocuments, buildChartTheme, formatCount, escapeHTML, toDisplayString,
    generateDropdownItems, donutCenterTextPlugin, matchesAllSearchTerms,
    parseHashState, pendingFilterStateFromURL)
-
-   หมวดหมู่ในไฟล์นี้:
-     1. App State (สถานะการทำงานของแอป)
-     2. URL Hash State (อ่านแท็บ + คำค้นหา + ตัวกรองทั้งหมดจาก URL hash)
-     3. Chart Theme (ธีมกราฟที่อ่านค่าจาก CSS Custom Properties)
-     4. Donut Center Text Plugin (วาดตัวเลขรวมตรงกลางวงแหวนบน Canvas โดยตรง)
-     5. Tab Configs (ค่าตั้งต้นของแต่ละแท็บเอกสาร)
-     6. Helper Functions (ฟังก์ชันช่วยเหลือทั่วไป)
    ========================================================================= */
 
-// App Version 
-const APP_CACHE_VERSION = "260831.0900";
+// App Version (ปรับเวอร์ชันใหม่เพื่อบังคับให้ระบบล้าง Cache เดิมที่มี link จริงฝังอยู่ทิ้งไป)
+const APP_CACHE_VERSION = "260908.1300";
 
 // ---------------------------------------------------------------------------
 // URL Hash State (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash)
@@ -260,3 +252,126 @@ function matchesAllSearchTerms(doc, tabId, searchQuery) {
     return terms.every(term => combinedText.includes(term));
 }
 
+// ฟังก์ชันสำหรับ Parse ข้อมูลชีท SUB, DWG, RFI (ปรับใหม่ ไม่เก็บ Link แต่เก็บเป็น Boolean)
+function parseRowToDoc(rowObj, id, category) {
+    if (!rowObj.c || !rowObj.c[2] || !rowObj.c[2].v) return null;
+
+    const rawTitle = toDisplayString(rowObj.c[2].v);
+    const lowerTitle = rawTitle.toLowerCase();
+    if (['file name', 'filename', 'name', 'ชื่อไฟล์', 'ชื่อเอกสาร', 'document'].includes(lowerTitle)) return null;
+
+    const title = rawTitle.replace(/\.pdf\.\.\.$/i, '.pdf');
+    let fileName = title;
+    if (!fileName.toLowerCase().endsWith('.pdf') && !fileName.toLowerCase().endsWith('.dwg')) {
+        fileName += ".pdf";
+    }
+
+    // 1) Extract Cx Code จากวงเล็บแรก (สำหรับ Bar Chart)
+    let cxCode = "Others";
+    const cxMatch = title.match(/\(([^)]+)\)/);
+    if (cxMatch) {
+        cxCode = cxMatch[1].trim();
+    }
+
+    // 2) Extract Parsed Code จากชื่อไฟล์
+    let parsedCode = "Others";
+    const dashParts = title.split('-');
+
+    // ค้นหาตำแหน่ง (Index) ของก้อนที่มีคำว่า SUB หรือ DWG
+    const typeIndex = dashParts.findIndex(part => {
+        const p = part.trim().toUpperCase();
+        return p === "SUB" || p === "DWG";
+    });
+
+    if (typeIndex !== -1) {
+        parsedCode = dashParts.slice(0, typeIndex + 1).join('-').trim().toUpperCase();
+    } else if (dashParts.length >= 2) {
+        parsedCode = dashParts.slice(0, 2).join('-').trim().toUpperCase();
+    } else if (dashParts.length === 1 && dashParts[0].trim() !== "") {
+        parsedCode = dashParts[0].trim().toUpperCase();
+    }
+
+    // 3) แปลงวันที่อัปเดต
+    let updateDate = "-";
+    if (rowObj.c[4]) {
+        let rawDate = rowObj.c[4].f || toDisplayString(rowObj.c[4].v);
+        if (rawDate.includes('/')) {
+            const dateParts = rawDate.split('/');
+            if (dateParts.length === 3) {
+                const twoDigitYear = dateParts[2].length === 4 ? dateParts[2].slice(-2) : dateParts[2];
+                updateDate = `${dateParts[0].padStart(2, '0')}/${dateParts[1].padStart(2, '0')}/${twoDigitYear}`;
+            } else {
+                updateDate = rawDate;
+            }
+        } else {
+            const dateMatch = rawDate.match(/Date\((\d+),(\d+),(\d+)\)/);
+            if (dateMatch) updateDate = `${String(dateMatch[3]).padStart(2, '0')}/${String(parseInt(dateMatch[2]) + 1).padStart(2, '0')}/${dateMatch[1].slice(-2)}`;
+        }
+    }
+
+    // กำหนดหมวดงาน (Category) จาก 3 ตัวอักษรสุดท้ายของ parsedCode
+    let docCategory = category;
+    if (parsedCode && parsedCode.length >= 3) {
+        const suffix = parsedCode.slice(-3).toUpperCase();
+        if (suffix === "SUB" || suffix === "DWG") {
+            docCategory = suffix;
+        } else {
+            docCategory = "อื่นๆ"; // ถ้าไม่ใช่ SUB หรือ DWG ให้ปัดเข้าหมวดอื่นๆ
+        }
+    } else {
+        docCategory = "อื่นๆ";
+    }
+
+    // เช็คว่าคอลัมน์ Link (Index 3) มีค่าหรือไม่
+    const linkValue = toDisplayString(rowObj.c[3]?.v);
+
+    return {
+        id,
+        folderName: toDisplayString(rowObj.c[0]?.v),
+        pathCode: toDisplayString(rowObj.c[1]?.v),
+        parsedCode,
+        cxCode,
+        title,
+        fileName,
+        hasLink: !!linkValue && linkValue.startsWith("http"), // แจ้ง UI ว่ามี Link จริงไหม
+        updateDate,
+        category: docCategory
+    };
+}
+
+// ฟังก์ชันสำหรับ Parse ข้อมูลชีท Letter (ปรับใหม่ ไม่เก็บ Link แต่เก็บเป็น Boolean)
+function parseLetterRowToDoc(rowObj, id) {
+    if (!rowObj.c) return null;
+
+    // วันที่ Update = คอลัมน์ F (Index 5)
+    let updateDate = "-";
+    if (rowObj.c[5]) {
+        let rawDate = rowObj.c[5].f || toDisplayString(rowObj.c[5].v);
+        if (rawDate.includes('/')) {
+            const dateParts = rawDate.split('/');
+            if (dateParts.length === 3) {
+                const twoDigitYear = dateParts[2].length === 4 ? dateParts[2].slice(-2) : dateParts[2];
+                updateDate = `${dateParts[0].padStart(2, '0')}/${dateParts[1].padStart(2, '0')}/${twoDigitYear}`;
+            } else {
+                updateDate = rawDate;
+            }
+        } else {
+            const dateMatch = rawDate.match(/Date\((\d+),(\d+),(\d+)\)/);
+            if (dateMatch) updateDate = `${String(dateMatch[3]).padStart(2, '0')}/${String(parseInt(dateMatch[2]) + 1).padStart(2, '0')}/${dateMatch[1].slice(-2)}`;
+        }
+    }
+
+    // เช็คว่าคอลัมน์ Link (Index 4) มีค่าหรือไม่
+    const linkValue = toDisplayString(rowObj.c[4]?.v);
+
+    return {
+        id,
+        parsedCode: toDisplayString(rowObj.c[0]?.v), // คอลัมน์ A (Index 0) = ที่มา
+        receiveNo: toDisplayString(rowObj.c[1]?.v),  // คอลัมน์ B (Index 1) = เลขรับ
+        letterNo: toDisplayString(rowObj.c[2]?.v),   // คอลัมน์ C (Index 2) = เลขหนังสือ
+        title: toDisplayString(rowObj.c[3]?.v),      // คอลัมน์ D (Index 3) = ชื่อเรื่อง
+        hasLink: !!linkValue && linkValue.startsWith("http"), // แจ้ง UI ว่ามี Link จริงไหม
+        updateDate: updateDate,                      // คอลัมน์ F (Index 5) = วันที่ Update
+        category: "Letter"
+    };
+}
