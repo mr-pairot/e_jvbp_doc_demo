@@ -1143,27 +1143,52 @@ window.addEventListener('hashchange', () => {
 
 
 // ---------------------------------------------------------------------------
-// [เพิ่มใหม่] Document Link Opener (Proxy Flow B)
+// Document Link Opener (Proxy Flow B - ปรับปรุงใหม่ แสดง Modal กลางจอ + แก้ไขการเปิดหน้าต่าง)
 // ---------------------------------------------------------------------------
+
+// สร้างหรือดึง Overlay กลางจอสำหรับแสดงสถานะโหลด
+function getOrCreateDocLoadingOverlay() {
+    let overlay = document.getElementById("docLoadingOverlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "docLoadingOverlay";
+        overlay.className = "doc_loading_overlay";
+        overlay.innerHTML = `
+            <div class="doc_loading_box">
+                <div class="doc_loading_spinner"></div>
+                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์...</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    return overlay;
+}
+
 window.openDocumentLink = async function(btnEl) {
     const docTitle = btnEl.dataset.title;
     const docCategory = btnEl.dataset.category;
 
     if (!docTitle || !docCategory) return;
 
-    // 1. ป้องกันกดซ้ำ และแสดง Spinner (หรือข้อความ)
+    // ป้องกันการคลิกซ้ำระหว่างรอ
     btnEl.disabled = true;
-    const originalText = btnEl.innerHTML;
-    btnEl.innerHTML = `⏳ กำลังตรวจสอบสิทธิ์...`; 
+
+    // แสดง Overlay เบลอพื้นหลังสีเข้มกลางจอ (ชื่อไฟล์ในตารางจะไม่เปลี่ยน)
+    const overlay = getOrCreateDocLoadingOverlay();
+    overlay.classList.add("is-active");
 
     try {
-        // 2. ตรวจสอบ Session Guard (5 นาที)
+        // 1. ตรวจสอบ Session Guard (5 นาที)
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
-            if (!isOk) return; // verifyStatus จะเด้งไปหน้า Error ให้เองถ้าตกแบน
+            if (!isOk) {
+                overlay.classList.remove("is-active");
+                btnEl.disabled = false;
+                return; // ถ้าแบน ระบบจะเด้งออกไปหน้า Error ให้อัตโนมัติ
+            }
         }
 
-        // 3. ขอ Document Link จริงจาก GAS
+        // 2. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1177,9 +1202,20 @@ window.openDocumentLink = async function(btnEl) {
         
         const result = await response.json();
 
-        // 4. ถ้าได้ Link คืนมา -> Window Open
+        // ซ่อน Overlay ทันทีก่อนเปิดหน้าต่าง
+        overlay.classList.remove("is-active");
+
+        // 3. ถ้าได้ Link คืนมา -> เปิดหน้าต่างเอกสาร
         if (result.success && result.link) {
-            window.open(result.link, '_blank');
+            // แก้ไขปัญหาหน้าต่างไม่แสดง: สร้างแท็ก <a> หลอกแล้วสั่งคลิกโปรแกรมเมติกส์ 
+            // ช่วยเลี่ยงการถูก Block จาก Popup Blocker ของเบราว์เซอร์มือถือ/LIFF Browser ได้ดีขึ้น
+            const openLink = document.createElement('a');
+            openLink.href = result.link;
+            openLink.target = '_blank';
+            openLink.rel = 'noopener noreferrer';
+            document.body.appendChild(openLink);
+            openLink.click();
+            document.body.removeChild(openLink);
         } else {
             if (result.reason === 'banned') {
                 window.handleBannedUser('สิทธิ์การเข้าใช้งานของคุณถูกระงับ (ตรวจสอบพบขณะเปิดเอกสาร)');
@@ -1189,10 +1225,10 @@ window.openDocumentLink = async function(btnEl) {
         }
     } catch (err) {
         console.error("Link fetch error:", err);
+        overlay.classList.remove("is-active");
         alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
-        // คืนปุ่มกลับสู่สภาพเดิม
+        // คืนสถานะปุ่มในตารางให้กดได้ปกติ
         btnEl.disabled = false;
-        btnEl.innerHTML = originalText;
     }
 };
