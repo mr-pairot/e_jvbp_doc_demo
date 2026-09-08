@@ -1176,25 +1176,43 @@ window.openDocumentLink = async function(btnEl) {
     const baseFont = getComputedStyle(document.documentElement)
                         .getPropertyValue('--font-family-base').trim() || 'sans-serif';
 
-    // [แก้ไขหน้าจอซ้อนทับ]: ใส่ HTML5 เต็มรูปแบบ พร้อม Meta Viewport และสั่ง document.close()
     if (newTab) {
-        newTab.document.write(`
-            <!DOCTYPE html>
-            <html lang="th">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-                <title>กำลังเปิดเอกสาร...</title>
-            </head>
-            <body style="background:#f3f4f6; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
-                <div style="text-align:center; color:#4b5563;">
-                    <h2 style="margin:0 0 10px 0; font-size:18px;">กำลังเปิดเอกสาร...</h2>
-                    <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
-                </div>
-            </body>
-            </html>
-        `);
-        newTab.document.close(); // สำคัญมาก: บอกเบราว์เซอร์ว่าเขียน HTML เสร็จแล้ว เพื่อให้คำนวณ Viewport หน้าจอใหม่
+    newTab.document.write(`
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+            <title>กำลังเปิดเอกสาร...</title>
+            <style>
+                :root { --ink: #4b5563; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                .fx-chrome {
+                    font: 600 20px/1.3 ${baseFont}, monospace;
+                    letter-spacing: .02em;
+                    background: linear-gradient(105deg,
+                        color-mix(in srgb, var(--ink) 40%, transparent) 0 38%,
+                        var(--ink) 47%, #fff 50%, var(--ink) 53%,
+                        color-mix(in srgb, var(--ink) 40%, transparent) 62% 100%
+                    ) 0 0 / 260% 100%;
+                    -webkit-background-clip: text; background-clip: text;
+                    color: transparent;
+                    animation: fx-chrome 2.8s ease-in-out infinite;
+                }
+                @keyframes fx-chrome {
+                    0% { background-position: 130% 0; }
+                    60%, 100% { background-position: -130% 0; }
+                }
+            </style>
+        </head>
+        <body style="background:#f3f4f6; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
+            <div style="text-align:center; color:#4b5563;">
+                <h2 class="fx-chrome" style="margin:0 0 10px 0;">กำลังเปิดเอกสาร...</h2>
+                <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
+            </div>
+        </body>
+        </html>
+    `);
+    newTab.document.close();
     }
 
     // แสดง Overlay บนหน้าจอแอปหลัก
