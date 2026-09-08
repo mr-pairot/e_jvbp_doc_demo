@@ -1,44 +1,78 @@
 /* data-service.js — ระบบสารบรรณอิเล็กทรอนิกส์
    จุดเริ่มต้นการทำงานของแอป (Bootstrap) + การดึงและแปลงข้อมูลจาก Google Sheets + ระบบ Cache
-
-   ต้องโหลดหลัง config.js (ใช้ SPREADSHEET_ID, DOCUMENTS_BY_TAB, buildChartTheme,
-   toDisplayString, APP_CACHE_VERSION) และก่อน ui-render.js เพราะ initAppFlow()
-   จะเรียก switchTab() ซึ่งนิยามอยู่ใน ui-render.js
-
-   หมายเหตุสำคัญเรื่อง Bootstrap (แก้ไขจากเดิม):
-   ฟังก์ชันเริ่มต้นของแอปหลัก "ไม่" ผูกกับ document.addEventListener("DOMContentLoaded", ...)
-   อีกต่อไป เพราะไฟล์นี้ถูกโหลดแบบ dynamic (ผ่าน loadAppAssets() ใน auth.js) หลัง
-   login สำเร็จ ซึ่งเกิดขึ้น "หลังจาก" DOMContentLoaded ตัวจริงของหน้าเว็บได้ยิง
-   ไปแล้วเสมอ (มันยิงครั้งเดียวตอน parse HTML เริ่มต้นเสร็จ) — ถ้ายังผูกกับ
-   event นี้อยู่ ฟังก์ชันเหล่านี้จะไม่มีวันถูกเรียกเลยหลัง login
-
-   แทนที่ด้วยการ expose เป็น window.initDashboardApp แล้วให้ auth.js เรียกตรงๆ
-   ใน showApp() ทันทีหลัง loadAppAssets() โหลดสคริปต์ทุกไฟล์ (รวม ui-render.js
-   ซึ่ง initAppFlow() ต้องใช้ฟังก์ชัน switchTab จากไฟล์นั้น) เสร็จเรียบร้อยแล้ว
-   จึงการันตีได้ว่า switchTab, ui-render อื่นๆ ถูกนิยามพร้อมใช้งานแล้วแน่นอน
-
-   หมวดหมู่ในไฟล์นี้:
-     1. Bootstrap (window.initDashboardApp / window.startApp)
-     2. IndexedDB Wrapper (เปิด DB / อ่าน-เขียนข้อมูลพื้นฐาน)
-     3. Cache Management & Force Refresh (ระบบแคชและปุ่มรีเฟรช)
-     4. Cache Diagnostic Report (รายงานตรวจสอบระบบแคชแบบแสดงผลบนหน้าจอ)
-     5. Data Fetching & Parsing (ดึงและแปลงข้อมูลจาก Google Sheets)
-     6. Update Notify Button (แจ้งเตือนเมื่อพบข้อมูลใหม่ที่มีจำนวนแถวมากกว่าเดิม)
-     7. Date Helpers (แปลง/เปรียบเทียบวันที่ Update ล่าสุด)
-
    ========================================================================= */
+
+// ---------------------------------------------------------------------------
+// [เพิ่มใหม่] Session Guard & Auth Revalidation
+// ---------------------------------------------------------------------------
+window.lastVerifiedAt = 0;
+window.REVALIDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 นาที (300,000 ms)
+
+window.setLastVerifiedAt = function(timeMs) {
+    window.lastVerifiedAt = timeMs || Date.now();
+};
+
+window.handleBannedUser = async function(reasonText) {
+    // 1. เคลียร์ LocalStorage
+    localStorage.removeItem('app_user_cache');
+    
+    // 2. เคลียร์ IndexedDB
+    try {
+        const db = await openCacheDB();
+        const tx = db.transaction(IDB_STORE_NAME, "readwrite");
+        tx.objectStore(IDB_STORE_NAME).delete(CACHE_KEY);
+    } catch (e) {
+        console.warn("ไม่สามารถลบ IndexedDB Cache ได้", e);
+    }
+    
+    // 3. Logout LIFF
+    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+        liff.logout();
+    }
+    
+    // 4. แสดงหน้า Error Page
+    if (typeof showError === 'function') {
+        showError(reasonText || 'สิทธิ์การเข้าใช้งานของคุณถูกระงับ');
+    }
+};
+
+window.verifyStatus = async function() {
+    if (typeof liff === 'undefined' || !liff.isLoggedIn()) return false;
+    try {
+        const profile = await liff.getProfile();
+        // เรียกใช้ AUTH_CONFIG.gasUrl (ประกาศไว้ใน auth.js)
+        const response = await fetch(AUTH_CONFIG.gasUrl, { 
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: 'check_status',
+                userId: profile.userId
+            })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            window.setLastVerifiedAt(Date.now());
+            return true;
+        } else {
+            window.handleBannedUser(result.reason === 'banned' ? 'สิทธิ์การเข้าใช้งานของคุณถูกระงับ' : 'ตรวจสอบสิทธิ์ไม่ผ่าน');
+            return false;
+        }
+    } catch (error) {
+        console.warn("Network error during verifyStatus", error);
+        // กรณี Network Error ปล่อยผ่านเป็น false เฉยๆ ไม่ต้องเตะออก
+        return false; 
+    }
+};
 
 // ---------------------------------------------------------------------------
 // 1. Bootstrap
 // ---------------------------------------------------------------------------
 
-// เรียกจาก auth.js -> showApp() ทันทีหลัง loadAppAssets() โหลดสคริปต์ทุกไฟล์
-// (รวม ui-render.js/about-popup.js) เสร็จสมบูรณ์แล้วเท่านั้น
 window.initDashboardApp = function () {
     initPaginationButtons();
-    initCacheEvents(); // ผูก Event สำหรับปุ่ม Force Refresh
-    initDiagnosticToggle(); // ผูก Event สำหรับปุ่มซ่อน/แสดงรายงานตรวจสอบแคช
-    createUpdateNotifyButton(); // สร้างปุ่มแจ้งเตือนข้อมูลใหม่ไว้ล่วงหน้า (ยังซ่อนอยู่จนกว่าจะพบข้อมูลใหม่)
+    initCacheEvents(); 
+    initDiagnosticToggle(); 
+    createUpdateNotifyButton(); 
     initAppFlow();
 };
 
@@ -46,8 +80,6 @@ window.startApp = function (tabId) {
     const splashScreen = document.getElementById("splashScreen");
     splashScreen.classList.add("is-fading-out");
 
-    // ข้อมูลพร้อมแสดงผลแล้ว ณ จุดนี้ (จุดเดียวในทั้งแอปที่ตัดสินใจซ่อน splash จริง)
-    // -> หยุด ring animation background ของ splash และคืนทรัพยากร GPU/battery
     if (window.__magicRingsDestroy) {
         window.__magicRingsDestroy();
         window.__magicRingsDestroy = null;
@@ -65,11 +97,10 @@ window.startApp = function (tabId) {
 const IDB_NAME = "BPNP_DOC_DB";
 const IDB_VERSION = 1;
 const IDB_STORE_NAME = "cache_store";
-const CACHE_KEY = "BPNP_DOC_CACHE"; // ใช้เป็น record id ภายใน object store
+const CACHE_KEY = "BPNP_DOC_CACHE"; 
 
 let idbPromiseSingleton = null;
 
-// เปิดการเชื่อมต่อ IndexedDB (ทำครั้งเดียวแล้วเก็บ Promise ไว้ใช้ซ้ำ)
 function openCacheDB() {
     if (idbPromiseSingleton) return idbPromiseSingleton;
 
@@ -94,7 +125,6 @@ function openCacheDB() {
     return idbPromiseSingleton;
 }
 
-// บันทึกข้อมูลลง object store (record ต้องมี field "id" ตรงกับ keyPath)
 async function idbPut(id, dataObject) {
     const db = await openCacheDB();
     return new Promise((resolve, reject) => {
@@ -106,7 +136,6 @@ async function idbPut(id, dataObject) {
     });
 }
 
-// อ่านข้อมูลจาก object store ด้วย id
 async function idbGet(id) {
     const db = await openCacheDB();
     return new Promise((resolve, reject) => {
@@ -121,7 +150,7 @@ async function idbGet(id) {
 // ---------------------------------------------------------------------------
 // Cache Management & Force Refresh
 // ---------------------------------------------------------------------------
-const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 นาที (หน่วยเป็นมิลลิวินาที)
+const CACHE_DURATION_MS = 15 * 60 * 1000; 
 
 function formatTimestampTo24H(ms) {
     const date = new Date(ms);
@@ -135,30 +164,26 @@ function updateCacheStatusUI(timestampText) {
     }
 }
 
-// เก็บผลลัพธ์ล่าสุดของการ save/load cache ไว้สำหรับแสดงในรายงานตรวจสอบ
 const cacheDiagnosticState = {
-    lastSaveOk: null,      // true / false / null (ยังไม่เคย save)
-    lastSaveError: null,   // ข้อความ error ถ้ามี
-    lastSaveSizeBytes: 0,  // ขนาดข้อมูลล่าสุดที่พยายามบันทึก (ไบต์)
-    lastLoadOk: null,      // true / false / null (ยังไม่เคย load)
+    lastSaveOk: null,      
+    lastSaveError: null,   
+    lastSaveSizeBytes: 0,  
+    lastLoadOk: null,      
     lastLoadError: null,
-    lastLoadReason: ""     // เหตุผลที่ loadFromCache คืนค่า null (ไม่มี record / หมดอายุ / version ไม่ตรง / error)
+    lastLoadReason: ""     
 };
 
 async function saveToCache() {
     const cacheData = {
         timestamp: Date.now(),
-        version: APP_CACHE_VERSION, // แนบเวอร์ชันปัจจุบันของแอปไปกับข้อมูลที่บันทึก
+        version: APP_CACHE_VERSION, 
         rfa: DOCUMENTS_BY_TAB.rfa,
         rfi: DOCUMENTS_BY_TAB.rfi,
         letter: DOCUMENTS_BY_TAB.letter
     };
     try {
-        // ใช้ JSON.stringify เฉพาะเพื่อประมาณขนาดข้อมูล (สำหรับรายงาน) ไม่ได้ใช้เก็บจริง
         cacheDiagnosticState.lastSaveSizeBytes = new Blob([JSON.stringify(cacheData)]).size;
-
         await idbPut(CACHE_KEY, cacheData);
-
         cacheDiagnosticState.lastSaveOk = true;
         cacheDiagnosticState.lastSaveError = null;
     } catch (e) {
@@ -166,7 +191,7 @@ async function saveToCache() {
         cacheDiagnosticState.lastSaveOk = false;
         cacheDiagnosticState.lastSaveError = (e && e.name ? e.name + ": " : "") + (e && e.message ? e.message : String(e));
     }
-    await runCacheDiagnostic(); // อัปเดตรายงานบนจอทุกครั้งหลังพยายามบันทึก
+    await runCacheDiagnostic(); 
 }
 
 async function loadFromCache() {
@@ -180,8 +205,6 @@ async function loadFromCache() {
             return null;
         }
 
-        // เช็ค version ก่อนเช็คอายุ: ถ้าไม่ตรงกับแอปปัจจุบัน (รวมถึง record เก่าที่ไม่มี field นี้)
-        // ให้ถือว่า cache ใช้ไม่ได้ทันที ไม่ว่าจะเพิ่งบันทึกไปกี่วินาทีก็ตาม (กันโครงสร้างข้อมูลเก่าค้าง)
         if (record.version !== APP_CACHE_VERSION) {
             cacheDiagnosticState.lastLoadOk = false;
             cacheDiagnosticState.lastLoadError = null;
@@ -193,7 +216,6 @@ async function loadFromCache() {
         const now = Date.now();
         const ageMs = now - record.timestamp;
 
-        // ถ้าอายุน้อยกว่า 15 นาที ถือว่า Cache ยังใช้งานได้
         if (ageMs < CACHE_DURATION_MS) {
             cacheDiagnosticState.lastLoadOk = true;
             cacheDiagnosticState.lastLoadError = null;
@@ -205,7 +227,7 @@ async function loadFromCache() {
         cacheDiagnosticState.lastLoadError = null;
         cacheDiagnosticState.lastLoadReason = `พบแคชแต่หมดอายุแล้ว (อายุ ${Math.round(ageMs / 60000)} นาที > 15 นาที) → ต้องดึงข้อมูลใหม่`;
         await runCacheDiagnostic();
-        return null; // หมดอายุ
+        return null; 
     } catch (e) {
         console.warn("ไม่สามารถอ่าน Cache จาก IndexedDB ได้:", e);
         cacheDiagnosticState.lastLoadOk = false;
@@ -220,29 +242,22 @@ function initCacheEvents() {
     const btnForce = document.getElementById("btnForceRefresh");
     if (btnForce) {
         btnForce.addEventListener("click", async () => {
-            // แสดง Splash Screen อีกครั้ง
             const splashScreen = document.getElementById("splashScreen");
             const splashStatus = document.getElementById("splashStatus");
             splashScreen.classList.remove("is-hidden", "is-fading-out");
             if (splashStatus) splashStatus.textContent = "กำลังอัปเดตข้อมูลจากฐานข้อมูล...";
 
-            // Splash โผล่ขึ้นมาอีกครั้ง -> รัน ring background ซ้ำ (ถูกทำลายไปแล้ว
-            // ตอนโหลดข้อมูลครั้งก่อนใน startApp()) ให้ผู้ใช้เห็น animation
-            // ระหว่างรอข้อมูลใหม่รอบนี้ด้วยเช่นกัน
             if (typeof window.startMagicRingsBg === "function") window.startMagicRingsBg();
 
-            // บังคับดึงข้อมูลใหม่ (ส่งค่า true)
             await initAppFlow(true);
         });
     }
 }
 
 // ---------------------------------------------------------------------------
-// Cache Diagnostic Report (รายงานตรวจสอบระบบแคช — แสดงผลบนหน้าจอโดยตรง
-// เพื่อใช้ตรวจสอบบนอุปกรณ์ที่เปิด DevTools ไม่ได้ เช่น แท็บเล็ต/มือถือ/WebView)
+// Cache Diagnostic Report 
 // ---------------------------------------------------------------------------
 
-// ทดสอบว่า IndexedDB ใช้งานได้จริงหรือไม่ ในบริบทปัจจุบัน
 async function testIndexedDBAvailability() {
     try {
         await openCacheDB();
@@ -262,8 +277,6 @@ function formatBytes(bytes) {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-// อ่านสถานะปัจจุบันของ record แคชตรงจาก IndexedDB (แบบ read-only ไม่แก้ค่าใดๆ)
-// เพื่อให้รายงานตรงกับสิ่งที่เก็บอยู่จริง ณ ขณะนั้น
 async function inspectCacheRecord() {
     try {
         const record = await idbGet(CACHE_KEY);
@@ -291,8 +304,6 @@ async function inspectCacheRecord() {
     }
 }
 
-// ขอข้อมูลโควตาพื้นที่จัดเก็บโดยรวมของ origin นี้ (ถ้าเบราว์เซอร์รองรับ)
-// ช่วยให้เห็นภาพว่าเหลือพื้นที่เท่าไหร่ ใช้ไปเท่าไหร่ทั้ง IndexedDB/localStorage รวมกัน
 async function getStorageEstimate() {
     try {
         if (navigator.storage && navigator.storage.estimate) {
@@ -320,7 +331,6 @@ function initDiagnosticToggle() {
     }
 }
 
-// ฟังก์ชันหลัก: รวบรวมผลตรวจสอบทั้งหมดแล้ว render เป็น HTML ลงในกล่องรายงานบนหน้าจอ
 async function runCacheDiagnostic() {
     const box = document.getElementById("cacheDiagnosticBox");
     const content = document.getElementById("cacheDiagnosticContent");
@@ -332,14 +342,12 @@ async function runCacheDiagnostic() {
 
     const lines = [];
 
-    // 1) IndexedDB ใช้งานได้ไหม
     lines.push({
         label: "IndexedDB ใช้งานได้",
         value: storageTest.available ? "✅ ใช้งานได้ปกติ" : `❌ ใช้งานไม่ได้ (${storageTest.error})`,
         warn: !storageTest.available
     });
 
-    // 2) มี record แคชอยู่ไหม
     lines.push({
         label: `พบ record แคช "${CACHE_KEY}" ใน IndexedDB`,
         value: cacheInfo.exists ? "✅ พบ" : "❌ ไม่พบ",
@@ -354,7 +362,6 @@ async function runCacheDiagnostic() {
         lines.push({ label: "หมายเหตุ", value: `⚠️ อ่านข้อมูลแคชผิดพลาด: ${cacheInfo.readError}`, warn: true });
     }
 
-    // 3) ผลลัพธ์การพยายาม "บันทึก" ครั้งล่าสุดในเซสชันนี้
     if (cacheDiagnosticState.lastSaveOk !== null) {
         lines.push({
             label: "ผลบันทึกแคชล่าสุด (ครั้งนี้)",
@@ -365,7 +372,6 @@ async function runCacheDiagnostic() {
         });
     }
 
-    // 4) ผลลัพธ์การพยายาม "อ่าน" ครั้งล่าสุดในเซสชันนี้
     if (cacheDiagnosticState.lastLoadReason) {
         lines.push({
             label: "ผลอ่านแคชล่าสุด (ครั้งนี้)",
@@ -375,7 +381,6 @@ async function runCacheDiagnostic() {
         });
     }
 
-    // 5) โควตาพื้นที่จัดเก็บโดยรวมของ origin (ถ้าเบราว์เซอร์รองรับ)
     if (storageEstimate.supported) {
         const usedText = formatBytes(storageEstimate.usage);
         const quotaText = formatBytes(storageEstimate.quota);
@@ -387,7 +392,6 @@ async function runCacheDiagnostic() {
         });
     }
 
-    // 6) User Agent / โหมดเบราว์เซอร์ (ช่วยดูว่าเป็น private mode / webview หรือไม่)
     lines.push({ label: "User Agent", value: navigator.userAgent, warn: false, small: true });
 
     content.innerHTML = lines.map(line => `
@@ -422,14 +426,12 @@ async function fetchGvizSheetWithProgress(sheetName, onProgress) {
     const canTrackBytes = !!(res.body && typeof res.body.getReader === 'function' && totalBytes > 0);
 
     if (!canTrackBytes) {
-        // --- Fallback: step-based progress ---
         if (onProgress) onProgress(0);
         const text = await res.text();
         if (onProgress) onProgress(100);
         return parseGvizResponseText(text);
     }
 
-    // --- แนวทางหลัก: byte-based progress ---
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let receivedBytes = 0;
@@ -443,12 +445,13 @@ async function fetchGvizSheetWithProgress(sheetName, onProgress) {
         const pct = Math.min(100, Math.round((receivedBytes / totalBytes) * 100));
         if (onProgress) onProgress(pct);
     }
-    resultText += decoder.decode(); // flush ตัวอักษรที่ค้างอยู่ใน decoder buffer
+    resultText += decoder.decode(); 
     if (onProgress) onProgress(100);
 
     return parseGvizResponseText(resultText);
 }
 
+// [ปรับใหม่] ไม่เก็บ Link ไว้ใน cache แต่เก็บแค่ว่ามีลิงก์หรือไม่ (hasLink)
 function parseRowToDoc(rowObj, id, category) {
     if (!rowObj.c || !rowObj.c[2] || !rowObj.c[2].v) return null;
 
@@ -462,18 +465,15 @@ function parseRowToDoc(rowObj, id, category) {
         fileName += ".pdf";
     }
 
-    // 1) Extract Cx Code จากวงเล็บแรก (สำหรับ Bar Chart)
     let cxCode = "Others";
     const cxMatch = title.match(/\(([^)]+)\)/);
     if (cxMatch) {
         cxCode = cxMatch[1].trim();
     }
 
-    // 2) Extract Parsed Code จากชื่อไฟล์
     let parsedCode = "Others";
     const dashParts = title.split('-');
 
-    // ค้นหาตำแหน่ง (Index) ของก้อนที่มีคำว่า SUB หรือ DWG
     const typeIndex = dashParts.findIndex(part => {
         const p = part.trim().toUpperCase();
         return p === "SUB" || p === "DWG";
@@ -487,7 +487,6 @@ function parseRowToDoc(rowObj, id, category) {
         parsedCode = dashParts[0].trim().toUpperCase();
     }
 
-    // 3) แปลงวันที่อัปเดต
     let updateDate = "-";
     if (rowObj.c[4]) {
         let rawDate = rowObj.c[4].f || toDisplayString(rowObj.c[4].v);
@@ -505,18 +504,19 @@ function parseRowToDoc(rowObj, id, category) {
         }
     }
 
-    // กำหนดหมวดงาน (Category) จาก 3 ตัวอักษรสุดท้ายของ parsedCode
     let docCategory = category;
     if (parsedCode && parsedCode.length >= 3) {
         const suffix = parsedCode.slice(-3).toUpperCase();
         if (suffix === "SUB" || suffix === "DWG") {
             docCategory = suffix;
         } else {
-            docCategory = "อื่นๆ"; // ถ้าไม่ใช่ SUB หรือ DWG ให้ปัดเข้าหมวดอื่นๆ
+            docCategory = "อื่นๆ"; 
         }
     } else {
         docCategory = "อื่นๆ";
     }
+
+    const linkValue = toDisplayString(rowObj.c[3]?.v);
 
     return {
         id,
@@ -526,17 +526,16 @@ function parseRowToDoc(rowObj, id, category) {
         cxCode,
         title,
         fileName,
-        link: toDisplayString(rowObj.c[3]?.v),
+        hasLink: !!linkValue && linkValue.startsWith("http"),
         updateDate,
         category: docCategory
     };
 }
 
-// ฟังก์ชันสำหรับ Parse ข้อมูลชีท Letter
+// [ปรับใหม่] ไม่เก็บ Link ไว้ใน cache แต่เก็บแค่ว่ามีลิงก์หรือไม่ (hasLink)
 function parseLetterRowToDoc(rowObj, id) {
     if (!rowObj.c) return null;
 
-    // วันที่ Update = คอลัมน์ F (Index 5)
     let updateDate = "-";
     if (rowObj.c[5]) {
         let rawDate = rowObj.c[5].f || toDisplayString(rowObj.c[5].v);
@@ -554,20 +553,22 @@ function parseLetterRowToDoc(rowObj, id) {
         }
     }
 
+    const linkValue = toDisplayString(rowObj.c[4]?.v);
+
     return {
         id,
-        parsedCode: toDisplayString(rowObj.c[0]?.v), // คอลัมน์ A (Index 0) = ที่มา
-        receiveNo: toDisplayString(rowObj.c[1]?.v),  // คอลัมน์ B (Index 1) = เลขรับ
-        letterNo: toDisplayString(rowObj.c[2]?.v),   // คอลัมน์ C (Index 2) = เลขหนังสือ
-        title: toDisplayString(rowObj.c[3]?.v),      // คอลัมน์ D (Index 3) = ชื่อเรื่อง
-        link: toDisplayString(rowObj.c[4]?.v),       // คอลัมน์ E (Index 4) = ลิงก์เอกสาร
-        updateDate: updateDate,                      // คอลัมน์ F (Index 5) = วันที่ Update
+        parsedCode: toDisplayString(rowObj.c[0]?.v), 
+        receiveNo: toDisplayString(rowObj.c[1]?.v),  
+        letterNo: toDisplayString(rowObj.c[2]?.v),   
+        title: toDisplayString(rowObj.c[3]?.v),      
+        hasLink: !!linkValue && linkValue.startsWith("http"),
+        updateDate: updateDate,                      
         category: "Letter"
     };
 }
 
 // ---------------------------------------------------------------------------
-// Splash Progress Bar UI (แสดงความคืบหน้าการโหลดข้อมูลบนหน้า splash)
+// Splash Progress Bar UI 
 // ---------------------------------------------------------------------------
 function showLoadProgressUI() {
     const wrap = document.getElementById("splashProgressWrap");
@@ -605,7 +606,7 @@ async function fetchLiveGoogleSheets() {
         const reportSheetProgress = (name, pct) => {
             sheetProgress[name] = pct;
             const avgPct = (sheetProgress.SUB + sheetProgress.DWG + sheetProgress.RFI + sheetProgress.Letter) / 4;
-            const overallPct = avgPct * 0.9; // ขั้นตอน fetch กินสัดส่วน 0-90% ของแถบรวม
+            const overallPct = avgPct * 0.9; 
             updateLoadProgressUI(overallPct, `กำลังดึงข้อมูลจาก Google Sheets...`);
         };
 
@@ -627,10 +628,8 @@ async function fetchLiveGoogleSheets() {
         dwgRows.forEach(row => { const doc = parseRowToDoc(row, idCounter++, "DWG"); if (doc) liveRFA.push(doc); });
         rfiRows.forEach(row => { const doc = parseRowToDoc(row, idCounter++, "RFI"); if (doc) liveRFI.push(doc); });
 
-        // Loop ของ Letter
         letterRows.forEach(row => {
             const doc = parseLetterRowToDoc(row, idCounter++);
-            // เช็คว่าไม่ใช่บรรทัดว่าง
             if (doc && (doc.receiveNo || doc.title)) liveLetter.push(doc);
         });
 
@@ -648,14 +647,12 @@ async function fetchLiveGoogleSheets() {
 }
 
 // ---------------------------------------------------------------------------
-// Data Validation (ตรวจสอบว่าข้อมูลสดที่ดึงมาผิดปกติหรือไม่ เทียบกับแคชเดิม)
+// Data Validation
 // ---------------------------------------------------------------------------
-const DATA_DROP_THRESHOLD_RATIO = 0.20;   // ถือว่าผิดปกติถ้าจำนวนแถวลดลงเกิน 20%
-const DATA_MIN_BASELINE_ROWS = 5;         // เริ่มเช็คสัดส่วน % เฉพาะ tab ที่แคชเดิมมี >= 5 แถว
+const DATA_DROP_THRESHOLD_RATIO = 0.20;   
+const DATA_MIN_BASELINE_ROWS = 5;         
 const TAB_LABELS_TH = { rfa: "RFA", rfi: "RFI", letter: "Letter In" };
 
-// อ่าน record แคชดิบจาก IndexedDB ตรงๆ แบบไม่สนใจว่าหมดอายุหรือยัง
-// ใช้เป็น "baseline" สำหรับเทียบกับข้อมูลสดที่เพิ่งดึงมา
 async function getRawCacheRecord() {
     try {
         return await idbGet(CACHE_KEY);
@@ -664,8 +661,6 @@ async function getRawCacheRecord() {
     }
 }
 
-// เทียบข้อมูลสด (liveData: {rfa,rfi,letter}) กับแคชเดิม (baselineRecord หรือ null ถ้าไม่มี)
-// คืนค่า { valid, reasons: string[] }
 function validateLiveDataAgainstBaseline(liveData, baselineRecord) {
     if (!baselineRecord) {
         return { valid: true, reasons: [] };
@@ -680,7 +675,7 @@ function validateLiveDataAgainstBaseline(liveData, baselineRecord) {
         const newCount = (liveData[tab] || []).length;
         const label = TAB_LABELS_TH[tab];
 
-        if (oldCount === 0) return; // เดิมก็ไม่มีข้อมูล ไม่มีอะไรให้เทียบ
+        if (oldCount === 0) return; 
 
         if (newCount === 0) {
             valid = false;
@@ -701,7 +696,7 @@ function validateLiveDataAgainstBaseline(liveData, baselineRecord) {
 }
 
 // ---------------------------------------------------------------------------
-// Data Warning Banner (แถบเหลืองเตือนข้อมูลผิดปกติ — ระหว่าง header กับตาราง)
+// Data Warning Banner
 // ---------------------------------------------------------------------------
 function showDataWarningBanner(reasons) {
     const banner = document.getElementById("dataWarningBanner");
@@ -725,7 +720,7 @@ function hideDataWarningBanner() {
 }
 
 // ---------------------------------------------------------------------------
-// No Data State (กรณีไม่มีข้อมูลใดๆ เลย ไม่มีแคชสำรองให้ใช้)
+// No Data State 
 // ---------------------------------------------------------------------------
 function showNoDataState() {
     const tableCard = document.querySelector(".table_card");
@@ -745,7 +740,7 @@ function hideNoDataState() {
 // Update Notify Button
 // ---------------------------------------------------------------------------
 let updateNotifyBtnEl = null;
-let pendingUpdateData = null; // { rfa, rfi, letter } ที่ fetch มาแล้ว รอผู้ใช้กดยืนยัน
+let pendingUpdateData = null; 
 
 function createUpdateNotifyButton() {
     if (updateNotifyBtnEl) return;
@@ -777,10 +772,8 @@ function hideUpdateNotifyButton() {
     if (updateNotifyBtnEl) updateNotifyBtnEl.classList.remove("show");
 }
 
-// เทียบจำนวนแถวของข้อมูลสดที่เพิ่ง fetch มา กับ cache ล่าสุดใน IndexedDB (baselineRecord)
-// คืนค่า true ถ้ามี "แท็บใดแท็บหนึ่ง" ที่จำนวนแถวมากกว่าเดิม
 function hasTabWithMoreRowsThanBaseline(liveData, baselineRecord) {
-    if (!baselineRecord) return false; // ไม่มี baseline ให้เทียบ -> ปล่อยให้ apply เงียบไปตามปกติ
+    if (!baselineRecord) return false; 
     const tabs = ["rfa", "rfi", "letter"];
     return tabs.some(tab => {
         const oldCount = (baselineRecord[tab] || []).length;
@@ -789,7 +782,6 @@ function hasTabWithMoreRowsThanBaseline(liveData, baselineRecord) {
     });
 }
 
-// ผู้ใช้กดปุ่ม badge -> apply ข้อมูลที่ fetch ไว้แล้ว บันทึกลง cache แล้ว reload หน้าทันที
 async function applyPendingUpdate() {
     if (!pendingUpdateData) return;
     hideUpdateNotifyButton();
@@ -799,15 +791,12 @@ async function applyPendingUpdate() {
     DOCUMENTS_BY_TAB.letter = pendingUpdateData.letter;
     pendingUpdateData = null;
 
-    await saveToCache(); // บันทึกชุดข้อมูลใหม่ + timestamp/version ปัจจุบันลง IndexedDB ก่อน reload
+    await saveToCache(); 
     window.location.reload();
 }
 
 // ---------------------------------------------------------------------------
-// Background Cache Check (แอบตรวจสอบข้อมูลใหม่ทุก 15 นาทีขณะผู้ใช้เปิดหน้าค้างไว้
-// และตรวจสอบทันทีเมื่อกลับมาโฟกัสหน้าต่างอีกครั้ง)
-// หยุดตรวจสอบเมื่อแท็บ/หน้าต่างไม่ได้ถูกโฟกัส (document.hidden) และเริ่มนับ 15 นาที
-// ใหม่ทุกครั้งที่กลับมาโฟกัส (ไม่นับเวลาที่พักหน้าต่างไว้)
+// Background Cache Check 
 // ---------------------------------------------------------------------------
 let backgroundCheckIntervalId = null;
 let appHasEverLoadedData = false;
@@ -839,11 +828,9 @@ async function performBackgroundCheck() {
 
         if (validation.valid) {
             if (hasTabWithMoreRowsThanBaseline(liveResult.data, baselineRecord)) {
-                // พบข้อมูลใหม่มากกว่าเดิม -> เก็บรอไว้ ไม่ apply ทันที ไม่รบกวนสิ่งที่ผู้ใช้กำลังดู/กรอง/ค้นหาอยู่
                 pendingUpdateData = liveResult.data;
                 showUpdateNotifyButton();
             } else {
-                // จำนวนแถวเท่าเดิมหรือน้อยกว่า (แต่ validation ผ่าน) -> apply เงียบๆ ตามเดิม ไม่ต้องแจ้งเตือน
                 DOCUMENTS_BY_TAB.rfa = liveResult.data.rfa;
                 DOCUMENTS_BY_TAB.rfi = liveResult.data.rfi;
                 DOCUMENTS_BY_TAB.letter = liveResult.data.letter;
@@ -854,67 +841,58 @@ async function performBackgroundCheck() {
                 hideDataWarningBanner();
 
                 if (!appHasEverLoadedData) {
-                    // กู้กลับจากสถานะ "ไม่พบข้อมูล" เป็นครั้งแรก -> ต้องเริ่ม UI เต็มรูปแบบ
                     appHasEverLoadedData = true;
                     hideNoDataState();
                     startApp(currentTab || "rfa");
                 } else {
-                    // เคยแสดงข้อมูลอยู่แล้ว -> รีเฟรชเฉพาะข้อมูล คงตัวกรอง/หน้าเพจ/แท็บที่เปิดอยู่ไว้
                     if (typeof updateTabBadges === "function") updateTabBadges();
                     if (typeof filterActiveTabDocuments === "function") filterActiveTabDocuments();
                 }
             }
         } else {
-            // ข้อมูลสดผิดปกติ -> ไม่แตะ DOCUMENTS_BY_TAB / ไม่บันทึกแคชทับ คงข้อมูลเดิมที่แสดงอยู่ไว้
             showDataWarningBanner(validation.reasons);
         }
     } else if (appHasEverLoadedData) {
-        // เชื่อมต่อไม่สำเร็จตอนตรวจสอบเงียบๆ (มีข้อมูลแสดงอยู่แล้วก่อนหน้า) -> แค่เตือน ไม่รบกวนข้อมูลที่แสดงอยู่
         showDataWarningBanner(["ไม่สามารถเชื่อมต่อ Google Sheets ได้ในการตรวจสอบล่าสุด ระบบยังคงแสดงข้อมูลชุดก่อนหน้าไว้"]);
     }
-    // หมายเหตุ: ถ้ายังไม่เคยมีข้อมูลเลย (appHasEverLoadedData = false) และรอบนี้ก็ยังดึงไม่สำเร็จ
-    // จะปล่อยผ่านเงียบๆ โดยไม่รบกวนผู้ใช้ซ้ำ (สถานะ "ไม่พบข้อมูล" ที่ค้างอยู่แล้วสื่อสารเพียงพอ)
-
+    
     await runCacheDiagnostic();
 }
 
-// พักการตรวจสอบพื้นหลังเมื่อผู้ใช้สลับออกจากแท็บ/พักหน้าต่าง แล้วเริ่มนับ 15 นาทีใหม่
-// ตั้งแต่ตอนที่กลับมาโฟกัสอีกครั้ง (ไม่นับเวลาที่พักหน้าต่างไว้รวมเข้าไปด้วย)
-// และตรวจสอบข้อมูลใหม่ทันทีเมื่อกลับมาโฟกัส ไม่ต้องรอครบรอบ 15 นาที
+// [แก้ไขใหม่] เพิ่มการตรวจสอบ Session Guard ตอนกลับมาโฟกัสหน้าต่าง
 document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
         stopBackgroundCacheCheck();
     } else if (appHasEverLoadedData || document.getElementById("noDataBox")) {
-        // เริ่มนับใหม่ทุกครั้งที่กลับมาโฟกัส ไม่ว่าจะเคยมีข้อมูลหรือกำลังอยู่ในสถานะ "ไม่พบข้อมูล"
-        // (เผื่อกรณี Google Sheets กลับมาใช้งานได้แล้วระหว่างที่ผู้ใช้พักหน้าต่างไว้)
         startBackgroundCacheCheck();
-        performBackgroundCheck(); // เช็คทันทีตอนกลับมาโฟกัส ไม่ต้องรอครบรอบ 15 นาที
+        performBackgroundCheck(); 
+        
+        // ตรวจสอบ Session Guard ทุกครั้งที่กลับมา Focus
+        if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
+            window.verifyStatus(); // ถ้าโดนแบน จะเคลียร์และเด้งออกเองในฟังก์ชัน
+        }
     }
 });
 
-// ฟังก์ชันหลักที่เริ่มทำงาน (เพิ่ม Parameter forceRefresh เพื่อรองรับระบบ Cache)
 async function initAppFlow(forceRefresh = false) {
     if (!chartTheme) chartTheme = buildChartTheme();
 
     const splashStatus = document.getElementById("splashStatus");
 
-    // 1. ตรวจสอบ Cache หากไม่ได้ถูกสั่งบังคับรีเฟรช
     if (!forceRefresh) {
         const cachedData = await loadFromCache();
         if (cachedData) {
-            // โหลดข้อมูลจากแคช
             DOCUMENTS_BY_TAB.rfa = cachedData.rfa || [];
             DOCUMENTS_BY_TAB.rfi = cachedData.rfi || [];
             DOCUMENTS_BY_TAB.letter = cachedData.letter || [];
 
-            hideLoadProgressUI(); // เส้นทาง Cache ไม่มีการดึงข้อมูล จึงไม่ต้องโชว์แถบความคืบหน้า
+            hideLoadProgressUI(); 
             hideDataWarningBanner();
             hideNoDataState();
             appHasEverLoadedData = true;
             updateCacheStatusUI(formatTimestampTo24H(cachedData.timestamp));
             if (splashStatus) splashStatus.textContent = "กำลังเตรียมแสดงข้อมูล (Cache)...";
 
-            // เริ่มการทำงาน (ถ้าเป็นการเข้ามาครั้งแรกใช้ rfa, ถ้ารีเฟรชระหว่างใช้งานให้ใช้แท็บปัจจุบัน)
             startApp(currentTab || "rfa");
             startBackgroundCacheCheck();
             await runCacheDiagnostic();
@@ -922,17 +900,15 @@ async function initAppFlow(forceRefresh = false) {
         }
     }
 
-    // 2. ถ้า Cache หมดอายุ, version ไม่ตรง, ไม่มี Cache หรือกดปุ่ม Force Refresh -> ดึงจากชีท
     if (splashStatus) splashStatus.textContent = "กำลังดึงข้อมูลใหม่จาก Google Sheets...";
 
     const liveResult = await fetchLiveGoogleSheets();
-    const baselineRecord = await getRawCacheRecord(); // baseline แบบไม่สนอายุ/version ใช้เทียบเท่านั้น
+    const baselineRecord = await getRawCacheRecord(); 
 
     if (liveResult.success && liveResult.totalRows > 0) {
         const validation = validateLiveDataAgainstBaseline(liveResult.data, baselineRecord);
 
         if (validation.valid) {
-            // ข้อมูลสดผ่านเกณฑ์ -> ใช้งานได้ตามปกติ
             DOCUMENTS_BY_TAB.rfa = liveResult.data.rfa;
             DOCUMENTS_BY_TAB.rfi = liveResult.data.rfi;
             DOCUMENTS_BY_TAB.letter = liveResult.data.letter;
@@ -945,7 +921,6 @@ async function initAppFlow(forceRefresh = false) {
             appHasEverLoadedData = true;
             startApp(currentTab || "rfa");
         } else if (baselineRecord) {
-            // ข้อมูลสดผิดปกติ แต่ยังมีแคชเดิมให้ใช้แทนได้ -> fallback ไปแคช พร้อมแจ้งเตือน
             DOCUMENTS_BY_TAB.rfa = baselineRecord.rfa || [];
             DOCUMENTS_BY_TAB.rfi = baselineRecord.rfi || [];
             DOCUMENTS_BY_TAB.letter = baselineRecord.letter || [];
@@ -956,7 +931,6 @@ async function initAppFlow(forceRefresh = false) {
             appHasEverLoadedData = true;
             startApp(currentTab || "rfa");
         } else {
-            // ข้อมูลสดผิดปกติ และไม่มีแคชสำรองเลย -> ไม่แสดงตาราง
             hideLoadProgressUI();
             showNoDataState();
             appHasEverLoadedData = false;
@@ -965,7 +939,6 @@ async function initAppFlow(forceRefresh = false) {
             startApp(currentTab || "rfa");
         }
     } else if (baselineRecord) {
-        // ดึงสดล้มเหลวโดยสิ้นเชิง แต่มีแคชเดิมให้ใช้แทนได้ -> fallback ไปแคช พร้อมแจ้งเตือน
         DOCUMENTS_BY_TAB.rfa = baselineRecord.rfa || [];
         DOCUMENTS_BY_TAB.rfi = baselineRecord.rfi || [];
         DOCUMENTS_BY_TAB.letter = baselineRecord.letter || [];
@@ -976,7 +949,6 @@ async function initAppFlow(forceRefresh = false) {
         appHasEverLoadedData = true;
         startApp(currentTab || "rfa");
     } else {
-        // ดึงสดล้มเหลว และไม่มีแคชสำรองเลย -> ไม่แสดงตาราง
         hideLoadProgressUI();
         showNoDataState();
         appHasEverLoadedData = false;
@@ -985,14 +957,13 @@ async function initAppFlow(forceRefresh = false) {
         startApp(currentTab || "rfa");
     }
 
-    startBackgroundCacheCheck(); // เริ่ม/รีเซ็ตรอบตรวจสอบพื้นหลังทุก 15 นาที (จะพักเองเมื่อแท็บไม่ได้โฟกัส)
-    await runCacheDiagnostic(); // อัปเดตรายงานให้ตรงกับสถานะล่าสุดเสมอ ไม่ว่าจะเข้าทางไหน
+    startBackgroundCacheCheck(); 
+    await runCacheDiagnostic(); 
 }
 
 // ---------------------------------------------------------------------------
 // Date Helpers
 // ---------------------------------------------------------------------------
-// แปลงวันที่รูปแบบ DD/MM/YY (ตามที่ table ใช้) เป็น Date object เพื่อเปรียบเทียบ
 function parseUpdateDateToDate(dateStr) {
     if (!dateStr || dateStr === "-") return null;
     const dateParts = dateStr.split('/');
@@ -1008,7 +979,6 @@ function parseUpdateDateToDate(dateStr) {
     return isNaN(parsedDate.getTime()) ? null : parsedDate;
 }
 
-// หาวันที่ update ล่าสุด
 function getLatestUpdateDate(docs) {
     if (!docs || docs.length === 0) return "-";
 
@@ -1026,11 +996,9 @@ function getLatestUpdateDate(docs) {
     return latestDateStr;
 }
 
-// อัปเดตข้อความวันที่ล่าสุดใต้ pie chart ให้ตรงกับข้อมูลที่กำลังแสดงอยู่ในตาราง (activeDocuments)
 function updateLatestDateDisplay() {
     const globalLatestEl = document.getElementById("globalLatestUpdate");
     if (globalLatestEl) {
         globalLatestEl.textContent = getLatestUpdateDate(activeDocuments);
     }
 }
-
