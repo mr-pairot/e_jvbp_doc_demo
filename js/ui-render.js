@@ -1185,30 +1185,29 @@ window.openDocumentLink = async function(btnEl) {
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
             <title>กำลังเปิดเอกสาร...</title>
             <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+
             <style>
-                :root { --ink: #4b5563; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
-                .fx-chrome {
+                :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                .fx-spotlight {
                     font: 600 20px/1.3 ${baseFont}, monospace;
-                    letter-spacing: .06em;
-                    color: transparent;
-                    background: linear-gradient(90deg,
-                        color-mix(in srgb, var(--ink) 16%, transparent) 0 40%,
-                        color-mix(in srgb, var(--ink) 55%, transparent) 46%,
-                        #fff 50%,
-                        color-mix(in srgb, var(--ink) 55%, transparent) 54%,
-                        color-mix(in srgb, var(--ink) 16%, transparent) 60% 100%
+                    letter-spacing: .04em;
+                    background: radial-gradient(3.5ch 100% at 50% 50%,
+                        var(--ink) 20%,
+                        color-mix(in srgb, var(--ink) 14%, transparent) 75%
                     ) 0 0 / 300% 100%;
                     -webkit-background-clip: text; background-clip: text;
-                    animation: fx-shimmer 2.8s linear infinite;
+                    color: transparent;
+                    animation: fx-spotlight 3.4s ease-in-out infinite alternate;
                 }
-                @keyframes fx-shimmer {
-                    to { background-position: 300% 0; }
+                @keyframes fx-spotlight {
+                    0%   { background-position: 100% 0; }
+                    100% { background-position: 0% 0; }
                 }
             </style>
         </head>
-        <body style="background:#f3f4f6; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
+        <body style="background:#ffffff; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
             <div style="text-align:center; color:#4b5563;">
-                <h2 class="fx-chrome" style="margin:0 0 10px 0;">กำลังเปิดเอกสาร...</h2>
+                <h2 class="fx-spotlight" style="margin:0 0 10px 0;">กำลังเปิดเอกสาร...</h2>
                 <p style="margin:0; font-size:14px;">กรุณารอสักครู่</p>
             </div>
         </body>
