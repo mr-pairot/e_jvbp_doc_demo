@@ -791,7 +791,7 @@ button.doc_hyperlink_title.btn-as-link {
     padding: 0;
     margin: 0;
     font-family: inherit;
-    font-size: inherit;
+    font-size: var(--font-size-2xs);
     font-weight: inherit;
     text-align: left;
     color: var(--color-brand-primary, #0d6efd);
