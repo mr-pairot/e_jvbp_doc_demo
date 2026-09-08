@@ -228,6 +228,11 @@ async function verifyWithBackend(profile) {
                 timestamp: new Date().getTime()
             }));
 
+            // [แก้ไขใหม่: Proxy Flow] เซ็ตเวลาตรวจสอบล่าสุด สำหรับ Session Guard
+            if (typeof window.setLastVerifiedAt === 'function') {
+                window.setLastVerifiedAt(Date.now());
+            }
+
             ui.splashStatus.innerText = 'กำลังดาวน์โหลดข้อมูลระบบ...';
             await loadAppAssets();
             showApp();
@@ -242,34 +247,41 @@ async function verifyWithBackend(profile) {
     }
 }
 
-// ตรวจสอบสิทธิ์แบบ Background
+// [แก้ไขใหม่: Proxy Flow] ตรวจสอบสิทธิ์แบบ Background (บังคับ Logout ออกทันทีถ้าสถานะถูกระงับ)
 async function backgroundVerify() {
     try {
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
             body: JSON.stringify({
-                actionType: 'login_auth',
-                userId: profile.userId,
-                displayName: profile.displayName,
-                pictureUrl: profile.pictureUrl
+                actionType: 'check_status', // ใช้ check_status แทน login_auth เพื่อไม่ไปอัปเดต LastLogin ซ้ำซ้อน
+                userId: profile.userId
             })
         });
         const result = await response.json();
 
         if (!result.success) {
-            localStorage.removeItem('app_user_cache');
-            if (liff.isLoggedIn()) liff.logout();
-
-            if (result.needFollow) {
-                alert('กรุณาเพิ่มเพื่อน LINE Official Account อีกครั้งเพื่อใช้งานต่อ');
+            // โยนเข้าฟังก์ชันจัดการการแบนส่วนกลาง (มีนิยามใน data-service.js)
+            if (typeof window.handleBannedUser === 'function') {
+                window.handleBannedUser(result.needFollow ? 
+                    'กรุณาเพิ่มเพื่อน LINE Official Account อีกครั้งเพื่อใช้งานต่อ' : 
+                    'สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว');
             } else {
+                // Fallback (เผื่อโหลดไฟล์ data-service.js ไม่ทัน)
+                localStorage.removeItem('app_user_cache');
+                if (liff.isLoggedIn()) liff.logout();
                 alert('สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว');
+                window.location.reload();
             }
-            window.location.reload();
+        } else {
+            // ถ้าผ่าน ให้อัปเดตเวลา Session Guard เป็นปัจจุบัน
+            if (typeof window.setLastVerifiedAt === 'function') {
+                window.setLastVerifiedAt(Date.now());
+            }
         }
     } catch (error) {
-        console.warn('Background verify failed, using offline cache', error);
+        console.warn('Background verify network error (ignored)', error);
+        // ปล่อยผ่านเฉพาะเน็ตหลุด ไม่บังคับให้เด้งออกเพื่อทำงานต่อได้ (Offline Capability)
     }
 }
 
@@ -448,4 +460,3 @@ function showFollowPrompt(reasonText) {
 
 // เริ่มการทำงานเมื่อโหลดหน้าเสร็จ
 window.addEventListener('DOMContentLoaded', initApp);
-
