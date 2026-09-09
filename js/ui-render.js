@@ -1259,12 +1259,18 @@ window.openDocumentLink = async function(btnEl) {
 
         // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
+            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
+            let finalLink = result.link;
+            if (finalLink.includes('drive.google.com/file/d/')) {
+                finalLink = finalLink.replace('/view', '/preview');
+            }
+
             if (newTab) {
                 // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
                 // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
-                newTab.location.replace(result.link);
+                newTab.location.replace(finalLink);
             } else {
-                window.location.href = result.link; 
+                window.location.href = finalLink; 
             }
         } else {
             // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
@@ -1276,6 +1282,7 @@ window.openDocumentLink = async function(btnEl) {
                 alert(`ไม่สามารถเปิดเอกสารได้: ${result.reason || 'ไม่พบไฟล์ที่ร้องขอ'}`);
             }
         }
+
     } catch (err) {
         console.error("Link fetch error:", err);
         if (newTab) newTab.close();
