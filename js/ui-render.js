@@ -1187,9 +1187,19 @@ window.openDocumentLink = async function(btnEl) {
             <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
             <style>
+                html, body {
+                    -webkit-text-size-adjust: 100%; 
+                    text-size-adjust: 100%;
+                    font-size: 16px; 
+                }
+                
                 :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                
                 .fx-spotlight {
-                    font: 600 20px/1.3 ${baseFont}, monospace;
+                    font-family: ${baseFont}, monospace;
+                    font-weight: 600;
+                    font-size: clamp(24px, 5vw, 32px); 
+                    line-height: 1.3;
                     letter-spacing: .04em;
                     background: radial-gradient(3.5ch 100% at 50% 50%,
                         var(--ink) 20%,
