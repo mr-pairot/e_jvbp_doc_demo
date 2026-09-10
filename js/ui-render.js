@@ -1260,7 +1260,7 @@ window.openDocumentLink = async function(btnEl) {
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
-    try {
+        try {
         // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
@@ -1288,44 +1288,28 @@ window.openDocumentLink = async function(btnEl) {
 
         // 3. ได้รับลิงก์ -> เปิดเอกสารจริง
         if (result.success && result.link) {
-            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
             if (isInLineApp) {
-                // ใน LINE App: ใช้ liff.openWindow() เปิด Browser ของระบบแทน window.open()
-                // แสดงข้อความขนาดไฟล์สั้นๆ บน Overlay เดิม (ไม่มีแท็บว่างให้เขียนข้อความใส่แบบฝั่งเบราว์เซอร์ปกติ)
+                // ใน LINE App: สั่งเปิดทันที ห้ามมี delay คั่นเด็ดขาด
                 overlay.classList.remove("is-active");
-                const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
-                if (hasSize) {
-                    const loadingTextEl = overlay.querySelector(".doc_loading_text");
-                    if (loadingTextEl) loadingTextEl.textContent = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
-                    overlay.classList.add("is-active");
-                    await new Promise(resolve => setTimeout(resolve, 600));
-                    overlay.classList.remove("is-active");
-                }
                 liff.openWindow({ url: finalLink, external: true });
             } else {
                 overlay.classList.remove("is-active");
-                // อัปเดตข้อความในแท็บที่เปิดรอไว้ให้โชว์ขนาดไฟล์ (ถ้า Backend ส่ง sizeMB มาด้วย)
-                // ต้องเช็ค !newTab.closed ด้วย เผื่อผู้ใช้ปิดแท็บที่เปิดรอไว้เองระหว่างที่ยังโหลดอยู่
+                
                 if (newTab && !newTab.closed) {
                     const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
                     if (hasSize) {
                         const sizeLabel = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
                         const spotlightEl = newTab.document.querySelector('.fx-spotlight');
+                        // อัปเดตข้อความให้เบราว์เซอร์เรนเดอร์ แต่ไม่ต้อง await delay
                         if (spotlightEl) spotlightEl.textContent = sizeLabel;
-
-                        // หน่วงเวลาสั้นๆ ให้ผู้ใช้ทันเห็นขนาดไฟล์ ก่อนเปลี่ยนหน้าไปเอกสารจริง
-                        await new Promise(resolve => setTimeout(resolve, 600));
                     }
-                }
-
-                if (newTab && !newTab.closed) {
-                    // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
-                    // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
+                    
+                    // สั่ง Redirect ทันที
                     newTab.location.replace(finalLink);
                 } else if (!newTab) {
                     window.location.href = finalLink; 
@@ -1333,7 +1317,6 @@ window.openDocumentLink = async function(btnEl) {
             }
         } else {
             overlay.classList.remove("is-active");
-            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ (มีเฉพาะกรณีนอก LINE App)
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
@@ -1352,3 +1335,6 @@ window.openDocumentLink = async function(btnEl) {
         btnEl.disabled = false;
     }
 };
+
+
+    
