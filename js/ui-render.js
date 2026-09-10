@@ -541,13 +541,17 @@ function renderTableBody() {
             const rowEl = document.createElement("tr");
             const safeTitle = escapeHTML(doc.title);
             
-            // เช็คว่ามี link ไหมจากตัวแปร hasLink ที่มาจาก config
             const hasLink = doc.hasLink;
 
-            // เปลี่ยน <a> เป็น <button> เพื่อดัก onclick ยิงเรียก GAS
-            // ป้องกันปัญหา single/double quotes ในชื่อเอกสารด้วยการใส่เป็น data-* attribute แทน
+            // ดึงลิงก์เอกสารจาก doc.link หรือ doc.url (ปรับแปลง Drive view เป็น preview อัตโนมัติถ้ามี)
+            let docUrl = doc.link || doc.url || "#";
+            if (docUrl.includes('drive.google.com/file/d/')) {
+                docUrl = docUrl.replace('/view', '/preview');
+            }
+
+            // เปลี่ยนจาก button เป็นแท็ก <a> เพื่อเปิดหน้าต่างใหม่ทันทีโดยไม่ติด Popup Blocker บนมือถือ
             const linkHTML = hasLink
-                ? `<button type="button" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="openDocumentLink(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</button>`
+                ? `<a href="${docUrl}" target="_blank" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`
                 : `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
 
             if (currentTab === "letter") {
@@ -1051,12 +1055,12 @@ function updateChartsDynamic() {
 //
 // การไหลของข้อมูล:
 //   1) โหลดหน้า / ผู้ใช้แก้ hash เอง / กด back-forward
-//       -> parseHashState() (config.js) อ่านค่าเป็น pendingFilterStateFromURL
-//       -> switchTab() เรียก applyFilterStateToTab() เพื่อตั้งค่า UI ให้ตรง แล้ว filter
+//        -> parseHashState() (config.js) อ่านค่าเป็น pendingFilterStateFromURL
+//        -> switchTab() เรียก applyFilterStateToTab() เพื่อตั้งค่า UI ให้ตรง แล้ว filter
 //   2) ผู้ใช้ติ๊ก/คลิก/พิมพ์เปลี่ยนตัวกรองใดๆ ในหน้าเว็บ
-//       -> ทุกจุด (checkbox, "เท่านั้น", chip, bar/pie chart, ช่องค้นหา) เรียก
-//           filterActiveTabDocuments() อยู่แล้วในโค้ดเดิม -> ท้ายฟังก์ชันเรียก syncURLHash()
-//           เพื่อเขียนสถานะปัจจุบันกลับลง URL ให้คัดลอกไปแชร์ได้ทันที
+//        -> ทุกจุด (checkbox, "เท่านั้น", chip, bar/pie chart, ช่องค้นหา) เรียก
+//             filterActiveTabDocuments() อยู่แล้วในโค้ดเดิม -> ท้ายฟังก์ชันเรียก syncURLHash()
+//             เพื่อเขียนสถานะปัจจุบันกลับลง URL ให้คัดลอกไปแชร์ได้ทันที
 // ---------------------------------------------------------------------------
 
 // นำสถานะตัวกรองจาก URL (parseHashState) มาตั้งค่า checkbox/chip/ช่องค้นหา/bar chart
@@ -1143,178 +1147,44 @@ window.addEventListener('hashchange', () => {
 
 
 // ---------------------------------------------------------------------------
-// Document Link Opener (Proxy Flow B - เปิดหน้าต่างทันทีก่อนยิง Fetch แก้อาการโดนบล็อก Popup)
+// Document Link Opener & Background Auth Check / Logging
 // ---------------------------------------------------------------------------
 
-function getOrCreateDocLoadingOverlay() {
-    let overlay = document.getElementById("docLoadingOverlay");
-    if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "docLoadingOverlay";
-        overlay.className = "doc_loading_overlay";
-        overlay.innerHTML = `
-            <div class="doc_loading_box">
-                <div class="doc_loading_spinner"></div>
-                <p class="doc_loading_text">กำลังตรวจสอบสิทธิ์...</p>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-    }
-    return overlay;
-}
+window.checkAuthInBackground = async function(linkEl) {
+    const docTitle = linkEl.dataset.title;
+    const docCategory = linkEl.dataset.category;
 
-window.openDocumentLink = async function(btnEl) {
-    const docTitle = btnEl.dataset.title;
-    const docCategory = btnEl.dataset.category;
-
-console.log("🔍 [Debug] กำลังพยายามเปิดไฟล์:");
-console.log("ชื่อไฟล์ (docTitle):", docTitle);
-console.log("หมวดหมู่ (docCategory):", docCategory);
-   
-    if (!docTitle || !docCategory) return;
-
-    btnEl.disabled = true;
-
-    // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup
-    const newTab = window.open('', '_blank');
-    const baseFont = getComputedStyle(document.documentElement)
-                        .getPropertyValue('--font-family-base').trim() || 'sans-serif';
-
-    if (newTab) {
-    newTab.document.write(`
-        <!DOCTYPE html>
-        <html lang="th">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>กำลังเปิดเอกสาร...</title>
-            <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-            <style>
-                html, body {
-                    width: 100%;
-                    height: 100%;
-                    margin: 0;
-                    padding: 0;
-                    background: #e2e1e2;
-                    -webkit-text-size-adjust: 100%;
-                }
-                
-                :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
-                
-                .fx-spotlight {
-                    font-family: ${baseFont}, monospace;
-                    font-weight: 600;
-                    font-size: clamp(20px, 6vw, 32px); 
-                    line-height: 1.3;
-                    letter-spacing: .04em;
-                    background: radial-gradient(3.5ch 100% at 50% 50%,
-                        var(--ink) 20%,
-                        color-mix(in srgb, var(--ink) 14%, transparent) 75%
-                    ) 0 0 / 300% 100%;
-                    -webkit-background-clip: text; background-clip: text;
-                    color: transparent;
-                    animation: fx-spotlight 3.4s ease-in-out infinite alternate;
-                }
-                @keyframes fx-spotlight {
-                    0%   { background-position: 100% 0; }
-                    100% { background-position: 0% 0; }
-                }
-                
-                /* ตรึงตำแหน่งไว้กับขอบจอจริงๆ เพื่อแก้ปัญหา 100vh และ Address bar มือถือ */
-                .loading-container {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    text-align: center;
-                    padding: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="loading-container">
-               <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-               <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
-            </div>
-        </body>
-        </html>
-    `);
-    newTab.document.close();
-    }
-
-    // แสดง Overlay บนหน้าจอแอปหลัก
-    const overlay = getOrCreateDocLoadingOverlay();
-    overlay.classList.add("is-active");
+    console.log("🔍 [Debug] ตรวจสอบสิทธิ์และบันทึกประวัติการคลิกเบื้องหลัง:");
+    console.log("ชื่อไฟล์ (docTitle):", docTitle);
+    console.log("หมวดหมู่ (docCategory):", docCategory);
 
     try {
         // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
-console.log("⏳ [Debug] กำลังตรวจสอบ Session สิทธิ์การใช้งาน...");
+            console.log("⏳ [Debug] กำลังตรวจสอบ Session สิทธิ์การใช้งาน...");
             const isOk = await window.verifyStatus();
             if (!isOk) {
-                if (newTab) newTab.close();
-                overlay.classList.remove("is-active");
-                btnEl.disabled = false;
+                // หากถูกแบน ฟังก์ชัน verifyStatus จะจัดการเตะออกหรือแสดงหน้าถูกแบนตามเดิม
                 return;
             }
         }
 
-        // 2. ขอ Document Link จริงจาก GAS
-console.log("📡 [Debug] กำลังส่ง Request ไปที่ GAS เพื่อขอลิงก์...");
-        const profile = await liff.getProfile();
-        const response = await fetch(AUTH_CONFIG.gasUrl, {
-            method: 'POST',
-            body: JSON.stringify({
-                actionType: 'get_document_link',
-                userId: profile.userId,
-                docTitle: docTitle,
-                docCategory: docCategory
-            })
-        });
-        
-        const result = await response.json();
-console.log("📥 [Debug] ผลลัพธ์ที่ตอบกลับจาก GAS:", result);
-        overlay.classList.remove("is-active");
-
-        // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
-        if (result.success && result.link) {
-            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
-            let finalLink = result.link;
-console.log("🔗 [Debug] ลิงก์ที่ได้รับมา:", finalLink);
-            if (finalLink.includes('drive.google.com/file/d/')) {
-                finalLink = finalLink.replace('/view', '/preview');
-console.log("💻 [Debug] ใช้งานบน PC -> แปลงลิงก์เป็นโหมด /preview:", finalLink);
-            }
-
-            if (newTab) {
-                // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
-                // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
-                newTab.location.replace(finalLink);
-            } else {
-                window.location.href = finalLink; 
-            }
-        } else {
-            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
-            if (newTab) newTab.close();
-            
-            if (result.reason === 'banned') {
-                window.handleBannedUser('สิทธิ์การเข้าใช้งานของคุณถูกระงับ (ตรวจสอบพบขณะเปิดเอกสาร)');
-            } else {
-                alert(`ไม่สามารถเปิดเอกสารได้: ${result.reason || 'ไม่พบไฟล์ที่ร้องขอ'}`);
+        // 2. ส่ง Request บันทึก Log การคลิกไปยัง GAS แบบเงียบๆ (ไม่บล็อกการเปิดไฟล์)
+        if (typeof liff !== "undefined" && typeof AUTH_CONFIG !== "undefined" && AUTH_CONFIG.gasUrl) {
+            const profile = await liff.getProfile().catch(() => null);
+            if (profile && profile.userId) {
+                fetch(AUTH_CONFIG.gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        actionType: 'log_document_click',
+                        userId: profile.userId,
+                        docTitle: docTitle,
+                        docCategory: docCategory
+                    })
+                }).catch(err => console.error("Log fetch error:", err));
             }
         }
-
     } catch (err) {
-        console.error("Link fetch error:", err);
-        if (newTab) newTab.close();
-        overlay.classList.remove("is-active");
-        alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-    } finally {
-        btnEl.disabled = false;
+        console.error("Background auth check error:", err);
     }
 };
