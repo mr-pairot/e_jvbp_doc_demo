@@ -8,7 +8,7 @@
    parseHashState, pendingFilterStateFromURL)
    ========================================================================= */
 
-// App Version (ปรับเวอร์ชันใหม่เพื่อบังคับให้ระบบล้าง Cache เดิมที่มี link จริงฝังอยู่ทิ้งไป)
+// App Version 
 const APP_CACHE_VERSION = "260910.1440";
 
 // ---------------------------------------------------------------------------
@@ -31,8 +31,6 @@ function parseHashState() {
 
     const params = new URLSearchParams(queryPart);
 
-    // null = ไม่ได้ระบุ key นี้ใน URL เลย -> ไม่ยุ่งกับตัวกรองนี้ ใช้ค่า default (เลือกทั้งหมด)
-    // []   = ระบุมาแต่เป็นค่าว่าง -> ผู้แชร์ตั้งใจไม่เลือกอะไรเลยในตัวกรองนี้
     const parseListParam = (key) => {
         if (!params.has(key)) return null;
         const raw = params.get(key);
