@@ -547,6 +547,7 @@ function renderTableBody() {
             let docUrl = doc.link || doc.url || "#";
             if (docUrl.includes('drive.google.com/file/d/')) {
                 docUrl = docUrl.replace('/view', '/preview');
+               console.log(">>> Link ไฟล์ที่เลือกเปิด:", docUrl);
             }
 
             // เปลี่ยนจาก button เป็นแท็ก <a> เพื่อเปิดหน้าต่างใหม่ทันทีโดยไม่ติด Popup Blocker บนมือถือ
