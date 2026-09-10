@@ -1171,69 +1171,78 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    const isInLineApp = (typeof liff !== "undefined" && typeof liff.isInClient === "function" && liff.isInClient());
+    // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup
+    const newTab = window.open('', '_blank');
+    const baseFont = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--font-family-base').trim() || 'sans-serif';
 
-    let newTab = null;
-    let baseFont = "sans-serif";
+    if (newTab) {
+    newTab.document.write(`
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+            <title>กำลังเปิดเอกสาร...</title>
+            <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    if (!isInLineApp) {
-        newTab = window.open('', '_blank');
-        baseFont = getComputedStyle(document.documentElement)
-                            .getPropertyValue('--font-family-base').trim() || 'sans-serif';
-
-        if (newTab) {
-            newTab.document.write(`
-                <!DOCTYPE html>
-                <html lang="th">
-                <head>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>กำลังเปิดเอกสาร...</title>
-                    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-                    <style>
-                        html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #e2e1e2; -webkit-text-size-adjust: 100%; }
-                        :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
-                        .fx-spotlight {
-                            font-family: ${baseFont}, monospace;
-                            font-weight: 600;
-                            font-size: clamp(20px, 6vw, 32px); 
-                            line-height: 1.3;
-                            letter-spacing: .04em;
-                            background: radial-gradient(3.5ch 100% at 50% 50%, var(--ink) 20%, color-mix(in srgb, var(--ink) 14%, transparent) 75%) 0 0 / 300% 100%;
-                            -webkit-background-clip: text; background-clip: text; color: transparent;
-                            animation: fx-spotlight 3.4s ease-in-out infinite alternate;
-                        }
-                        @keyframes fx-spotlight { 0% { background-position: 100% 0; } 100% { background-position: 0% 0; } }
-                        .loading-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="loading-container">
-                       <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-                       <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร......</h2>    
-                    </div>
-                </body>
-                </html>
-            `);
-            newTab.document.close();
-        }
+            <style>
+                html, body {
+                    -webkit-text-size-adjust: 100%; 
+                    text-size-adjust: 100%;
+                    font-size: 16px; 
+                }
+                
+                :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                
+                .fx-spotlight {
+                    font-family: ${baseFont}, monospace;
+                    font-weight: 600;
+                    font-size: clamp(24px, 5vw, 32px); 
+                    line-height: 1.3;
+                    letter-spacing: .04em;
+                    background: radial-gradient(3.5ch 100% at 50% 50%,
+                        var(--ink) 20%,
+                        color-mix(in srgb, var(--ink) 14%, transparent) 75%
+                    ) 0 0 / 300% 100%;
+                    -webkit-background-clip: text; background-clip: text;
+                    color: transparent;
+                    animation: fx-spotlight 3.4s ease-in-out infinite alternate;
+                }
+                @keyframes fx-spotlight {
+                    0%   { background-position: 100% 0; }
+                    100% { background-position: 0% 0; }
+                }
+            </style>
+        </head>
+        <body style="background:#e2e1e2; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
+            <div style="text-align:center; color:#4b5563;">
+               <p style="margin:0 0 14px 0; font-size:14px;">กรุณารอสักครู่</p>
+               <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
+            </div>
+        </body>
+        </html>
+    `);
+    newTab.document.close();
     }
 
-    // แสดง Overlay เฉพาะนอกแอป LINE (ในแอป LINE ให้ใช้หน้าจอปกติของเว็บเพื่อไม่ให้ซ้อนทับกัน)
-    const overlay = !isInLineApp ? getOrCreateDocLoadingOverlay() : null;
-    if (overlay) overlay.classList.add("is-active");
+    // แสดง Overlay บนหน้าจอแอปหลัก
+    const overlay = getOrCreateDocLoadingOverlay();
+    overlay.classList.add("is-active");
 
     try {
+        // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
             if (!isOk) {
                 if (newTab) newTab.close();
-                if (overlay) overlay.classList.remove("is-active");
+                overlay.classList.remove("is-active");
                 btnEl.disabled = false;
                 return;
             }
         }
 
+        // 2. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1246,31 +1255,25 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
-        if (overlay) overlay.classList.remove("is-active");
+        overlay.classList.remove("is-active");
 
+        // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
+            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
-            if (isInLineApp) {
-                // แก้ปัญหาใน LINE: ใช้ location.href แทน liff.openWindow เพื่อบังคับเปลี่ยนหน้าภายในเว็บวิวทันทีโดยไม่ติดบล็อก
-                window.location.href = finalLink;
+            if (newTab) {
+                // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
+                // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
+                newTab.location.replace(finalLink);
             } else {
-                if (newTab && !newTab.closed) {
-                    const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
-                    if (hasSize) {
-                        const sizeLabel = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
-                        const spotlightEl = newTab.document.querySelector('.fx-spotlight');
-                        if (spotlightEl) spotlightEl.textContent = sizeLabel;
-                    }
-                    newTab.location.replace(finalLink);
-                } else {
-                    window.location.href = finalLink; 
-                }
+                window.location.href = finalLink; 
             }
         } else {
+            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
@@ -1283,7 +1286,7 @@ window.openDocumentLink = async function(btnEl) {
     } catch (err) {
         console.error("Link fetch error:", err);
         if (newTab) newTab.close();
-        if (overlay) overlay.classList.remove("is-active");
+        overlay.classList.remove("is-active");
         alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
         btnEl.disabled = false;
