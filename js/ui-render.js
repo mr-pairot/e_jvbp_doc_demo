@@ -1141,6 +1141,7 @@ window.addEventListener('hashchange', () => {
     switchTab(pendingFilterStateFromURL.tab);
 });
 
+
 // ---------------------------------------------------------------------------
 // Document Link Opener (Proxy Flow B - เปิดหน้าต่างทันทีก่อนยิง Fetch แก้อาการโดนบล็อก Popup)
 // ---------------------------------------------------------------------------
@@ -1170,57 +1171,79 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    // ตรวจสอบว่ารันอยู่ใน LINE In-App Browser หรือไม่
-    const isInLineApp = (typeof liff !== "undefined" && typeof liff.isInClient === "function" && liff.isInClient());
+    // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup
+    const newTab = window.open('', '_blank');
+    const baseFont = getComputedStyle(document.documentElement)
+                        .getPropertyValue('--font-family-base').trim() || 'sans-serif';
 
-    let newTab = null;
-    let baseFont = "sans-serif";
-
-    // เงื่อนไขที่ 1: ถ้านอก LINE App ถึงจะเปิดแท็บว่างรอไว้ (ป้องกัน Popup Blocked)
-    if (!isInLineApp) {
-        newTab = window.open('', '_blank');
-        baseFont = getComputedStyle(document.documentElement)
-                            .getPropertyValue('--font-family-base').trim() || 'sans-serif';
-
-        if (newTab) {
-            newTab.document.write(`
-                <!DOCTYPE html>
-                <html lang="th">
-                <head>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>กำลังเปิดเอกสาร...</title>
-                    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-                    <style>
-                        html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #e2e1e2; -webkit-text-size-adjust: 100%; }
-                        :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
-                        .fx-spotlight {
-                            font-family: ${baseFont}, monospace;
-                            font-weight: 600;
-                            font-size: clamp(20px, 6vw, 32px); 
-                            line-height: 1.3;
-                            letter-spacing: .04em;
-                            background: radial-gradient(3.5ch 100% at 50% 50%, var(--ink) 20%, color-mix(in srgb, var(--ink) 14%, transparent) 75%) 0 0 / 300% 100%;
-                            -webkit-background-clip: text; background-clip: text; color: transparent;
-                            animation: fx-spotlight 3.4s ease-in-out infinite alternate;
-                        }
-                        @keyframes fx-spotlight { 0% { background-position: 100% 0; } 100% { background-position: 0% 0; } }
-                        .loading-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="loading-container">
-                       <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-                       <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
-                    </div>
-                </body>
-                </html>
-            `);
-            newTab.document.close();
-        }
+    if (newTab) {
+    newTab.document.write(`
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>กำลังเปิดเอกสาร...</title>
+            <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <style>
+                html, body {
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    background: #e2e1e2;
+                    -webkit-text-size-adjust: 100%;
+                }
+                
+                :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                
+                .fx-spotlight {
+                    font-family: ${baseFont}, monospace;
+                    font-weight: 600;
+                    font-size: clamp(20px, 6vw, 32px); 
+                    line-height: 1.3;
+                    letter-spacing: .04em;
+                    background: radial-gradient(3.5ch 100% at 50% 50%,
+                        var(--ink) 20%,
+                        color-mix(in srgb, var(--ink) 14%, transparent) 75%
+                    ) 0 0 / 300% 100%;
+                    -webkit-background-clip: text; background-clip: text;
+                    color: transparent;
+                    animation: fx-spotlight 3.4s ease-in-out infinite alternate;
+                }
+                @keyframes fx-spotlight {
+                    0%   { background-position: 100% 0; }
+                    100% { background-position: 0% 0; }
+                }
+                
+                /* ตรึงตำแหน่งไว้กับขอบจอจริงๆ เพื่อแก้ปัญหา 100vh และ Address bar มือถือ */
+                .loading-container {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="loading-container">
+               <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
+               <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
+            </div>
+        </body>
+        </html>
+    `);
+    newTab.document.close();
     }
 
-    // แสดง Loading Overlay บนหน้าจอแอปหลัก (ใช้งานร่วมกันทุกเบราว์เซอร์)
+    // แสดง Overlay บนหน้าจอแอปหลัก
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
@@ -1249,33 +1272,25 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
-        overlay.classList.remove("is-active"); // ปิด Overlay หลักทันทีเมื่อได้ข้อมูล
+        overlay.classList.remove("is-active");
 
-        // 3. ได้รับลิงก์ -> เปิดใช้งานตามเงื่อนไข Environment
+        // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
+            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
-            if (isInLineApp) {
-                // ถ้าอยู่ใน LINE App: สั่งเปิดผ่าน liff.openWindow โดยตรงทันที ไม่มีหน้าจอซ้อนทับ
-                liff.openWindow({ url: finalLink, external: true });
+            if (newTab) {
+                // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
+                // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
+                newTab.location.replace(finalLink);
             } else {
-                // ถ้านอก LINE App: อัปเดตชื่อไฟล์/ขนาดลงในแท็บว่างที่รออยู่ แล้วเปลี่ยนหน้า
-                if (newTab && !newTab.closed) {
-                    const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
-                    if (hasSize) {
-                        const sizeLabel = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
-                        const spotlightEl = newTab.document.querySelector('.fx-spotlight');
-                        if (spotlightEl) spotlightEl.textContent = sizeLabel;
-                    }
-                    newTab.location.replace(finalLink);
-                } else {
-                    window.location.href = finalLink; 
-                }
+                window.location.href = finalLink; 
             }
         } else {
+            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
@@ -1294,7 +1309,3 @@ window.openDocumentLink = async function(btnEl) {
         btnEl.disabled = false;
     }
 };
-
-                                        
-
-    
