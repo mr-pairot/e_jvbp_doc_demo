@@ -1174,9 +1174,7 @@ window.addEventListener('hashchange', () => {
 
 window.checkAuthInBackground = async function(linkEl) {
     const docTitle = linkEl.dataset.title;
-
-    console.log("🔍 [Debug] ตรวจสอบสิทธิ์และบันทึกประวัติการคลิกเบื้องหลัง:");
-    console.log("ชื่อไฟล์ (docTitle):", docTitle);
+    console.log(">> เปิดไฟล์ :", docTitle);
 
     try {
         // 1. ตรวจสอบ Session Guard
