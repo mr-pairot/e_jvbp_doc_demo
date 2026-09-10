@@ -1170,92 +1170,62 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    // 1. ตรวจสอบก่อนว่ากำลังรันอยู่ใน LINE In-App Browser หรือไม่
+    // ตรวจสอบว่ารันอยู่ใน LINE In-App Browser หรือไม่
     const isInLineApp = (typeof liff !== "undefined" && typeof liff.isInClient === "function" && liff.isInClient());
 
     let newTab = null;
     let baseFont = "sans-serif";
 
+    // เงื่อนไขที่ 1: ถ้านอก LINE App ถึงจะเปิดแท็บว่างรอไว้ (ป้องกัน Popup Blocked)
     if (!isInLineApp) {
-        // เปิดแท็บว่างเปล่ารอไว้ทันที (Synchronous) ป้องกันโดนบล็อก Popup — ใช้ได้เฉพาะเบราว์เซอร์ปกติ
         newTab = window.open('', '_blank');
         baseFont = getComputedStyle(document.documentElement)
                             .getPropertyValue('--font-family-base').trim() || 'sans-serif';
 
         if (newTab) {
-        newTab.document.write(`
-            <!DOCTYPE html>
-            <html lang="th">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>กำลังเปิดเอกสาร...</title>
-                <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-                <style>
-                    html, body {
-                        width: 100%;
-                        height: 100%;
-                        margin: 0;
-                        padding: 0;
-                        background: #e2e1e2;
-                        -webkit-text-size-adjust: 100%;
-                    }
-                    
-                    :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
-                    
-                    .fx-spotlight {
-                        font-family: ${baseFont}, monospace;
-                        font-weight: 600;
-                        font-size: clamp(20px, 6vw, 32px); 
-                        line-height: 1.3;
-                        letter-spacing: .04em;
-                        background: radial-gradient(3.5ch 100% at 50% 50%,
-                            var(--ink) 20%,
-                            color-mix(in srgb, var(--ink) 14%, transparent) 75%
-                        ) 0 0 / 300% 100%;
-                        -webkit-background-clip: text; background-clip: text;
-                        color: transparent;
-                        animation: fx-spotlight 3.4s ease-in-out infinite alternate;
-                    }
-                    @keyframes fx-spotlight {
-                        0%   { background-position: 100% 0; }
-                        100% { background-position: 0% 0; }
-                    }
-                    
-                    /* ตรึงตำแหน่งไว้กับขอบจอจริงๆ เพื่อแก้ปัญหา 100vh และ Address bar มือถือ */
-                    .loading-container {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        text-align: center;
-                        padding: 20px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="loading-container">
-                   <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-                   <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
-                </div>
-            </body>
-            </html>
-        `);
-        newTab.document.close();
+            newTab.document.write(`
+                <!DOCTYPE html>
+                <html lang="th">
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>กำลังเปิดเอกสาร...</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #e2e1e2; -webkit-text-size-adjust: 100%; }
+                        :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
+                        .fx-spotlight {
+                            font-family: ${baseFont}, monospace;
+                            font-weight: 600;
+                            font-size: clamp(20px, 6vw, 32px); 
+                            line-height: 1.3;
+                            letter-spacing: .04em;
+                            background: radial-gradient(3.5ch 100% at 50% 50%, var(--ink) 20%, color-mix(in srgb, var(--ink) 14%, transparent) 75%) 0 0 / 300% 100%;
+                            -webkit-background-clip: text; background-clip: text; color: transparent;
+                            animation: fx-spotlight 3.4s ease-in-out infinite alternate;
+                        }
+                        @keyframes fx-spotlight { 0% { background-position: 100% 0; } 100% { background-position: 0% 0; } }
+                        .loading-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="loading-container">
+                       <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
+                       <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
+                    </div>
+                </body>
+                </html>
+            `);
+            newTab.document.close();
         }
     }
 
-    // แสดง Overlay บนหน้าจอแอปหลัก
+    // แสดง Loading Overlay บนหน้าจอแอปหลัก (ใช้งานร่วมกันทุกเบราว์เซอร์)
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
     try {
-        // 2. ตรวจสอบ Session Guard
+        // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
             if (!isOk) {
@@ -1266,7 +1236,7 @@ window.openDocumentLink = async function(btnEl) {
             }
         }
 
-        // 3. ขอ Document Link จริงจาก GAS
+        // 2. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1279,41 +1249,33 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
+        overlay.classList.remove("is-active"); // ปิด Overlay หลักทันทีเมื่อได้ข้อมูล
 
-        // 4. ได้รับลิงก์ -> เปิดเอกสารจริง (ไม่มี setTimeout หน่วงเวลาแล้ว)
+        // 3. ได้รับลิงก์ -> เปิดใช้งานตามเงื่อนไข Environment
         if (result.success && result.link) {
-            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
             if (isInLineApp) {
-                // ใน LINE App: ใช้ liff.openWindow() เปิดทันที ห้ามหน่วงเวลา
-                overlay.classList.remove("is-active");
+                // ถ้าอยู่ใน LINE App: สั่งเปิดผ่าน liff.openWindow โดยตรงทันที ไม่มีหน้าจอซ้อนทับ
                 liff.openWindow({ url: finalLink, external: true });
             } else {
-                overlay.classList.remove("is-active");
-                
-                // อัปเดตข้อความในแท็บที่เปิดรอไว้ให้โชว์ขนาดไฟล์ (ถ้า Backend ส่ง sizeMB มาด้วย)
+                // ถ้านอก LINE App: อัปเดตชื่อไฟล์/ขนาดลงในแท็บว่างที่รออยู่ แล้วเปลี่ยนหน้า
                 if (newTab && !newTab.closed) {
                     const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
                     if (hasSize) {
                         const sizeLabel = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
                         const spotlightEl = newTab.document.querySelector('.fx-spotlight');
                         if (spotlightEl) spotlightEl.textContent = sizeLabel;
-                        // ลบบรรทัด await delay ออก เพื่อให้ Browser ยอมรับคำสั่ง replace
                     }
-
-                    // สั่ง Redirect ทันที
                     newTab.location.replace(finalLink);
-                } else if (!newTab) {
+                } else {
                     window.location.href = finalLink; 
                 }
             }
         } else {
-            overlay.classList.remove("is-active");
-            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ (มีเฉพาะกรณีนอก LINE App)
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
