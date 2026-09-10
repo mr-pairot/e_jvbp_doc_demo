@@ -1282,12 +1282,19 @@ window.openDocumentLink = async function(btnEl) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
-            if (newTab) {
-                // [แก้ไขหน้าจอซ้อนทับ]: ใช้ location.replace() แทน href เพื่อให้เบราว์เซอร์รีเซ็ต Viewport ใหม่
-                // และป้องกันไม่ให้ผู้ใช้กด Back แล้วกลับมาติดที่หน้า Loading 
-                newTab.location.replace(finalLink);
+            // ตรวจสอบสภาพแวดล้อมว่าเปิดจากแอป LINE โดยตรงหรือไม่
+            if (typeof liff !== 'undefined' && liff.isInClient()) {
+                // กรณีรันผ่าน LINE ให้ปิดหน้าต่างโหลดทิ้ง แล้วให้ LIFF เปิดลิงก์ด้วยบราวเซอร์ภายนอก
+                if (newTab) newTab.close();
+                liff.openWindow({ url: finalLink, external: true });
             } else {
-                window.location.href = finalLink; 
+                // กรณีรันบน Web Browser ปกติ
+                if (newTab) {
+                    // ใช้ href แทน replace เพื่อลดปัญหาการถูกบราวเซอร์บล็อก
+                    newTab.location.href = finalLink;
+                } else {
+                    window.location.href = finalLink; 
+                }
             }
         } else {
             // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ
