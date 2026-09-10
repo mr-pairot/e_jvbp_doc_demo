@@ -519,7 +519,8 @@ function toggleSort() {
 // - คืนค่า null ถ้าไม่มีลิงก์ที่ใช้งานได้จริง แทนที่จะปล่อยให้เป็น "#" ซึ่งกดแล้วไม่เปิดอะไรเลย
 function resolveDocumentUrl_(doc) {
     const raw = (doc.link || doc.url || "").toString().trim();
-    if (!raw) return null;
+    // เหมือนแนวทางเดิม: ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
+    if (!raw || !/^https?:\/\//i.test(raw)) return null;
 
     let url = raw;
     if (url.includes('drive.google.com/file/d/') && url.includes('/view')) {
@@ -558,9 +559,10 @@ function renderTableBody() {
             // ดึงลิงก์เอกสารจริง (คืนค่า null ถ้าไม่มีลิงก์ที่เปิดได้)
             const docUrl = resolveDocumentUrl_(doc);
 
-            // ใช้ doc.hasLink ร่วมกับการมีอยู่จริงของ docUrl เสมอ กัน "hasLink = true"
-            // แต่ไม่มีลิงก์จริง แล้วกลายเป็นลิงก์ที่กดแล้วไม่เปิดอะไร (href="#")
-            const hasLink = !!doc.hasLink && !!docUrl;
+            // ตัดสินจาก URL ที่ resolve ได้จริงเท่านั้น (เหมือนแนวทางเดิม doc.link.startsWith("http"))
+            // ไม่พึ่งฟิลด์ doc.hasLink เพราะถ้าโครงสร้างข้อมูลจริงไม่มีฟิลด์นี้ (เป็น undefined เสมอ)
+            // จะทำให้ลิงก์ทุกแถวกลายเป็น disabled หมด ทั้งที่มีลิงก์จริงอยู่
+            const hasLink = !!docUrl;
 
             let linkHTML;
             if (hasLink) {
