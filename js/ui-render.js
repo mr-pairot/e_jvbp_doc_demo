@@ -520,7 +520,7 @@ function toggleSort() {
 function resolveDocumentUrl_(doc) {
     // ตรวจสอบทุกฟิลด์ที่เป็นไปได้ซึ่งอาจเก็บลิงก์ (doc.link, doc.url หรือ doc.fileUrl)
     const raw = (doc.link || doc.url || doc.fileUrl || "").toString().trim();
-   console.log("🔗 [Debug] ลิงก์ที่ได้รับมา:", raw); 
+
     // ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
     if (!raw || !/^https?:\/\//i.test(raw)) return null;
 
@@ -528,6 +528,7 @@ function resolveDocumentUrl_(doc) {
     if (url.includes('drive.google.com/file/d/') && url.includes('/view')) {
         url = url.replace('/view', '/preview');
     }
+      console.log("🔗 [Debug] ลิงก์ที่ได้รับมา:", url); 
     return url;
 }
 
