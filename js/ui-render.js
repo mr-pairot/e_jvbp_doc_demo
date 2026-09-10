@@ -1171,13 +1171,11 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    // ตรวจสอบว่ารันอยู่ใน LINE In-App Browser หรือไม่
     const isInLineApp = (typeof liff !== "undefined" && typeof liff.isInClient === "function" && liff.isInClient());
 
     let newTab = null;
     let baseFont = "sans-serif";
 
-    // เงื่อนไขที่ 1: ถ้านอก LINE App ถึงจะเปิดแท็บว่างรอไว้ (ป้องกัน Popup Blocked)
     if (!isInLineApp) {
         newTab = window.open('', '_blank');
         baseFont = getComputedStyle(document.documentElement)
@@ -1212,7 +1210,7 @@ window.openDocumentLink = async function(btnEl) {
                 <body>
                     <div class="loading-container">
                        <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-                       <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
+                       <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร......</h2>    
                     </div>
                 </body>
                 </html>
@@ -1221,23 +1219,21 @@ window.openDocumentLink = async function(btnEl) {
         }
     }
 
-    // แสดง Loading Overlay บนหน้าจอแอปหลัก (ใช้งานร่วมกันทุกเบราว์เซอร์)
-    const overlay = getOrCreateDocLoadingOverlay();
-    overlay.classList.add("is-active");
+    // แสดง Overlay เฉพาะนอกแอป LINE (ในแอป LINE ให้ใช้หน้าจอปกติของเว็บเพื่อไม่ให้ซ้อนทับกัน)
+    const overlay = !isInLineApp ? getOrCreateDocLoadingOverlay() : null;
+    if (overlay) overlay.classList.add("is-active");
 
     try {
-        // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
             if (!isOk) {
                 if (newTab) newTab.close();
-                overlay.classList.remove("is-active");
+                if (overlay) overlay.classList.remove("is-active");
                 btnEl.disabled = false;
                 return;
             }
         }
 
-        // 2. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1250,9 +1246,8 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
-        overlay.classList.remove("is-active"); // ปิด Overlay หลักทันทีเมื่อได้ข้อมูล
+        if (overlay) overlay.classList.remove("is-active");
 
-        // 3. ได้รับลิงก์ -> เปิดใช้งานตามเงื่อนไข Environment
         if (result.success && result.link) {
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
@@ -1260,10 +1255,9 @@ window.openDocumentLink = async function(btnEl) {
             }
 
             if (isInLineApp) {
-                // ถ้าอยู่ใน LINE App: สั่งเปิดผ่าน liff.openWindow โดยตรงทันที ไม่มีหน้าจอซ้อนทับ
-                liff.openWindow({ url: finalLink, external: true });
+                // แก้ปัญหาใน LINE: ใช้ location.href แทน liff.openWindow เพื่อบังคับเปลี่ยนหน้าภายในเว็บวิวทันทีโดยไม่ติดบล็อก
+                window.location.href = finalLink;
             } else {
-                // ถ้านอก LINE App: อัปเดตชื่อไฟล์/ขนาดลงในแท็บว่างที่รออยู่ แล้วเปลี่ยนหน้า
                 if (newTab && !newTab.closed) {
                     const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
                     if (hasSize) {
@@ -1289,7 +1283,7 @@ window.openDocumentLink = async function(btnEl) {
     } catch (err) {
         console.error("Link fetch error:", err);
         if (newTab) newTab.close();
-        overlay.classList.remove("is-active");
+        if (overlay) overlay.classList.remove("is-active");
         alert("เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
         btnEl.disabled = false;
