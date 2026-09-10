@@ -514,6 +514,20 @@ function toggleSort() {
     renderTableBody();
 }
 
+// สร้าง URL ที่ใช้เปิดจริงจาก link/url ดิบของเอกสาร
+// - แปลงลิงก์ Google Drive แบบ "/view" ให้เป็น "/preview" (เพื่อเปิดแบบฝัง/ดูตรงๆ ได้)
+// - คืนค่า null ถ้าไม่มีลิงก์ที่ใช้งานได้จริง แทนที่จะปล่อยให้เป็น "#" ซึ่งกดแล้วไม่เปิดอะไรเลย
+function resolveDocumentUrl_(doc) {
+    const raw = (doc.link || doc.url || "").toString().trim();
+    if (!raw) return null;
+
+    let url = raw;
+    if (url.includes('drive.google.com/file/d/') && url.includes('/view')) {
+        url = url.replace('/view', '/preview');
+    }
+    return url;
+}
+
 function renderTableBody() {
     const tbody = document.getElementById("documentTableBody");
     if (!tbody) return;
@@ -540,20 +554,22 @@ function renderTableBody() {
         pageDocs.forEach((doc, idx) => {
             const rowEl = document.createElement("tr");
             const safeTitle = escapeHTML(doc.title);
-            
-            const hasLink = doc.hasLink;
 
-            // ดึงลิงก์เอกสารจาก doc.link หรือ doc.url (ปรับแปลง Drive view เป็น preview อัตโนมัติถ้ามี)
-            let docUrl = doc.link || doc.url || "#";
-            if (docUrl.includes('drive.google.com/file/d/')) {
-                docUrl = docUrl.replace('/view', '/preview');
-               console.log(">>> Link ไฟล์ที่เลือกเปิด:", docUrl);
+            // ดึงลิงก์เอกสารจริง (คืนค่า null ถ้าไม่มีลิงก์ที่เปิดได้)
+            const docUrl = resolveDocumentUrl_(doc);
+
+            // ใช้ doc.hasLink ร่วมกับการมีอยู่จริงของ docUrl เสมอ กัน "hasLink = true"
+            // แต่ไม่มีลิงก์จริง แล้วกลายเป็นลิงก์ที่กดแล้วไม่เปิดอะไร (href="#")
+            const hasLink = !!doc.hasLink && !!docUrl;
+
+            let linkHTML;
+            if (hasLink) {
+                // escape URL ก่อนใส่ลง attribute เสมอ ป้องกันค่าที่มีเครื่องหมาย " ทำให้ HTML พัง
+                const safeDocUrl = escapeHTML(docUrl);
+                linkHTML = `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`;
+            } else {
+                linkHTML = `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
             }
-
-            // เปลี่ยนจาก button เป็นแท็ก <a> เพื่อเปิดหน้าต่างใหม่ทันทีโดยไม่ติด Popup Blocker บนมือถือ
-            const linkHTML = hasLink
-                ? `<a href="${docUrl}" target="_blank" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`
-                : `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
 
             if (currentTab === "letter") {
                 const safeReceiveNo = escapeHTML(doc.receiveNo || "-");
@@ -1153,11 +1169,9 @@ window.addEventListener('hashchange', () => {
 
 window.checkAuthInBackground = async function(linkEl) {
     const docTitle = linkEl.dataset.title;
-    const docCategory = linkEl.dataset.category;
 
     console.log("🔍 [Debug] ตรวจสอบสิทธิ์และบันทึกประวัติการคลิกเบื้องหลัง:");
     console.log("ชื่อไฟล์ (docTitle):", docTitle);
-    console.log("หมวดหมู่ (docCategory):", docCategory);
 
     try {
         // 1. ตรวจสอบ Session Guard
@@ -1171,6 +1185,7 @@ window.checkAuthInBackground = async function(linkEl) {
         }
 
         // 2. ส่ง Request บันทึก Log การคลิกไปยัง GAS แบบเงียบๆ (ไม่บล็อกการเปิดไฟล์)
+        //    ไม่ส่ง docCategory แล้วตามที่ต้องการ
         if (typeof liff !== "undefined" && typeof AUTH_CONFIG !== "undefined" && AUTH_CONFIG.gasUrl) {
             const profile = await liff.getProfile().catch(() => null);
             if (profile && profile.userId) {
@@ -1179,8 +1194,7 @@ window.checkAuthInBackground = async function(linkEl) {
                     body: JSON.stringify({
                         actionType: 'log_document_click',
                         userId: profile.userId,
-                        docTitle: docTitle,
-                        docCategory: docCategory
+                        docTitle: docTitle
                     })
                 }).catch(err => console.error("Log fetch error:", err));
             }
