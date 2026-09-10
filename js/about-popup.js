@@ -30,14 +30,12 @@ function openAboutModal() {
     let modal = document.getElementById("aboutModal");
 
     if (modal) {
-        // Modal มีอยู่แล้ว: แสดงซ้ำ แล้วเริ่ม auto-scroll ใหม่
         modal.classList.add("is-active");
         lockBackgroundScroll();
         startPurposeScroll();
         return;
     }
 
-    // Modal ยังไม่มี: สร้างใหม่ แล้วแทรกใน DOM
     const modalHtml = `
     <div id="aboutModal" class="about-modal-overlay">
         <div class="about-modal-content">
@@ -105,12 +103,9 @@ function openAboutModal() {
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
     modal = document.getElementById("aboutModal");
-
-    // เปิดในเฟรมถัดไปเพื่อให้ transition (opacity/scale) ทำงาน
     requestAnimationFrame(() => modal.classList.add("is-active"));
     lockBackgroundScroll();
 
-    // ปิด Modal เมื่อคลิกที่ overlay (นอกกล่องเนื้อหา)
     modal.addEventListener("click", (e) => {
         if (e.target.id === "aboutModal") closeAboutModal();
     });
@@ -130,8 +125,6 @@ function closeAboutModal() {
     unlockBackgroundScroll();
 }
 
-// ป้องกันไม่ให้ .main_dashboard_wrapper (scroll container จริงของหน้า) เลื่อนได้
-// ระหว่างที่ modal เปิดอยู่ — แก้ปัญหา scroll ทะลุไปโดนตารางด้านหลัง
 function lockBackgroundScroll() {
     const scrollWrap = document.querySelector(".main_dashboard_wrapper");
     if (scrollWrap) scrollWrap.classList.add("about-modal-open");
@@ -177,7 +170,7 @@ function startPurposeScroll() {
                 currentY = el.scrollTop;
             }
             if (Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight) {
-                return; // สุดข้อความแล้ว หยุดลูป
+                return; 
             }
         }
         purposeScrollRAF = requestAnimationFrame(step);
