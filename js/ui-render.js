@@ -514,12 +514,13 @@ function toggleSort() {
     renderTableBody();
 }
 
-// สร้าง URL ที่ใช้เปิดจริงจาก link/url ดิบของเอกสาร
+// สร้าง URL ที่ใช้เปิดจริงจาก documentUrl ซึ่งเป็นฟิลด์ที่ data-service.js เก็บไว้
 // - แปลงลิงก์ Google Drive แบบ "/view" ให้เป็น "/preview" (เพื่อเปิดแบบฝัง/ดูตรงๆ ได้)
 // - คืนค่า null ถ้าไม่มีลิงก์ที่ใช้งานได้จริง แทนที่จะปล่อยให้เป็น "#" ซึ่งกดแล้วไม่เปิดอะไรเลย
 function resolveDocumentUrl_(doc) {
-    // ตรวจสอบทุกฟิลด์ที่เป็นไปได้ซึ่งอาจเก็บลิงก์ (doc.link, doc.url หรือ doc.fileUrl)
-    const raw = (doc.link || doc.url || doc.fileUrl || "").toString().trim();
+    // documentUrl เป็นฟิลด์มาตรฐานของข้อมูลทุกแท็บ (RFA, RFI และ Letter)
+    // ส่วนฟิลด์เก่าคงไว้เฉพาะเพื่อรองรับข้อมูลที่ถูกสร้างจากเวอร์ชันก่อนหน้า
+    const raw = (doc.documentUrl || doc.link || doc.url || doc.fileUrl || "").toString().trim();
 
     // ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
     if (!raw || !/^https?:\/\//i.test(raw)) return null;
@@ -528,7 +529,6 @@ function resolveDocumentUrl_(doc) {
     if (url.includes('drive.google.com/file/d/') && url.includes('/view')) {
         url = url.replace('/view', '/preview');
     }
-      console.log("🔗 [Debug] ลิงก์ที่ได้รับมา:", url); 
     return url;
 }
 
@@ -562,11 +562,8 @@ function renderTableBody() {
             // ดึงลิงก์เอกสารจริง (คืนค่า null ถ้าไม่มีลิงก์ที่เปิดได้)
             const docUrl = resolveDocumentUrl_(doc);
 
-            // ตรวจสอบทั้งจากสถานะ hasLink ที่แปลงมาจาก data-service.js และผลลัพธ์ของ URL จริง
-            const hasValidLink = (doc.hasLink === true) || !!docUrl;
-
             let linkHTML;
-            if (hasValidLink && docUrl) {
+            if (docUrl) {
                 const safeDocUrl = escapeHTML(docUrl);
                 linkHTML = `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`;
             } else {
