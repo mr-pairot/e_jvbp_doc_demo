@@ -562,26 +562,32 @@ function renderTableBody() {
             // ดึงลิงก์เอกสารจริง (คืนค่า null ถ้าไม่มีลิงก์ที่เปิดได้)
             const docUrl = resolveDocumentUrl_(doc);
 
-            let linkHTML;
-            if (docUrl) {
-                const safeDocUrl = escapeHTML(docUrl);
-                linkHTML = `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`;
-            } else {
-                linkHTML = `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeTitle}">${safeTitle}</span>`;
-            }
+            // ใช้ URL และชื่อเรื่องชุดเดียวกันกับทุกคอลัมน์ที่เปิดเอกสารได้
+            // (Letter In: เลขรับ, เลขหนังสือ และชื่อเรื่อง)
+            const createDocumentLinkHTML = (safeText) => {
+                if (docUrl) {
+                    const safeDocUrl = escapeHTML(docUrl);
+                    return `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeText}</a>`;
+                }
+                return `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeText}">${safeText}</span>`;
+            };
+
+            const linkHTML = createDocumentLinkHTML(safeTitle);
 
             if (currentTab === "letter") {
                 const safeReceiveNo = escapeHTML(doc.receiveNo || "-");
                 const safeLetterNo = escapeHTML(doc.letterNo || "-");
+                const receiveNoLinkHTML = createDocumentLinkHTML(safeReceiveNo);
+                const letterNoLinkHTML = createDocumentLinkHTML(safeLetterNo);
 
                 rowEl.innerHTML = `
                     <td>
                         <div class="doc_row_container">
                             <span class="doc_number_index">${startIdx + idx + 1}.</span>
-                            <span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeReceiveNo}">${safeReceiveNo}</span>
+                            ${receiveNoLinkHTML}
                         </div>
                     </td>
-                    <td><span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeLetterNo}">${safeLetterNo}</span></td>
+                    <td>${letterNoLinkHTML}</td>
                     <td>${linkHTML}</td>
                     <td class="col_update"><span class="doc_update_date">${doc.updateDate}</span></td>
                 `;
