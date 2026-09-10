@@ -518,8 +518,10 @@ function toggleSort() {
 // - แปลงลิงก์ Google Drive แบบ "/view" ให้เป็น "/preview" (เพื่อเปิดแบบฝัง/ดูตรงๆ ได้)
 // - คืนค่า null ถ้าไม่มีลิงก์ที่ใช้งานได้จริง แทนที่จะปล่อยให้เป็น "#" ซึ่งกดแล้วไม่เปิดอะไรเลย
 function resolveDocumentUrl_(doc) {
-    const raw = (doc.link || doc.url || "").toString().trim();
-    // เหมือนแนวทางเดิม: ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
+    // ตรวจสอบทุกฟิลด์ที่เป็นไปได้ซึ่งอาจเก็บลิงก์ (doc.link, doc.url หรือ doc.fileUrl)
+    const raw = (doc.link || doc.url || doc.fileUrl || "").toString().trim();
+    
+    // ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
     if (!raw || !/^https?:\/\//i.test(raw)) return null;
 
     let url = raw;
@@ -559,14 +561,11 @@ function renderTableBody() {
             // ดึงลิงก์เอกสารจริง (คืนค่า null ถ้าไม่มีลิงก์ที่เปิดได้)
             const docUrl = resolveDocumentUrl_(doc);
 
-            // ตัดสินจาก URL ที่ resolve ได้จริงเท่านั้น (เหมือนแนวทางเดิม doc.link.startsWith("http"))
-            // ไม่พึ่งฟิลด์ doc.hasLink เพราะถ้าโครงสร้างข้อมูลจริงไม่มีฟิลด์นี้ (เป็น undefined เสมอ)
-            // จะทำให้ลิงก์ทุกแถวกลายเป็น disabled หมด ทั้งที่มีลิงก์จริงอยู่
-            const hasLink = !!docUrl;
+            // ตรวจสอบทั้งจากสถานะ hasLink ที่แปลงมาจาก data-service.js และผลลัพธ์ของ URL จริง
+            const hasValidLink = (doc.hasLink === true) || !!docUrl;
 
             let linkHTML;
-            if (hasLink) {
-                // escape URL ก่อนใส่ลง attribute เสมอ ป้องกันค่าที่มีเครื่องหมาย " ทำให้ HTML พัง
+            if (hasValidLink && docUrl) {
                 const safeDocUrl = escapeHTML(docUrl);
                 linkHTML = `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeTitle}</a>`;
             } else {
