@@ -451,7 +451,7 @@ async function fetchGvizSheetWithProgress(sheetName, onProgress) {
     return parseGvizResponseText(resultText);
 }
 
-// [ปรับใหม่] ไม่เก็บ Link ไว้ใน cache แต่เก็บแค่ว่ามีลิงก์หรือไม่ (hasLink)
+// เก็บ URL ของเอกสารไว้กับรายการ เพื่อให้ UI เปิดไฟล์ได้ทั้งจากข้อมูลสดและแคช
 function parseRowToDoc(rowObj, id, category) {
     if (!rowObj.c || !rowObj.c[2] || !rowObj.c[2].v) return null;
 
@@ -526,13 +526,14 @@ function parseRowToDoc(rowObj, id, category) {
         cxCode,
         title,
         fileName,
+        documentUrl: linkValue,
         hasLink: !!linkValue && linkValue.startsWith("http"),
         updateDate,
         category: docCategory
     };
 }
 
-// [ปรับใหม่] ไม่เก็บ Link ไว้ใน cache แต่เก็บแค่ว่ามีลิงก์หรือไม่ (hasLink)
+// เก็บ URL ของเอกสารไว้กับรายการ เพื่อให้ UI เปิดไฟล์ได้ทั้งจากข้อมูลสดและแคช
 function parseLetterRowToDoc(rowObj, id) {
     if (!rowObj.c) return null;
 
@@ -561,6 +562,7 @@ function parseLetterRowToDoc(rowObj, id) {
         receiveNo: toDisplayString(rowObj.c[1]?.v),  
         letterNo: toDisplayString(rowObj.c[2]?.v),   
         title: toDisplayString(rowObj.c[3]?.v),      
+        documentUrl: linkValue,
         hasLink: !!linkValue && linkValue.startsWith("http"),
         updateDate: updateDate,                      
         category: "Letter"
