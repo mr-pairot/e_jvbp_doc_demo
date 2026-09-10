@@ -1235,7 +1235,7 @@ window.openDocumentLink = async function(btnEl) {
         <body>
             <div class="loading-container">
                <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
-               <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
+               <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร....</h2>    
             </div>
         </body>
         </html>
