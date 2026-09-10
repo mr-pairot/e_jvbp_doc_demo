@@ -1141,7 +1141,6 @@ window.addEventListener('hashchange', () => {
     switchTab(pendingFilterStateFromURL.tab);
 });
 
-
 // ---------------------------------------------------------------------------
 // Document Link Opener (Proxy Flow B - เปิดหน้าต่างทันทีก่อนยิง Fetch แก้อาการโดนบล็อก Popup)
 // ---------------------------------------------------------------------------
@@ -1171,9 +1170,7 @@ window.openDocumentLink = async function(btnEl) {
 
     btnEl.disabled = true;
 
-    // ⚠️ ตรวจสอบก่อนว่ากำลังรันอยู่ใน LINE In-App Browser หรือไม่
-    // เว็บวิวของ LINE (โดยเฉพาะมือถือ) มักไม่รองรับ window.open() แบบเปิดแท็บใหม่จริง
-    // (คืนค่า null หรือพฤติกรรมไม่แน่นอน) จึงต้องแยก Flow ไปใช้ liff.openWindow() แทน
+    // 1. ตรวจสอบก่อนว่ากำลังรันอยู่ใน LINE In-App Browser หรือไม่
     const isInLineApp = (typeof liff !== "undefined" && typeof liff.isInClient === "function" && liff.isInClient());
 
     let newTab = null;
@@ -1252,16 +1249,13 @@ window.openDocumentLink = async function(btnEl) {
         newTab.document.close();
         }
     }
-    // ถ้าอยู่ใน LINE App: ไม่เปิดแท็บว่างล่วงหน้า เพราะ liff.openWindow() ต้องระบุ URL ปลายทางจริง
-    // ตอนเรียก ไม่มีแนวคิด "เปิดว่างไว้ก่อนแล้วค่อยเปลี่ยน URL" แบบ window.open — ใช้ Overlay
-    // คั่นระหว่างรอ fetch แทน แล้วค่อยเปิดจริงทีเดียวตอนได้ลิงก์แล้ว (ดูขั้นตอนที่ 3 ด้านล่าง)
 
     // แสดง Overlay บนหน้าจอแอปหลัก
     const overlay = getOrCreateDocLoadingOverlay();
     overlay.classList.add("is-active");
 
-        try {
-        // 1. ตรวจสอบ Session Guard
+    try {
+        // 2. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
             const isOk = await window.verifyStatus();
             if (!isOk) {
@@ -1272,7 +1266,7 @@ window.openDocumentLink = async function(btnEl) {
             }
         }
 
-        // 2. ขอ Document Link จริงจาก GAS
+        // 3. ขอ Document Link จริงจาก GAS
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1286,29 +1280,31 @@ window.openDocumentLink = async function(btnEl) {
         
         const result = await response.json();
 
-        // 3. ได้รับลิงก์ -> เปิดเอกสารจริง
+        // 4. ได้รับลิงก์ -> เปิดเอกสารจริง (ไม่มี setTimeout หน่วงเวลาแล้ว)
         if (result.success && result.link) {
+            // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
             }
 
             if (isInLineApp) {
-                // ใน LINE App: สั่งเปิดทันที ห้ามมี delay คั่นเด็ดขาด
+                // ใน LINE App: ใช้ liff.openWindow() เปิดทันที ห้ามหน่วงเวลา
                 overlay.classList.remove("is-active");
                 liff.openWindow({ url: finalLink, external: true });
             } else {
                 overlay.classList.remove("is-active");
                 
+                // อัปเดตข้อความในแท็บที่เปิดรอไว้ให้โชว์ขนาดไฟล์ (ถ้า Backend ส่ง sizeMB มาด้วย)
                 if (newTab && !newTab.closed) {
                     const hasSize = result.sizeMB !== null && result.sizeMB !== undefined && !isNaN(result.sizeMB);
                     if (hasSize) {
                         const sizeLabel = `กำลังเปิดเอกสาร (${Number(result.sizeMB).toFixed(1)} MB) ...`;
                         const spotlightEl = newTab.document.querySelector('.fx-spotlight');
-                        // อัปเดตข้อความให้เบราว์เซอร์เรนเดอร์ แต่ไม่ต้อง await delay
                         if (spotlightEl) spotlightEl.textContent = sizeLabel;
+                        // ลบบรรทัด await delay ออก เพื่อให้ Browser ยอมรับคำสั่ง replace
                     }
-                    
+
                     // สั่ง Redirect ทันที
                     newTab.location.replace(finalLink);
                 } else if (!newTab) {
@@ -1317,6 +1313,7 @@ window.openDocumentLink = async function(btnEl) {
             }
         } else {
             overlay.classList.remove("is-active");
+            // ดึงลิงก์ไม่ได้ ให้ปิดแท็บที่เปิดทิ้งไว้ทิ้งซะ (มีเฉพาะกรณีนอก LINE App)
             if (newTab) newTab.close();
             
             if (result.reason === 'banned') {
@@ -1336,5 +1333,6 @@ window.openDocumentLink = async function(btnEl) {
     }
 };
 
+                                        
 
     
