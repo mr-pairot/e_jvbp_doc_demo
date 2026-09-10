@@ -1182,15 +1182,17 @@ window.openDocumentLink = async function(btnEl) {
         <html lang="th">
         <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>กำลังเปิดเอกสาร...</title>
             <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-
             <style>
                 html, body {
-                    -webkit-text-size-adjust: 100%; 
-                    text-size-adjust: 100%;
-                    font-size: 16px; 
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    background: #e2e1e2;
+                    -webkit-text-size-adjust: 100%;
                 }
                 
                 :root { --ink: #1f2937; --ink-2: #FF4FD8; --ink-3: #4FF8FF; }
@@ -1198,7 +1200,7 @@ window.openDocumentLink = async function(btnEl) {
                 .fx-spotlight {
                     font-family: ${baseFont}, monospace;
                     font-weight: 600;
-                    font-size: clamp(24px, 5vw, 32px); 
+                    font-size: clamp(20px, 6vw, 32px); 
                     line-height: 1.3;
                     letter-spacing: .04em;
                     background: radial-gradient(3.5ch 100% at 50% 50%,
@@ -1213,11 +1215,26 @@ window.openDocumentLink = async function(btnEl) {
                     0%   { background-position: 100% 0; }
                     100% { background-position: 0% 0; }
                 }
+                
+                /* ตรึงตำแหน่งไว้กับขอบจอจริงๆ เพื่อแก้ปัญหา 100vh และ Address bar มือถือ */
+                .loading-container {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    padding: 20px;
+                }
             </style>
         </head>
-        <body style="background:#e2e1e2; font-family:${baseFont}; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; padding:0; overflow:hidden;">
-            <div style="text-align:center; color:#4b5563;">
-               <p style="margin:0 0 14px 0; font-size:14px;">กรุณารอสักครู่</p>
+        <body>
+            <div class="loading-container">
+               <p style="margin:0 0 14px 0; font-size:16px; color:#4b5563; font-family:${baseFont};">กรุณารอสักครู่</p>
                <h2 class="fx-spotlight" style="margin:0;">กำลังเปิดเอกสาร...</h2>    
             </div>
         </body>
