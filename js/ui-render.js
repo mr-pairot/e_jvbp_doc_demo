@@ -1167,6 +1167,10 @@ window.openDocumentLink = async function(btnEl) {
     const docTitle = btnEl.dataset.title;
     const docCategory = btnEl.dataset.category;
 
+console.log("🔍 [Debug] กำลังพยายามเปิดไฟล์:");
+console.log("ชื่อไฟล์ (docTitle):", docTitle);
+console.log("หมวดหมู่ (docCategory):", docCategory);
+   
     if (!docTitle || !docCategory) return;
 
     btnEl.disabled = true;
@@ -1250,6 +1254,7 @@ window.openDocumentLink = async function(btnEl) {
     try {
         // 1. ตรวจสอบ Session Guard
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {
+console.log("⏳ [Debug] กำลังตรวจสอบ Session สิทธิ์การใช้งาน...");
             const isOk = await window.verifyStatus();
             if (!isOk) {
                 if (newTab) newTab.close();
@@ -1260,6 +1265,7 @@ window.openDocumentLink = async function(btnEl) {
         }
 
         // 2. ขอ Document Link จริงจาก GAS
+console.log("📡 [Debug] กำลังส่ง Request ไปที่ GAS เพื่อขอลิงก์...");
         const profile = await liff.getProfile();
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
@@ -1272,14 +1278,17 @@ window.openDocumentLink = async function(btnEl) {
         });
         
         const result = await response.json();
+console.log("📥 [Debug] ผลลัพธ์ที่ตอบกลับจาก GAS:", result);
         overlay.classList.remove("is-active");
 
         // 3. ได้รับลิงก์ -> โยนลิงก์เข้าไปแทนที่ในแท็บที่เปิดรอไว้
         if (result.success && result.link) {
             // แปลงลิงก์ Google Drive จากโหมด view เป็น preview เพื่อซ่อนเมนู
             let finalLink = result.link;
+console.log("🔗 [Debug] ลิงก์ที่ได้รับมา:", finalLink);
             if (finalLink.includes('drive.google.com/file/d/')) {
                 finalLink = finalLink.replace('/view', '/preview');
+console.log("💻 [Debug] ใช้งานบน PC -> แปลงลิงก์เป็นโหมด /preview:", finalLink);
             }
 
             if (newTab) {
