@@ -89,20 +89,27 @@ body {
     z-index: 1;
     text-align: center;
     max-width: 600px;
-    padding: 40px;
+    padding: 100px 40px 40px; 
     width: 90%; 
+    min-height: 240px; 
 }
 
 .splash_title {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    width: 100%;
+    
     font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
     letter-spacing: 1px;
-    margin-bottom: 20px;
+    
     background: linear-gradient(135deg, #9aa5ff 0%, #4f5bd5 45%, #22d3ee 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 }
+
 .splash_status {
     font-size: var(--font-size-md-alt);
     color: rgba(255, 255, 255, 0.75);
