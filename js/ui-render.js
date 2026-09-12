@@ -1366,7 +1366,11 @@ async function confirmSessionLogout_(deviceLabel) {
             confirmButtonColor: "#dc2626",
             cancelButtonColor: "#64748b",
             reverseButtons: true,
-            focusCancel: true
+            focusCancel: true,
+            zIndex: 4000,                 
+            target: document.body, 
+            heightAuto: false 
+           
         });
         return result.isConfirmed;
     }
