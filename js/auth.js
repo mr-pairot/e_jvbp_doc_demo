@@ -197,27 +197,56 @@ async function initApp() {
     }
 }
 
-// ตรวจสอบสิทธิ์กับ Backend (สำหรับ First Login)
+// ฟังก์ชันล้างข้อมูล Session เครื่องและนำกลับสู่หน้าล็อกอิน
+function clearLocalSessionAndRedirect_(message) {
+    localStorage.removeItem('app_user_cache');
+    try {
+        if (typeof openCacheDB === 'function') {
+            openCacheDB().then(db => {
+                const tx = db.transaction("cache_store", "readwrite");
+                tx.objectStore("cache_store").delete("BPNP_DOC_CACHE");
+            }).catch(() => {});
+        }
+    } catch (e) {}
+
+    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+        try { liff.logout(); } catch (e) {}
+    }
+    alert(message || 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่');
+    window.location.reload();
+}
+window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
+
+// ตรวจสอบสิทธิ์กับ Backend (สำหรับ First Login) พร้อมสร้าง Session
 async function verifyWithBackend(profile) {
     try {
+        const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
+        const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
+        const userAgentRaw = navigator.userAgent || '';
+
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
             body: JSON.stringify({
                 actionType: 'login_auth',
+                action: 'login_auth',
                 userId: profile.userId,
                 displayName: profile.displayName,
-                pictureUrl: profile.pictureUrl
+                pictureUrl: profile.pictureUrl,
+                os: os,
+                isInClient: isInClient,
+                userAgentRaw: userAgentRaw
             })
         });
 
         const result = await response.json();
 
-        if (result.success) {
+        if (result.success || result.ok) {
             localStorage.setItem('app_user_cache', JSON.stringify({
                 userId: profile.userId,
                 displayName: profile.displayName,
                 pictureUrl: profile.pictureUrl,
                 role: result.role,
+                sessionId: result.sessionId || '',
                 timestamp: new Date().getTime()
             }));
 
@@ -239,30 +268,66 @@ async function verifyWithBackend(profile) {
     }
 }
 
-// ตรวจสอบสิทธิ์แบบ Background 
+// ตรวจสอบสิทธิ์แบบ Background (ตรวจ User Status + ตรวจ Session ใน ActiveSessions)
 async function backgroundVerify() {
     try {
+        const cachedUserStr = localStorage.getItem('app_user_cache');
+        const cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : {};
         const profile = await liff.getProfile();
+
+        // กรณีเป็น User เดิมจากแคชที่ยังไม่มี sessionId ให้ขอ session ใหม่แบบเบื้องหลัง
+        if (!cachedUser.sessionId) {
+            const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
+            const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
+            const res = await fetch(AUTH_CONFIG.gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    actionType: 'login_auth',
+                    action: 'login_auth',
+                    userId: profile.userId,
+                    displayName: profile.displayName,
+                    pictureUrl: profile.pictureUrl,
+                    os: os,
+                    isInClient: isInClient,
+                    userAgentRaw: navigator.userAgent || ''
+                })
+            });
+            const r = await res.json();
+            if (r.success || r.ok) {
+                cachedUser.sessionId = r.sessionId;
+                cachedUser.role = r.role || cachedUser.role;
+                localStorage.setItem('app_user_cache', JSON.stringify(cachedUser));
+                if (typeof window.setLastVerifiedAt === 'function') {
+                    window.setLastVerifiedAt(Date.now());
+                }
+                return;
+            }
+        }
+
         const response = await fetch(AUTH_CONFIG.gasUrl, {
             method: 'POST',
             body: JSON.stringify({
-                actionType: 'check_status', 
-                userId: profile.userId
+                actionType: 'verify_session',
+                action: 'verify_session',
+                userId: profile.userId,
+                sessionId: cachedUser.sessionId
             })
         });
         const result = await response.json();
 
-        if (!result.success) {
-            if (typeof window.handleBannedUser === 'function') {
-                window.handleBannedUser(result.needFollow ? 
-                    'กรุณาเพิ่มเพื่อน LINE Official Account อีกครั้งเพื่อใช้งานต่อ' : 
-                    'สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว');
-            } else {
-                localStorage.removeItem('app_user_cache');
-                if (liff.isLoggedIn()) liff.logout();
-                alert('สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว');
-                window.location.reload();
+        const isOk = result.success || result.ok;
+        if (!isOk) {
+            let msg = result.needFollow ? 
+                'กรุณาเพิ่มเพื่อน LINE Official Account อีกครั้งเพื่อใช้งานต่อ' : 
+                'สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว';
+            
+            if (result.reason === 'SESSION_LOGGED_OUT') {
+                msg = 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่';
+            } else if (result.reason === 'SESSION_NOT_FOUND') {
+                msg = 'เซสชันหมดอายุหรือไม่พบข้อมูล กรุณาเข้าสู่ระบบใหม่';
             }
+
+            clearLocalSessionAndRedirect_(msg);
         } else {
             if (typeof window.setLastVerifiedAt === 'function') {
                 window.setLastVerifiedAt(Date.now());
@@ -351,6 +416,16 @@ function initProfileUI() {
             dropdown.classList.remove('is-active');
         }
     });
+
+    const btnMySessionInfo = document.getElementById('btnMySessionInfo');
+    if (btnMySessionInfo) {
+        btnMySessionInfo.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            if (typeof window.openSessionInfoModal === 'function') {
+                window.openSessionInfoModal();
+            }
+        });
+    }
 
     if (btnProfileRefresh) {
         btnProfileRefresh.addEventListener('click', () => {

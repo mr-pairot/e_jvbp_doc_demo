@@ -40,21 +40,39 @@ window.verifyStatus = async function() {
     if (typeof liff === 'undefined' || !liff.isLoggedIn()) return false;
     try {
         const profile = await liff.getProfile();
+        const cache = JSON.parse(localStorage.getItem('app_user_cache') || '{}');
+
         // เรียกใช้ AUTH_CONFIG.gasUrl (ประกาศไว้ใน auth.js)
         const response = await fetch(AUTH_CONFIG.gasUrl, { 
             method: 'POST',
             body: JSON.stringify({
-                actionType: 'check_status',
-                userId: profile.userId
+                actionType: 'verify_session',
+                action: 'verify_session',
+                userId: profile.userId,
+                sessionId: cache.sessionId
             })
         });
         const result = await response.json();
         
-        if (result.success) {
+        const isOk = result.success || result.ok;
+        if (isOk) {
             window.setLastVerifiedAt(Date.now());
             return true;
         } else {
-            window.handleBannedUser(result.reason === 'banned' ? 'สิทธิ์การเข้าใช้งานของคุณถูกระงับ' : 'ตรวจสอบสิทธิ์ไม่ผ่าน');
+            let msg = 'ตรวจสอบสิทธิ์ไม่ผ่าน';
+            if (result.reason === 'SESSION_LOGGED_OUT') {
+                msg = 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่';
+            } else if (result.reason === 'SESSION_NOT_FOUND') {
+                msg = 'เซสชันหมดอายุหรือไม่พบข้อมูล กรุณาเข้าสู่ระบบใหม่';
+            } else if (result.reason === 'banned') {
+                msg = 'สิทธิ์การเข้าใช้งานของคุณถูกระงับ';
+            }
+
+            if (typeof window.clearLocalSessionAndRedirect_ === 'function') {
+                window.clearLocalSessionAndRedirect_(msg);
+            } else if (typeof window.handleBannedUser === 'function') {
+                window.handleBannedUser(msg);
+            }
             return false;
         }
     } catch (error) {
@@ -62,6 +80,44 @@ window.verifyStatus = async function() {
         // กรณี Network Error ปล่อยผ่านเป็น false เฉยๆ ไม่ต้องเตะออก
         return false; 
     }
+};
+
+// ---------------------------------------------------------------------------
+// ฟังก์ชันเรียก API ข้อมูลและจัดการ Session
+// ---------------------------------------------------------------------------
+window.fetchMySessions = async function() {
+    const cache = JSON.parse(localStorage.getItem("app_user_cache") || "{}");
+    if (!cache.userId || !cache.sessionId) {
+        return { ok: false, reason: "NO_SESSION" };
+    }
+    const response = await fetch(AUTH_CONFIG.gasUrl, {
+        method: "POST",
+        body: JSON.stringify({
+            actionType: "list_my_sessions",
+            action: "list_my_sessions",
+            userId: cache.userId,
+            sessionId: cache.sessionId
+        })
+    });
+    return response.json();
+};
+
+window.requestLogoutSession = async function(targetSessionId) {
+    const cache = JSON.parse(localStorage.getItem("app_user_cache") || "{}");
+    if (!cache.userId || !cache.sessionId) {
+        return { ok: false, reason: "NO_SESSION" };
+    }
+    const response = await fetch(AUTH_CONFIG.gasUrl, {
+        method: "POST",
+        body: JSON.stringify({
+            actionType: "logout_session",
+            action: "logout_session",
+            userId: cache.userId,
+            sessionId: cache.sessionId,
+            targetSessionId: targetSessionId
+        })
+    });
+    return response.json();
 };
 
 // ---------------------------------------------------------------------------
@@ -73,6 +129,9 @@ window.initDashboardApp = function () {
     initCacheEvents(); 
     initDiagnosticToggle(); 
     createUpdateNotifyButton(); 
+    if (typeof window.initProfileMenuEvents === 'function') {
+        window.initProfileMenuEvents();
+    }
     initAppFlow();
 };
 

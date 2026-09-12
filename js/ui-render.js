@@ -1206,3 +1206,147 @@ window.checkAuthInBackground = async function(linkEl) {
         console.error("Background auth check error:", err);
     }
 };
+
+// ---------------------------------------------------------------------------
+// Session Info Modal (เมนู "ข้อมูลการเข้าใช้")
+// ---------------------------------------------------------------------------
+
+function initProfileMenuEvents() {
+    if (window.__sessionMenuEventsBound) return;
+    window.__sessionMenuEventsBound = true;
+
+    const btn = document.getElementById("btnMySessionInfo");
+    if (btn) btn.addEventListener("click", openSessionInfoModal);
+
+    const closeBtn = document.getElementById("btnCloseSessionModal");
+    if (closeBtn) closeBtn.addEventListener("click", closeSessionInfoModal);
+
+    const overlay = document.getElementById("sessionInfoModal");
+    if (overlay) {
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) closeSessionInfoModal();
+        });
+    }
+}
+window.initProfileMenuEvents = initProfileMenuEvents;
+
+async function openSessionInfoModal() {
+    const modal = document.getElementById("sessionInfoModal");
+    const listContainer = document.getElementById("sessionListContainer");
+    if (!modal || !listContainer) return;
+
+    modal.classList.remove("is-hidden");
+    listContainer.innerHTML = `<div class="session_loading">กำลังโหลดข้อมูลอุปกรณ์...</div>`;
+
+    try {
+        if (typeof window.fetchMySessions !== "function") {
+            listContainer.innerHTML = `<div class="session_error">ระบบไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้ง</div>`;
+            return;
+        }
+        const result = await window.fetchMySessions();
+        if (!result || (!result.ok && !result.success)) {
+            listContainer.innerHTML = `<div class="session_error">ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่</div>`;
+            return;
+        }
+        renderSessionList(result.sessions || [], result.currentSessionId);
+    } catch (err) {
+        console.error("โหลดรายการ session ล้มเหลว:", err);
+        listContainer.innerHTML = `<div class="session_error">เกิดข้อผิดพลาด กรุณาลองใหม่</div>`;
+    }
+}
+window.openSessionInfoModal = openSessionInfoModal;
+
+function closeSessionInfoModal() {
+    const modal = document.getElementById("sessionInfoModal");
+    if (modal) modal.classList.add("is-hidden");
+}
+window.closeSessionInfoModal = closeSessionInfoModal;
+
+function renderSessionList(sessions, currentSessionId) {
+    const listContainer = document.getElementById("sessionListContainer");
+    const countEl = document.getElementById("sessionCount");
+    if (!listContainer) return;
+
+    if (countEl) countEl.textContent = sessions.length;
+
+    if (sessions.length === 0) {
+        listContainer.innerHTML = `<div class="session_empty">ไม่พบข้อมูลอุปกรณ์ที่ใช้งานอยู่</div>`;
+        return;
+    }
+
+    listContainer.innerHTML = sessions.map(s => `
+        <div class="session_card" data-session-id="${escapeHTML(s.sessionId)}">
+            <div class="session_card_main">
+                <div class="session_device_label">
+                    ${escapeHTML(s.deviceLabel)}
+                    ${s.isCurrentDevice || s.sessionId === currentSessionId ? '<span class="badge_current">เครื่องนี้</span>' : ''}
+                </div>
+                <div class="session_last_seen">เข้าใช้ล่าสุด: ${escapeHTML(s.lastSeenTime)} น.</div>
+            </div>
+            <button type="button" class="btn_logout_session" data-session-id="${escapeHTML(s.sessionId)}">
+                ออกจากระบบ
+            </button>
+        </div>
+    `).join('');
+
+    bindSessionLogoutButtons(currentSessionId);
+}
+
+function bindSessionLogoutButtons(currentSessionId) {
+    document.querySelectorAll(".btn_logout_session").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const targetSessionId = btn.dataset.sessionId;
+            const cardEl = btn.closest(".session_card");
+            const deviceLabelEl = cardEl ? cardEl.querySelector(".session_device_label") : null;
+            const deviceLabel = deviceLabelEl ? deviceLabelEl.innerText.replace("เครื่องนี้", "").trim() : "อุปกรณ์นี้";
+
+            const confirmed = window.confirm(`ต้องการออกจากระบบอุปกรณ์ '${deviceLabel}' ใช่หรือไม่?`);
+            if (!confirmed) return;
+
+            btn.disabled = true;
+            btn.textContent = "กำลังดำเนินการ...";
+
+            try {
+                const result = await window.requestLogoutSession(targetSessionId);
+
+                if (!result || (!result.ok && !result.success)) {
+                    alert("ไม่สามารถออกจากระบบอุปกรณ์นี้ได้ กรุณาลองใหม่");
+                    btn.disabled = false;
+                    btn.textContent = "ออกจากระบบ";
+                    return;
+                }
+
+                if (targetSessionId === currentSessionId) {
+                    // ออกจากระบบเครื่องตัวเอง -> เคลียร์ localStorage + redirect ทันที
+                    if (typeof window.clearLocalSessionAndRedirect_ === "function") {
+                        window.clearLocalSessionAndRedirect_("คุณออกจากระบบเครื่องนี้เรียบร้อยแล้ว");
+                    } else {
+                        localStorage.removeItem("app_user_cache");
+                        if (typeof liff !== "undefined" && liff.isLoggedIn()) liff.logout();
+                        alert("คุณออกจากระบบเครื่องนี้เรียบร้อยแล้ว");
+                        window.location.reload();
+                    }
+                    return;
+                }
+
+                // ออกจากระบบเครื่องอื่น -> ลบ card ออกจาก DOM
+                if (cardEl) cardEl.remove();
+                const countEl = document.getElementById("sessionCount");
+                if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
+
+                // หากไม่มีอุปกรณ์เหลือ ให้ขึ้นข้อความ empty
+                const remainingCards = document.querySelectorAll(".session_card");
+                if (remainingCards.length === 0) {
+                    const listContainer = document.getElementById("sessionListContainer");
+                    if (listContainer) listContainer.innerHTML = `<div class="session_empty">ไม่พบข้อมูลอุปกรณ์ที่ใช้งานอยู่</div>`;
+                }
+
+            } catch (err) {
+                console.error("logout session ล้มเหลว:", err);
+                alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+                btn.disabled = false;
+                btn.textContent = "ออกจากระบบ";
+            }
+        });
+    });
+}

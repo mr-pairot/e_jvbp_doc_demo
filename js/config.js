@@ -186,11 +186,11 @@ let activeDocuments = [];
 // Helper Functions
 // ---------------------------------------------------------------------------
 function formatCount(num) {
-    if (num >= 1000) {
-        const val = (num / 1000).toFixed(1);
-        return val.endsWith(".0") ? (num / 1000) + "K" : val + "K";
+    const n = Number(num) || 0;
+    if (n >= 1000) {
+        return (n / 1000).toFixed(1) + "K";
     }
-    return num.toLocaleString();
+    return n.toLocaleString();
 }
 
 function escapeHTML(rawText) {
