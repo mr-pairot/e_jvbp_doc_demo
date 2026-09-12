@@ -612,4 +612,11 @@ function showFollowPrompt(reasonText) {
 }
 
 // เริ่มการทำงานเมื่อโหลดหน้าเสร็จ
-window.addEventListener('DOMContentLoaded', initApp);
+// หมายเหตุ: ตอนนี้ auth.js ถูกโหลดแบบ dynamic (รอ fetch version.json ก่อน)
+// ทำให้ DOMContentLoaded อาจยิงไปแล้วก่อนโค้ดตรงนี้จะรัน ถ้ารอ event เฉยๆ initApp() จะไม่ถูกเรียกเลย
+// จึงต้องเช็ค document.readyState ก่อน ถ้า DOM พร้อมแล้วให้เรียก initApp() ทันที
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
