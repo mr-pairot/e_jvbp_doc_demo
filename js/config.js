@@ -8,9 +8,11 @@
    parseHashState, pendingFilterStateFromURL)
    ========================================================================= */
 
-// App Version 
-const APP_CACHE_VERSION = "260912.0008";
-// ไฟล์นี้ต้องอัปเดตพร้อม APP_CACHE_VERSION ทุกครั้งที่ deploy
+// App Version
+// อ่านจากค่าที่ index.html ดึงจาก version.json มาให้ตอน bootstrap (window.__APP_VERSION)
+// เพื่อให้ "version.json" เป็นแหล่งความจริงจุดเดียว ไม่ต้องแก้เลขซ้ำในไฟล์นี้อีก
+// fallback ด้านหลังไว้เผื่อกรณี asset นี้ถูกโหลดตรงๆ นอก flow bootstrap ปกติเท่านั้น
+const APP_CACHE_VERSION = window.__APP_VERSION || "260912.0007";
 // ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
 const APP_VERSION_MANIFEST_URL = "version.json";
 
