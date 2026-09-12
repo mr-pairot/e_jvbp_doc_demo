@@ -419,9 +419,12 @@ async function backgroundVerify() {
 }
 
 // Cache-busting token สำหรับไฟล์ asset ของเราเอง (ไม่ใช้กับ CDN ภายนอก)
-// อ่านจาก ?appVersion=... ที่ updateAppToLatestVersion() เติมเข้ามาตอนสั่งอัปเดต
-// ถ้าไม่มี (โหลดปกติครั้งแรก) fallback เป็น timestamp วันนี้ เพื่อไม่ให้ค้าง cache เก่าข้ามวัน
+// ลำดับการเลือกค่า:
+//   1) window.__APP_VERSION ที่ index.html ดึงจาก version.json มาให้ตอน bootstrap (แหล่งความจริงเดียว)
+//   2) ?appVersion=... ที่ updateAppToLatestVersion() เติมตอนสั่งอัปเดต (เผื่อกรณี edge case)
+//   3) timestamp วันนี้ กันไว้เผื่อ (1) และ (2) ไม่มีค่าจริงๆ
 function getAssetCacheBuster_() {
+    if (window.__APP_VERSION) return window.__APP_VERSION;
     const params = new URLSearchParams(window.location.search);
     return params.get('appVersion') || new Date().toISOString().slice(0, 10);
 }
