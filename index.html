@@ -541,6 +541,9 @@
             });
 
             await loadScript('js/magic-rings-bg.js');
+            if (typeof window.startMagicRingsBg === 'function') {
+                window.startMagicRingsBg();
+            }
             await loadScript('js/auth.js');
         })();
     </script>
