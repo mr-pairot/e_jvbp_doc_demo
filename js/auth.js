@@ -249,8 +249,7 @@ async function logoutCurrentSession_() {
                 throw new Error(`Logout request failed: HTTP ${response.status}`);
             }
 
-            const result = await response.json();
-            if (!result.success && !result.ok) {
+            const result = await parseJsonResponseSafe_(response, 'logout_session');
                 // Session ที่ถูกปิด/หมดอายุไปแล้ว ไม่จำเป็นต้อง retry และออกจาก LIFF ได้เลย
                 if (!['SESSION_NOT_FOUND', 'SESSION_LOGGED_OUT', 'REQUESTER_SESSION_INVALID', 'TARGET_SESSION_NOT_FOUND'].includes(result.reason)) {
                     throw new Error(result.reason || 'Backend rejected logout request');
@@ -295,9 +294,7 @@ async function verifyWithBackend(profile) {
             })
         });
 
-        const result = await response.json();
-
-        if (result.success || result.ok) {
+        const result = await parseJsonResponseSafe_(response, 'login_auth');
             localStorage.setItem('app_user_cache', JSON.stringify({
                 userId: profile.userId,
                 displayName: profile.displayName,
@@ -326,7 +323,18 @@ async function verifyWithBackend(profile) {
 }
 
 // ตรวจสอบสิทธิ์แบบ Background (ตรวจ User Status + ตรวจ Session ใน ActiveSessions)
-async function backgroundVerify() {
+// อ่าน response เป็น JSON อย่างปลอดภัย — ถ้า backend (Apps Script) ตอบกลับเป็น HTML
+// (เช่น หน้า error/sign-in ของ Google เวลา deployment/permission มีปัญหา) จะได้ error
+// ที่สื่อความหมายชัดเจน แทน SyntaxError ดิบๆ จาก JSON.parse
+async function parseJsonResponseSafe_(response, contextLabel) {
+    const rawText = await response.text();
+    try {
+        return JSON.parse(rawText);
+    } catch (e) {
+        console.error(`[${contextLabel}] Backend ตอบกลับไม่ใช่ JSON (อาจเป็นปัญหาที่ Apps Script deployment/permission):`, rawText.slice(0, 200));
+        throw new Error(`${contextLabel}: backend ส่งข้อมูลที่ไม่ใช่ JSON กลับมา`);
+    }
+}
     let hasSessionId = false;
 
     try {
@@ -359,7 +367,7 @@ async function backgroundVerify() {
                 throw new Error(`Session migration request failed: HTTP ${res.status}`);
             }
 
-            const r = await res.json();
+            const r = await parseJsonResponseSafe_(res, 'login_auth');
             const newSessionId = typeof r.sessionId === 'string' ? r.sessionId.trim() : '';
             if ((r.success || r.ok) && newSessionId) {
                 cachedUser.sessionId = newSessionId;
@@ -382,10 +390,7 @@ async function backgroundVerify() {
                 actionType: 'verify_session',
                 action: 'verify_session',
                 userId: profile.userId,
-                sessionId: cachedUser.sessionId
-            })
-        });
-        const result = await response.json();
+        const result = await parseJsonResponseSafe_(response, 'verify_session');
 
         const isOk = result.success || result.ok;
         if (!isOk) {
