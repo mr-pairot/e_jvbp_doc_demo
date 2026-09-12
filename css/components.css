@@ -1089,7 +1089,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     animation: update_notify_pulse 2s infinite;
 }
 .update_notify_btn::before {
-    content: "พบข้อมูลใหม่ กดเพื่ออัปเดต";
+    content: attr(data-update-message);
     position: absolute;
     right: 55px;
     background: rgba(0, 0, 0, 0.8);
