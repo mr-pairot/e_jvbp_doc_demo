@@ -365,6 +365,10 @@
             <div class="user_dropdown" id="userDropdown">
                 <div class="user_dropdown_name" id="userDropdownName">ผู้ใช้งาน</div>
                 <hr>
+                <button id="btnMySessionInfo" class="user_dropdown_btn">
+                    <span style="font-size: 16px;">🔐</span> ข้อมูลการเข้าใช้
+                    <span style="margin-left: auto; color: var(--color-text-muted); font-size: 14px;">›</span>
+                </button>
                 <button id="btnProfileRefresh" class="user_dropdown_btn">
                     <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
                 </button>
@@ -489,6 +493,21 @@
             <div class="custom_modal_actions">
                 <button id="btnCancelLogout" class="btn_modal_cancel">ยกเลิก</button>
                 <button id="btnConfirmLogout" class="btn_modal_confirm">ออกจากระบบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal แสดงข้อมูลอุปกรณ์ที่กำลังเข้าใช้งาน (Active Sessions) -->
+    <div id="sessionInfoModal" class="custom_modal is-hidden">
+        <div class="custom_modal_content session_modal_box">
+            <div class="session_modal_header">
+                <div class="session_modal_title">
+                    <span>🔐 อุปกรณ์ที่กำลังใช้งาน (<span id="sessionCount">0</span>)</span>
+                </div>
+                <button type="button" id="btnCloseSessionModal" class="btn_close_session_modal" aria-label="ปิด">✕</button>
+            </div>
+            <div id="sessionListContainer" class="session_list">
+                <!-- render โดย renderSessionList() -->
             </div>
         </div>
     </div>
