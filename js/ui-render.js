@@ -1300,7 +1300,7 @@ function bindSessionLogoutButtons(currentSessionId) {
             const deviceLabelEl = cardEl ? cardEl.querySelector(".session_device_label") : null;
             const deviceLabel = deviceLabelEl ? deviceLabelEl.innerText.replace("เครื่องนี้", "").trim() : "อุปกรณ์นี้";
 
-            const confirmed = window.confirm(`ต้องการออกจากระบบอุปกรณ์ '${deviceLabel}' ใช่หรือไม่?`);
+            const confirmed = await confirmSessionLogout_(deviceLabel);
             if (!confirmed) return;
 
             btn.disabled = true;
@@ -1349,4 +1349,28 @@ function bindSessionLogoutButtons(currentSessionId) {
             }
         });
     });
+}
+
+async function confirmSessionLogout_(deviceLabel) {
+    const message = `ต้องการออกจากระบบอุปกรณ์ “${deviceLabel}” ใช่หรือไม่?`;
+
+    // ใช้ SweetAlert2 เพื่อให้ UX สอดคล้องกับ modal ของแอป
+    if (typeof window.Swal !== "undefined") {
+        const result = await window.Swal.fire({
+            title: "ยืนยันการออกจากระบบ",
+            text: message,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "ออกจากระบบ",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonColor: "#dc2626",
+            cancelButtonColor: "#64748b",
+            reverseButtons: true,
+            focusCancel: true
+        });
+        return result.isConfirmed;
+    }
+
+    // Fallback เฉพาะกรณี CDN โหลดไม่สำเร็จ เพื่อไม่ให้ปุ่มใช้งานไม่ได้
+    return window.confirm(message);
 }
