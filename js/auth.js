@@ -418,13 +418,28 @@ async function backgroundVerify() {
     }
 }
 
+// Cache-busting token สำหรับไฟล์ asset ของเราเอง (ไม่ใช้กับ CDN ภายนอก)
+// อ่านจาก ?appVersion=... ที่ updateAppToLatestVersion() เติมเข้ามาตอนสั่งอัปเดต
+// ถ้าไม่มี (โหลดปกติครั้งแรก) fallback เป็น timestamp วันนี้ เพื่อไม่ให้ค้าง cache เก่าข้ามวัน
+function getAssetCacheBuster_() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('appVersion') || new Date().toISOString().slice(0, 10);
+}
+
+function withCacheBuster_(href) {
+    // ไม่แตะ URL ของ CDN ภายนอก (http/https เต็มรูปแบบ) เติมเฉพาะไฟล์ในโปรเจกต์ตัวเอง
+    if (/^https?:\/\//i.test(href)) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}v=${encodeURIComponent(getAssetCacheBuster_())}`;
+}
+
 // Dynamic Loader แบบเรียงลำดับ
 async function loadAppAssets() {
     const cssPromises = APP_ASSETS.css.map(href => {
         return new Promise((resolve) => {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = href;
+            link.href = withCacheBuster_(href);
             link.onload = resolve;
             link.onerror = resolve;
             document.head.appendChild(link);
@@ -435,7 +450,7 @@ async function loadAppAssets() {
     for (const src of APP_ASSETS.js) {
         await new Promise((resolve) => {
             const script = document.createElement('script');
-            script.src = src;
+            script.src = withCacheBuster_(src);
             script.onload = resolve;
             script.onerror = resolve;
             document.body.appendChild(script);
