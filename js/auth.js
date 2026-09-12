@@ -250,6 +250,8 @@ async function logoutCurrentSession_() {
             }
 
             const result = await parseJsonResponseSafe_(response, 'logout_session');
+            
+            if (!result.success && !result.ok) {
                 // Session ที่ถูกปิด/หมดอายุไปแล้ว ไม่จำเป็นต้อง retry และออกจาก LIFF ได้เลย
                 if (!['SESSION_NOT_FOUND', 'SESSION_LOGGED_OUT', 'REQUESTER_SESSION_INVALID', 'TARGET_SESSION_NOT_FOUND'].includes(result.reason)) {
                     throw new Error(result.reason || 'Backend rejected logout request');
@@ -295,6 +297,8 @@ async function verifyWithBackend(profile) {
         });
 
         const result = await parseJsonResponseSafe_(response, 'login_auth');
+        
+        if (result.success || result.ok) {
             localStorage.setItem('app_user_cache', JSON.stringify({
                 userId: profile.userId,
                 displayName: profile.displayName,
@@ -335,6 +339,8 @@ async function parseJsonResponseSafe_(response, contextLabel) {
         throw new Error(`${contextLabel}: backend ส่งข้อมูลที่ไม่ใช่ JSON กลับมา`);
     }
 }
+
+async function backgroundVerify() {
     let hasSessionId = false;
 
     try {
@@ -390,6 +396,10 @@ async function parseJsonResponseSafe_(response, contextLabel) {
                 actionType: 'verify_session',
                 action: 'verify_session',
                 userId: profile.userId,
+                sessionId: cachedUser.sessionId
+            })
+        });
+        
         const result = await parseJsonResponseSafe_(response, 'verify_session');
 
         const isOk = result.success || result.ok;
@@ -625,3 +635,4 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
+
