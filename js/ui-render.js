@@ -1367,9 +1367,10 @@ async function confirmSessionLogout_(deviceLabel) {
             cancelButtonColor: "#64748b",
             reverseButtons: true,
             focusCancel: true,
-            zIndex: 4000,                 
-            target: document.body, 
-            heightAuto: false 
+            heightAuto: false,
+            customClass: {
+                container: "swal_above_session_modal"   
+            }
            
         });
         return result.isConfirmed;
