@@ -9,7 +9,7 @@
    ========================================================================= */
 
 // App Version 
-const APP_CACHE_VERSION = "260912.0001";
+const APP_CACHE_VERSION = "260912.0002";
 // ไฟล์นี้ต้องอัปเดตพร้อม APP_CACHE_VERSION ทุกครั้งที่ deploy
 // ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
 const APP_VERSION_MANIFEST_URL = "version.json";

@@ -19,6 +19,7 @@ const APP_VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 let lastAppVersionCheckAt = 0;
 let appVersionCheckInProgress = false;
 let versionPromptShownFor = null;
+let pendingAppVersion = null;
 
 async function checkForAppVersionUpdate(force = false) {
     const now = Date.now();
@@ -44,12 +45,8 @@ async function checkForAppVersionUpdate(force = false) {
         }
 
         versionPromptShownFor = latestVersion;
-        const shouldUpdate = window.confirm(
-            `มีแอปเวอร์ชันใหม่ (${latestVersion}) พร้อมใช้งาน\n\nต้องการอัปเดตตอนนี้หรือไม่?`
-        );
-        if (shouldUpdate) {
-            updateAppToLatestVersion(latestVersion);
-        }
+        pendingAppVersion = latestVersion;
+        showUpdateNotifyButton(`พบแอปเวอร์ชันใหม่ (${latestVersion}) กดเพื่ออัปเดต`);
         return true;
     } catch (error) {
         // การตรวจ version เป็น enhancement: network error ต้องไม่กระทบการใช้งานปกติ
@@ -866,6 +863,7 @@ function createUpdateNotifyButton() {
     updateNotifyBtnEl = document.createElement("div");
     updateNotifyBtnEl.className = "update_notify_btn";
     updateNotifyBtnEl.title = "พบข้อมูลใหม่ แตะเพื่ออัปเดต";
+    updateNotifyBtnEl.setAttribute("data-update-message", "พบข้อมูลใหม่ กดเพื่ออัปเดต");
     updateNotifyBtnEl.innerHTML = `
         <svg class="update_notify_icon" viewBox="0 0 24 24">
             <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -881,8 +879,14 @@ function createUpdateNotifyButton() {
     }
 }
 
-function showUpdateNotifyButton() {
+function showUpdateNotifyButton(message) {
     if (!updateNotifyBtnEl) createUpdateNotifyButton();
+    const defaultMessage = pendingAppVersion
+        ? `พบแอปเวอร์ชันใหม่ (${pendingAppVersion}) กดเพื่ออัปเดต`
+        : "พบข้อมูลใหม่ กดเพื่ออัปเดต";
+    const displayMessage = message || defaultMessage;
+    updateNotifyBtnEl.title = displayMessage;
+    updateNotifyBtnEl.setAttribute("data-update-message", displayMessage);
     updateNotifyBtnEl.classList.add("show");
 }
 
@@ -901,6 +905,15 @@ function hasTabWithMoreRowsThanBaseline(liveData, baselineRecord) {
 }
 
 async function applyPendingUpdate() {
+    // เวอร์ชันแอปมีความสำคัญกว่าข้อมูล: reload เพื่อรับ JavaScript/CSS ชุดใหม่ก่อน
+    if (pendingAppVersion) {
+        const version = pendingAppVersion;
+        pendingAppVersion = null;
+        hideUpdateNotifyButton();
+        updateAppToLatestVersion(version);
+        return;
+    }
+
     if (!pendingUpdateData) return;
     hideUpdateNotifyButton();
 
