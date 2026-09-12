@@ -63,10 +63,11 @@ function setLoginButtonLoading(isLoading) {
 
 // Event Listeners สำหรับหน้า Login / Error
 ui.loginBtn.addEventListener('click', (e) => {
-    e.preventDefault(); // ป้องกันไม่ให้เบราว์เซอร์เปิดแท็บ/รีเฟรชหน้าเอง
-
-    if (loginInProgress) return;
-    if (!liff || liff.isLoggedIn()) return;
+    // ป้องกันการกดซ้ำซ้อนขณะกำลังล็อกอิน หรือ ล็อกอินอยู่แล้ว
+    if (loginInProgress || (liff && liff.isLoggedIn())) {
+        e.preventDefault();
+        return;
+    }
 
     loginInProgress = true;
     setLoginButtonLoading(true); 
@@ -77,12 +78,12 @@ ui.loginBtn.addEventListener('click', (e) => {
         console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', err);
     }
 
-    const cleanRedirectUrl = window.location.origin + window.location.pathname;
-
-    liff.login({
-        redirectUri: cleanRedirectUrl
-    });
+    // หมายเหตุสำคัญ: เราไม่ได้ใส่ e.preventDefault() และเอา liff.login() ออก
+    // ปล่อยให้เบราว์เซอร์พาผู้ใช้วิ่งไปที่ href "https://liff.line.me/..." ที่ตั้งไว้ในแท็ก <a>
+    // ซึ่งมันจะช่วยป้องกัน PWA เตะออกไป Safari (iOS จะเปิดเป็น In-App browser ครอบทับ หรือสลับไปเปิดในแอป LINE ให้เลย)
+    // จากนั้น LIFF จะ Redirect ส่ง Token กลับมาที่หน้าเว็บเองอัตโนมัติตาม Endpoint ที่ตั้งใน LINE Console
 });
+
 
 ui.logoutBtn.addEventListener('click', async () => {
     if (ui.logoutBtn) ui.logoutBtn.disabled = true;
