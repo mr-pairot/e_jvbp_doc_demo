@@ -76,15 +76,8 @@ ui.loginBtn.addEventListener('click', (e) => {
         console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', err);
     }
 
-    // ทำความสะอาด URL ขากลับ ให้เหลือแค่ Domain + Path ตัด ? และ # ทิ้งให้หมด
-    // เพื่อให้ตรงกับ start_url ใน PWA มากที่สุด ป้องกัน OS เปิดแท็บใหม่
-    const cleanRedirectUrl = window.location.href.split('?')[0].split('#')[0];
-
-    liff.login({
-        redirectUri: cleanRedirectUrl
-    });
+    liff.login(); // ← เอา redirectUri ออก ให้ SDK ใช้ current URL เอง เหมือนแอปแผนที่
 });
-
 
 ui.logoutBtn.addEventListener('click', async () => {
     if (ui.logoutBtn) ui.logoutBtn.disabled = true;
