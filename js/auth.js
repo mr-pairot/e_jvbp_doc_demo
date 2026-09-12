@@ -28,6 +28,7 @@ const LOGIN_PENDING_KEY = 'line_login_pending';
 let loginInProgress = false;   
 let authInitializing = false;  
 let authCompleted = false;     
+let logoutInProgress = false;
 
 // UI Elements
 const ui = {
@@ -81,12 +82,10 @@ ui.loginBtn.addEventListener('click', () => {
     });
 });
 
-ui.logoutBtn.addEventListener('click', () => {
-    if (liff && liff.isLoggedIn()) {
-        liff.logout();
-    }
-    localStorage.removeItem('app_user_cache');
-    window.location.reload();
+ui.logoutBtn.addEventListener('click', async () => {
+    if (ui.logoutBtn) ui.logoutBtn.disabled = true;
+    const didLogout = await logoutCurrentSession_();
+    if (!didLogout && ui.logoutBtn) ui.logoutBtn.disabled = false;
 });
 
 if (ui.recheckFriendBtn) {
@@ -218,6 +217,62 @@ function clearLocalSessionAndRedirect_(message) {
     window.location.reload();
 }
 window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
+
+// Logout โดยผู้ใช้ต้องแจ้ง backend ก่อน เพื่อเปลี่ยน ActiveSessions เป็น LoggedOut
+async function logoutCurrentSession_() {
+    if (logoutInProgress) return false;
+    logoutInProgress = true;
+
+    try {
+        let cachedUser = {};
+        try {
+            cachedUser = JSON.parse(localStorage.getItem('app_user_cache') || '{}');
+        } catch (cacheError) {
+            console.warn('Invalid local user cache during logout:', cacheError);
+        }
+        const hasSession = cachedUser.userId && cachedUser.sessionId;
+
+        // Cache จากระบบก่อนมี ActiveSessions ไม่มี sessionId จึงไม่มีแถวให้ปิด
+        if (hasSession) {
+            const response = await fetch(AUTH_CONFIG.gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    actionType: 'logout_session',
+                    action: 'logout_session',
+                    userId: cachedUser.userId,
+                    sessionId: cachedUser.sessionId,
+                    targetSessionId: cachedUser.sessionId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Logout request failed: HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (!result.success && !result.ok) {
+                // Session ที่ถูกปิด/หมดอายุไปแล้ว ไม่จำเป็นต้อง retry และออกจาก LIFF ได้เลย
+                if (!['SESSION_NOT_FOUND', 'SESSION_LOGGED_OUT', 'REQUESTER_SESSION_INVALID', 'TARGET_SESSION_NOT_FOUND'].includes(result.reason)) {
+                    throw new Error(result.reason || 'Backend rejected logout request');
+                }
+            }
+        }
+
+        if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+            liff.logout();
+        }
+        localStorage.removeItem('app_user_cache');
+        window.location.reload();
+        return true;
+    } catch (error) {
+        console.error('Unable to record logout session:', error);
+        alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
+        return false;
+    } finally {
+        logoutInProgress = false;
+    }
+}
+window.logoutCurrentSession_ = logoutCurrentSession_;
 
 // ตรวจสอบสิทธิ์กับ Backend (สำหรับ First Login) พร้อมสร้าง Session
 async function verifyWithBackend(profile) {
@@ -477,12 +532,10 @@ function initProfileUI() {
 
     // กดยืนยันใน Popup (เคลียร์ข้อมูลและกลับไป Login)
     if (btnConfirmLogout) {
-        btnConfirmLogout.addEventListener('click', () => {
-            if (liff && liff.isLoggedIn()) {
-                liff.logout();
-            }
-            localStorage.removeItem('app_user_cache');
-            window.location.reload();
+        btnConfirmLogout.addEventListener('click', async () => {
+            btnConfirmLogout.disabled = true;
+            const didLogout = await logoutCurrentSession_();
+            if (!didLogout) btnConfirmLogout.disabled = false;
         });
     }
 }
