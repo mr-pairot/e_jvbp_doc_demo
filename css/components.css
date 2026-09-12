@@ -1622,3 +1622,10 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     color: var(--color-status-danger-text, #d93025);
     font-size: 14px;
 }
+
+/* =============================================================================
+   16. SWEETALERT2 Z-INDEX OVERRIDE (กันไม่ให้ถูกบังโดย session modal / about modal)
+   ========================================================================= */
+.swal2-container {
+    z-index: 4000 !important;
+}
