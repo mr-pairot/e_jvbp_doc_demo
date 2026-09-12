@@ -149,7 +149,9 @@ async function initApp() {
                 console.log('LOGIN BUTTON COUNT:', document.querySelectorAll('#lineLoginBtn').length);
 
                 if (liff.isLoggedIn()) {
-                    backgroundVerify();
+                    // รอให้ migration ของ cache เก่าสร้าง session เสร็จก่อน
+                    // เพื่อไม่ให้ผู้ใช้เข้าแอปต่อได้โดยไม่มี ActiveSessions record
+                    await backgroundVerify();
                 }
             }
             return;
@@ -270,13 +272,18 @@ async function verifyWithBackend(profile) {
 
 // ตรวจสอบสิทธิ์แบบ Background (ตรวจ User Status + ตรวจ Session ใน ActiveSessions)
 async function backgroundVerify() {
+    let hasSessionId = false;
+
     try {
         const cachedUserStr = localStorage.getItem('app_user_cache');
         const cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : {};
+        hasSessionId = typeof cachedUser.sessionId === 'string' && cachedUser.sessionId.trim() !== '';
         const profile = await liff.getProfile();
 
-        // กรณีเป็น User เดิมจากแคชที่ยังไม่มี sessionId ให้ขอ session ใหม่แบบเบื้องหลัง
-        if (!cachedUser.sessionId) {
+        // User จาก cache รุ่นเก่าไม่มี sessionId จึงต้องสร้าง session ใหม่ให้สำเร็จ
+        // ห้าม fallback ไป verify_session แบบไม่มี sessionId เพราะ backend จะรองรับ
+        // legacy request และยอมให้เข้าใช้งานต่อโดยไม่มี ActiveSessions record.
+        if (!hasSessionId) {
             const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
             const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
             const res = await fetch(AUTH_CONFIG.gasUrl, {
@@ -292,16 +299,26 @@ async function backgroundVerify() {
                     userAgentRaw: navigator.userAgent || ''
                 })
             });
+
+            if (!res.ok) {
+                throw new Error(`Session migration request failed: HTTP ${res.status}`);
+            }
+
             const r = await res.json();
-            if (r.success || r.ok) {
-                cachedUser.sessionId = r.sessionId;
+            const newSessionId = typeof r.sessionId === 'string' ? r.sessionId.trim() : '';
+            if ((r.success || r.ok) && newSessionId) {
+                cachedUser.sessionId = newSessionId;
                 cachedUser.role = r.role || cachedUser.role;
                 localStorage.setItem('app_user_cache', JSON.stringify(cachedUser));
                 if (typeof window.setLastVerifiedAt === 'function') {
                     window.setLastVerifiedAt(Date.now());
                 }
-                return;
+                return true;
             }
+
+            console.warn('Session migration failed:', r.reason || 'sessionId missing');
+            clearLocalSessionAndRedirect_('ไม่สามารถสร้างข้อมูลอุปกรณ์ของคุณได้ กรุณาเข้าสู่ระบบใหม่');
+            return false;
         }
 
         const response = await fetch(AUTH_CONFIG.gasUrl, {
@@ -328,13 +345,21 @@ async function backgroundVerify() {
             }
 
             clearLocalSessionAndRedirect_(msg);
+            return false;
         } else {
             if (typeof window.setLastVerifiedAt === 'function') {
                 window.setLastVerifiedAt(Date.now());
             }
+            return true;
         }
     } catch (error) {
-        console.warn('Background verify network error (ignored)', error);
+        // Network error ของ session ที่มีอยู่แล้วไม่ควรเตะผู้ใช้ออกทันที
+        // แต่ cache เก่าที่ไม่มี sessionId ต้อง login ใหม่ เพื่อไม่ให้ใช้งานแบบไร้ session.
+        console.warn('Background verify error', error);
+        if (!hasSessionId) {
+            clearLocalSessionAndRedirect_('ไม่สามารถสร้างข้อมูลอุปกรณ์ของคุณได้ กรุณาเข้าสู่ระบบใหม่');
+        }
+        return false;
     }
 }
 
@@ -517,4 +542,3 @@ function showFollowPrompt(reasonText) {
 
 // เริ่มการทำงานเมื่อโหลดหน้าเสร็จ
 window.addEventListener('DOMContentLoaded', initApp);
-
