@@ -1477,3 +1477,148 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 .document_table span.doc_hyperlink_title {
     font-size: var(--font-size-2xs) !important;
 }
+
+/* =============================================================================
+   12. SESSION MANAGEMENT MODAL & CARDS
+   ========================================================================= */
+.session_modal_box {
+    max-width: 480px;
+    width: 92%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    padding: 20px 24px;
+}
+
+.session_modal_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border-default, #cbd5e1);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+}
+
+.session_modal_title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-heading, #1e293b);
+}
+
+.btn_close_session_modal {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--color-text-muted, #64748b);
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1;
+}
+
+.btn_close_session_modal:hover {
+    background: #f1f5f9;
+    color: var(--color-text-heading, #1e293b);
+}
+
+.session_list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 60vh;
+    padding-right: 4px;
+}
+
+.session_card {
+    background: #f8fafc;
+    border: 1px solid var(--color-border-default, #cbd5e1);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.session_card:hover {
+    border-color: var(--color-brand-primary, #0d6efd);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.session_card_main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.session_device_label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-heading, #1e293b);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge_current {
+    background: #e0f2fe;
+    color: #0284c7;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.2px;
+}
+
+.session_last_seen {
+    font-size: 12px;
+    color: var(--color-text-muted, #64748b);
+}
+
+.btn_logout_session {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn_logout_session:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+.btn_logout_session:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.session_loading,
+.session_empty {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--color-text-muted, #64748b);
+    font-size: 14px;
+}
+
+.session_error {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--color-status-danger-text, #d93025);
+    font-size: 14px;
+}
