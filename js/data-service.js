@@ -12,6 +12,61 @@ window.setLastVerifiedAt = function(timeMs) {
     window.lastVerifiedAt = timeMs || Date.now();
 };
 
+// ---------------------------------------------------------------------------
+// App Version Update Check
+// ---------------------------------------------------------------------------
+const APP_VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+let lastAppVersionCheckAt = 0;
+let appVersionCheckInProgress = false;
+let versionPromptShownFor = null;
+
+async function checkForAppVersionUpdate(force = false) {
+    const now = Date.now();
+    if (appVersionCheckInProgress || (!force && now - lastAppVersionCheckAt < APP_VERSION_CHECK_INTERVAL_MS)) {
+        return false;
+    }
+
+    appVersionCheckInProgress = true;
+    lastAppVersionCheckAt = now;
+
+    try {
+        // เติม query และใช้ no-store เพื่อข้าม HTTP cache ของ version manifest เสมอ
+        const separator = APP_VERSION_MANIFEST_URL.includes('?') ? '&' : '?';
+        const response = await fetch(`${APP_VERSION_MANIFEST_URL}${separator}t=${now}`, {
+            cache: 'no-store'
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const manifest = await response.json();
+        const latestVersion = typeof manifest.version === 'string' ? manifest.version.trim() : '';
+        if (!latestVersion || latestVersion === APP_CACHE_VERSION || versionPromptShownFor === latestVersion) {
+            return false;
+        }
+
+        versionPromptShownFor = latestVersion;
+        const shouldUpdate = window.confirm(
+            `มีแอปเวอร์ชันใหม่ (${latestVersion}) พร้อมใช้งาน\n\nต้องการอัปเดตตอนนี้หรือไม่?`
+        );
+        if (shouldUpdate) {
+            updateAppToLatestVersion(latestVersion);
+        }
+        return true;
+    } catch (error) {
+        // การตรวจ version เป็น enhancement: network error ต้องไม่กระทบการใช้งานปกติ
+        console.warn('Unable to check app version:', error);
+        return false;
+    } finally {
+        appVersionCheckInProgress = false;
+    }
+}
+
+function updateAppToLatestVersion(version) {
+    // เพิ่ม query ให้ navigation เป็น URL ใหม่ เพื่อให้ browser revalidate index และ script assets
+    const url = new URL(window.location.href);
+    url.searchParams.set('appVersion', version);
+    window.location.replace(url.toString());
+}
+
 window.handleBannedUser = async function(reasonText) {
     // 1. เคลียร์ LocalStorage
     localStorage.removeItem('app_user_cache');
@@ -129,6 +184,8 @@ window.initDashboardApp = function () {
     initCacheEvents(); 
     initDiagnosticToggle(); 
     createUpdateNotifyButton(); 
+    startAppVersionChecks();
+    checkForAppVersionUpdate(true);
     if (typeof window.initProfileMenuEvents === 'function') {
         window.initProfileMenuEvents();
     }
@@ -861,6 +918,20 @@ async function applyPendingUpdate() {
 // ---------------------------------------------------------------------------
 let backgroundCheckIntervalId = null;
 let appHasEverLoadedData = false;
+let appVersionCheckIntervalId = null;
+
+function startAppVersionChecks() {
+    if (appVersionCheckIntervalId) return;
+    appVersionCheckIntervalId = setInterval(() => {
+        if (!document.hidden) checkForAppVersionUpdate();
+    }, APP_VERSION_CHECK_INTERVAL_MS);
+}
+
+function stopAppVersionChecks() {
+    if (!appVersionCheckIntervalId) return;
+    clearInterval(appVersionCheckIntervalId);
+    appVersionCheckIntervalId = null;
+}
 
 function startBackgroundCacheCheck() {
     stopBackgroundCacheCheck();
@@ -924,9 +995,12 @@ async function performBackgroundCheck() {
 document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
         stopBackgroundCacheCheck();
+        stopAppVersionChecks();
     } else if (appHasEverLoadedData || document.getElementById("noDataBox")) {
         startBackgroundCacheCheck();
+        startAppVersionChecks();
         performBackgroundCheck(); 
+        checkForAppVersionUpdate(true);
         
         // ตรวจสอบ Session Guard ทุกครั้งที่กลับมา Focus
         if (Date.now() - window.lastVerifiedAt > window.REVALIDATE_INTERVAL_MS) {

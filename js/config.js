@@ -10,6 +10,9 @@
 
 // App Version 
 const APP_CACHE_VERSION = "260910.1440";
+// ไฟล์นี้ต้องอัปเดตพร้อม APP_CACHE_VERSION ทุกครั้งที่ deploy
+// ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
+const APP_VERSION_MANIFEST_URL = "version.json";
 
 // ---------------------------------------------------------------------------
 // URL Hash State (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash)
