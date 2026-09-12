@@ -516,8 +516,34 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="js/magic-rings-bg.js"></script>
-    <script src="js/auth.js"></script>
+    <!-- v= ต้องอัปเดตพร้อม APP_CACHE_VERSION (config.js) และ version.json ทุกครั้งที่ deploy
+         ไม่งั้น browser จะแคช auth.js เก่าไว้ และปุ่มแจ้งเตือนอัปเดตจะโผล่ไม่รู้จบ -->
+    <!-- Version Bootstrap: อ่าน version.json ครั้งเดียว แล้วฉีด ?v= ให้สคริปต์ที่เหลือเอง
+         ต้องแก้เลขเวอร์ชันแค่ที่ version.json จุดเดียว ไม่ต้องแตะไฟล์นี้อีก -->
+    <script>
+        (async () => {
+            let v = Date.now(); // fallback กันเน็ตหลุด/fetch พัง
+            try {
+                const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+                const manifest = await res.json();
+                if (manifest && manifest.version) v = manifest.version;
+            } catch (e) {
+                console.warn('อ่าน version.json ไม่ได้ ใช้ timestamp กันแคชแทน', e);
+            }
+            window.__APP_VERSION = v;
+
+            const loadScript = (src) => new Promise((resolve) => {
+                const s = document.createElement('script');
+                s.src = `${src}?v=${encodeURIComponent(v)}`;
+                s.onload = resolve;
+                s.onerror = resolve;
+                document.body.appendChild(s);
+            });
+
+            await loadScript('js/magic-rings-bg.js');
+            await loadScript('js/auth.js');
+        })();
+    </script>
 
 </body>
 </html>
