@@ -1231,6 +1231,9 @@ function initProfileMenuEvents() {
 window.initProfileMenuEvents = initProfileMenuEvents;
 
 async function openSessionInfoModal() {
+    const userDropdownEl = document.getElementById("userDropdown");
+    if (userDropdownEl) userDropdownEl.classList.remove("is-active");
+
     const modal = document.getElementById("sessionInfoModal");
     const listContainer = document.getElementById("sessionListContainer");
     if (!modal || !listContainer) return;
