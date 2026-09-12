@@ -76,7 +76,7 @@ ui.loginBtn.addEventListener('click', (e) => {
         console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', err);
     }
 
-    liff.login(); // ← เอา redirectUri ออก ให้ SDK ใช้ current URL เอง เหมือนแอปแผนที่
+    liff.login(); 
 });
 
 ui.logoutBtn.addEventListener('click', async () => {
