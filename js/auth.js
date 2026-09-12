@@ -62,7 +62,9 @@ function setLoginButtonLoading(isLoading) {
 }
 
 // Event Listeners สำหรับหน้า Login / Error
-ui.loginBtn.addEventListener('click', () => {
+ui.loginBtn.addEventListener('click', (e) => {
+    e.preventDefault(); // ป้องกันไม่ให้เบราว์เซอร์เปิดแท็บ/รีเฟรชหน้าเอง
+
     if (loginInProgress) return;
     if (!liff || liff.isLoggedIn()) return;
 
@@ -71,8 +73,8 @@ ui.loginBtn.addEventListener('click', () => {
 
     try {
         sessionStorage.setItem(LOGIN_PENDING_KEY, '1');
-    } catch (e) {
-        console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', e);
+    } catch (err) {
+        console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', err);
     }
 
     const cleanRedirectUrl = window.location.origin + window.location.pathname;
