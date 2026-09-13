@@ -220,6 +220,36 @@ async function logoutCurrentSession_() {
     if (logoutInProgress) return false;
     logoutInProgress = true;
 
+    // --- 1. จัดการ UI เพื่อแสดงหน้าโหลด (Splash Screen) ---
+    
+    // ซ่อน Modal ยืนยันการออกจากระบบ
+    const logoutModal = document.getElementById('logoutConfirmModal');
+    if (logoutModal) logoutModal.classList.add('is-hidden');
+    
+    // ซ่อนหน้าต่างแอปพลิเคชันหลัก
+    if (ui.app) ui.app.classList.add('is-hidden');
+
+    // แสดง Splash Screen กลับขึ้นมา
+    if (ui.splash) ui.splash.classList.remove('is-hidden');
+    
+    // เปลี่ยนข้อความ และปรับแต่งให้เป็นสีส้ม
+    if (ui.splashStatus) {
+        ui.splashStatus.innerText = 'กำลังออกจากระบบ...';
+        ui.splashStatus.style.color = '#f97316'; // สีส้ม (Orange-500)
+        ui.splashStatus.style.fontWeight = '600'; // เพิ่มความหนาให้ดูเด่นชัด
+        ui.splashStatus.style.fontSize = '18px';
+    }
+
+    // แสดง Spinner วงกลมหมุน (ถ้ามี)
+    const splashSpinner = document.getElementById('splashSpinner');
+    if (splashSpinner) splashSpinner.classList.remove('is-hidden');
+
+    // ซ่อนหลอด Progress Bar ของเก่า (เพื่อไม่ให้กวนสายตา)
+    const splashProgressWrap = document.getElementById('splashProgressWrap');
+    if (splashProgressWrap) splashProgressWrap.classList.add('is-hidden');
+
+    // --------------------------------------------------
+
     try {
         let cachedUser = {};
         try {
@@ -260,11 +290,19 @@ async function logoutCurrentSession_() {
             liff.logout();
         }
         localStorage.removeItem('app_user_cache');
+        
+        // โหลดหน้าเว็บใหม่เมื่อเสร็จสิ้น
         window.location.reload();
         return true;
+        
     } catch (error) {
         console.error('Unable to record logout session:', error);
         alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
+        
+        // กรณี Error ให้คืนค่า UI กลับมาเพื่อให้กดใหม่ได้
+        if (ui.splash) ui.splash.classList.add('is-hidden');
+        if (ui.app) ui.app.classList.remove('is-hidden');
+        
         return false;
     } finally {
         logoutInProgress = false;
