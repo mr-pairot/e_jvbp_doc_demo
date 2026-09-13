@@ -226,27 +226,41 @@ async function logoutCurrentSession_() {
     const logoutModal = document.getElementById('logoutConfirmModal');
     if (logoutModal) logoutModal.classList.add('is-hidden');
     
-    // ซ่อนหน้าต่างแอปพลิเคชันหลัก
-    if (ui.app) ui.app.classList.add('is-hidden');
+    // ซ่อนหน้าต่างแอปพลิเคชันหลัก และบังคับล้าง display: block
+    if (ui.app) {
+        ui.app.classList.add('is-hidden');
+        ui.app.style.display = 'none'; // สำคัญ: ป้องกันการโดน display: block บังคับโชว์
+    }
 
-    // แสดง Splash Screen กลับขึ้นมา
-    if (ui.splash) ui.splash.classList.remove('is-hidden');
+    // แสดง Splash Screen กลับขึ้นมา พร้อมบังคับเคลียร์สไตล์ที่อาจถูกดึงซ่อนไว้
+    if (ui.splash) {
+        ui.splash.classList.remove('is-hidden');
+        ui.splash.style.display = 'flex';    // บังคับให้กล่องกลับมาแสดง (Splash มักใช้ Flex)
+        ui.splash.style.opacity = '1';       // เคลียร์ค่าโปร่งใส
+        ui.splash.style.visibility = 'visible'; 
+    }
     
     // เปลี่ยนข้อความ และปรับแต่งให้เป็นสีส้ม
     if (ui.splashStatus) {
         ui.splashStatus.innerText = 'กำลังออกจากระบบ...';
         ui.splashStatus.style.color = '#f97316'; // สีส้ม (Orange-500)
-        ui.splashStatus.style.fontWeight = '600'; // เพิ่มความหนาให้ดูเด่นชัด
+        ui.splashStatus.style.fontWeight = '600'; 
         ui.splashStatus.style.fontSize = '18px';
     }
 
-    // แสดง Spinner วงกลมหมุน (ถ้ามี)
+    // แสดง Spinner วงกลมหมุน
     const splashSpinner = document.getElementById('splashSpinner');
-    if (splashSpinner) splashSpinner.classList.remove('is-hidden');
+    if (splashSpinner) {
+        splashSpinner.classList.remove('is-hidden');
+        splashSpinner.style.display = 'inline-block'; // บังคับแสดงผลเผื่อโดนซ่อน
+    }
 
-    // ซ่อนหลอด Progress Bar ของเก่า (เพื่อไม่ให้กวนสายตา)
+    // ซ่อนหลอด Progress Bar ของเก่า
     const splashProgressWrap = document.getElementById('splashProgressWrap');
-    if (splashProgressWrap) splashProgressWrap.classList.add('is-hidden');
+    if (splashProgressWrap) {
+        splashProgressWrap.classList.add('is-hidden');
+        splashProgressWrap.style.display = 'none';
+    }
 
     // --------------------------------------------------
 
