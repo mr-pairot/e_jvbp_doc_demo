@@ -12,7 +12,7 @@
 // อ่านจากค่าที่ index.html ดึงจาก version.json มาให้ตอน bootstrap (window.__APP_VERSION)
 // เพื่อให้ "version.json" เป็นแหล่งความจริงจุดเดียว ไม่ต้องแก้เลขซ้ำในไฟล์นี้อีก
 // fallback ด้านหลังไว้เผื่อกรณี asset นี้ถูกโหลดตรงๆ นอก flow bootstrap ปกติเท่านั้น
-const APP_CACHE_VERSION = window.__APP_VERSION || "260912.0007";
+const APP_CACHE_VERSION = window.__APP_VERSION || "260909.001";
 // ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
 const APP_VERSION_MANIFEST_URL = "version.json";
 
