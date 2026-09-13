@@ -1632,7 +1632,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 
 .version-tag { 
     position: absolute; 
-    bottom: 30px; 
+    padding : 10px; 
     width: 100%; 
     font-size: 0.7rem; 
     opacity: 0.4; 
