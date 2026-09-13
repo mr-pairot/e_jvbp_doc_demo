@@ -1629,3 +1629,12 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 #sessionInfoModal {
     z-index: 900 !important;
 }
+
+.version-tag { 
+    position: absolute; 
+    bottom: 30px; 
+    width: 100%; 
+    font-size: 0.7rem; 
+    opacity: 0.4; 
+    font-family: monospace;
+}
