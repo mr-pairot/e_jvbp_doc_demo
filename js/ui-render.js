@@ -1313,31 +1313,32 @@ function bindSessionLogoutButtons(currentSessionId) {
                 const result = await window.requestLogoutSession(targetSessionId);
 
                 if (!result || (!result.ok && !result.success)) {
-                    alert("ไม่สามารถออกจากระบบอุปกรณ์นี้ได้ กรุณาลองใหม่");
+                    // เปลี่ยน alert เป็น showAlert พร้อมไอคอน error
+                    await showAlert("ไม่สามารถออกจากระบบอุปกรณ์นี้ได้ กรุณาลองใหม่", "error", "เกิดข้อผิดพลาด");
                     btn.disabled = false;
                     btn.textContent = "ออกจากระบบ";
                     return;
                 }
 
                 if (targetSessionId === currentSessionId) {
-                    // ออกจากระบบเครื่องตัวเอง -> เคลียร์ localStorage + redirect ทันที
                     if (typeof window.clearLocalSessionAndRedirect_ === "function") {
                         window.clearLocalSessionAndRedirect_("คุณออกจากระบบเครื่องนี้เรียบร้อยแล้ว");
                     } else {
                         localStorage.removeItem("app_user_cache");
                         if (typeof liff !== "undefined" && liff.isLoggedIn()) liff.logout();
-                        alert("คุณออกจากระบบเครื่องนี้เรียบร้อยแล้ว");
+                        
+                        // เปลี่ยน alert เป็น showAlert พร้อมไอคอน success
+                        // ต้องมี await เพื่อให้ผู้ใช้กด "ตกลง" ก่อนเว็บจะรีโหลด
+                        await showAlert("คุณออกจากระบบเครื่องนี้เรียบร้อยแล้ว", "success", "สำเร็จ");
                         window.location.reload();
                     }
                     return;
                 }
 
-                // ออกจากระบบเครื่องอื่น -> ลบ card ออกจาก DOM
                 if (cardEl) cardEl.remove();
                 const countEl = document.getElementById("sessionCount");
                 if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent, 10) - 1);
 
-                // หากไม่มีอุปกรณ์เหลือ ให้ขึ้นข้อความ empty
                 const remainingCards = document.querySelectorAll(".session_card");
                 if (remainingCards.length === 0) {
                     const listContainer = document.getElementById("sessionListContainer");
@@ -1346,7 +1347,8 @@ function bindSessionLogoutButtons(currentSessionId) {
 
             } catch (err) {
                 console.error("logout session ล้มเหลว:", err);
-                alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+                // เปลี่ยน alert เป็น showAlert พร้อมไอคอน error
+                await showAlert("เกิดข้อผิดพลาด กรุณาลองใหม่", "error", "ข้อผิดพลาดของระบบ");
                 btn.disabled = false;
                 btn.textContent = "ออกจากระบบ";
             }
@@ -1356,26 +1358,6 @@ function bindSessionLogoutButtons(currentSessionId) {
 
 async function confirmSessionLogout_(deviceLabel) {
     const message = `ต้องการออกจากระบบอุปกรณ์ “${deviceLabel}” ใช่หรือไม่?`;
-
-    // ใช้ SweetAlert2 เพื่อให้ UX สอดคล้องกับ modal ของแอป
-    if (typeof window.Swal !== "undefined") {
-        const result = await window.Swal.fire({
-            title: "ยืนยันการออกจากระบบ",
-            text: message,
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "ออกจากระบบ",
-            cancelButtonText: "ยกเลิก",
-            confirmButtonColor: "#dc2626",
-            cancelButtonColor: "#64748b",
-            reverseButtons: true,
-            focusCancel: true,
-            heightAuto: false
-           
-        });
-        return result.isConfirmed;
-    }
-
-    // Fallback เฉพาะกรณี CDN โหลดไม่สำเร็จ เพื่อไม่ให้ปุ่มใช้งานไม่ได้
-    return window.confirm(message);
+    return await showConfirm(message, "ยืนยันการออกจากระบบ", "ออกจากระบบ", "ยกเลิก", "warning");
 }
+
