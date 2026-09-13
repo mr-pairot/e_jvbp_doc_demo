@@ -3,6 +3,8 @@
   "short_name": "BPNP Doc [Demo]",
   "start_url": "./index.html",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing",
   "background_color": "#F5FBFF",
   "theme_color": "#2563eb",
   "icons": [
