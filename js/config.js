@@ -378,3 +378,43 @@ function parseLetterRowToDoc(rowObj, id) {
         category: "Letter"
     };
 }
+
+// ฟังก์ชันแจ้งเตือนทั่วไป (แทน alert)
+async function showAlert(message, icon = 'info', title = 'แจ้งเตือน') {
+    if (typeof window.Swal !== "undefined") {
+        await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon, // 'success', 'error', 'warning', 'info', 'question'
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#3b82f6', // สีฟ้ามาตรฐาน (ปรับเปลี่ยนได้)
+            heightAuto: false
+        });
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        alert(message);
+    }
+}
+
+// ฟังก์ชันยืนยัน (แทน confirm และ Swal.fire แบบมีปุ่มยกเลิก)
+async function showConfirm(message, title = 'ยืนยัน', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'warning') {
+    if (typeof window.Swal !== "undefined") {
+        const result = await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon,
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            confirmButtonColor: '#dc2626', // สีแดง (ใช้กับ action สำคัญเช่น ออกจากระบบ)
+            cancelButtonColor: '#64748b',  // สีเทา
+            reverseButtons: true,
+            focusCancel: true,
+            heightAuto: false
+        });
+        return result.isConfirmed;
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        return window.confirm(message);
+    }
+}
