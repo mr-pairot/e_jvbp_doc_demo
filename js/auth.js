@@ -247,13 +247,25 @@ async function logoutCurrentSession_() {
         ui.splashStatus.style.fontWeight = '600'; 
         ui.splashStatus.style.fontSize = '18px';
     }
+    
+    const splashRings = document.getElementById('splashRingsBg');
+    if (splashRings) {
+        splashRings.style.display = 'block';
+        splashRings.style.opacity = '1';
+        splashRings.style.visibility = 'visible';
+    }
+    
+    if (typeof window.startMagicRingsBg === 'function') {
+        // เรียกฟังก์ชันเพื่อรีสตาร์ทแอนิเมชันวงแหวน
+        window.startMagicRingsBg();
+    }
 
     // แสดง Spinner วงกลมหมุน
-    const splashSpinner = document.getElementById('splashSpinner');
+  /*  const splashSpinner = document.getElementById('splashSpinner');
     if (splashSpinner) {
         splashSpinner.classList.remove('is-hidden');
         splashSpinner.style.display = 'inline-block'; // บังคับแสดงผลเผื่อโดนซ่อน
-    }
+    } */
 
     // ซ่อนหลอด Progress Bar ของเก่า
     const splashProgressWrap = document.getElementById('splashProgressWrap');
