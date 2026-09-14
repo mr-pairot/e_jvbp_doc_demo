@@ -8,29 +8,6 @@
    และหลัง data-service.js (ใช้ updateLatestDateDisplay)
    ========================================================================= */
 
-// ฟังก์ชันยืนยัน (แทน confirm และ Swal.fire แบบมีปุ่มยกเลิก)
-async function showConfirm(message, title = 'ยืนยัน', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'warning') {
-    if (typeof window.Swal !== "undefined") {
-        const result = await window.Swal.fire({
-            title: title,
-            text: message,
-            icon: icon,
-            showCancelButton: true,
-            confirmButtonText: confirmText,
-            cancelButtonText: cancelText,
-            confirmButtonColor: '#dc2626', // สีแดง (ใช้กับ action สำคัญเช่น ออกจากระบบ)
-            cancelButtonColor: '#64748b',  // สีเทา
-            reverseButtons: true,
-            focusCancel: true,
-            heightAuto: false
-        });
-        return result.isConfirmed;
-    } else {
-        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
-        return window.confirm(message);
-    }
-}
-
 // ---------------------------------------------------------------------------
 // UI Rendering
 // ---------------------------------------------------------------------------

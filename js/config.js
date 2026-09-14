@@ -12,7 +12,7 @@
 // อ่านจากค่าที่ index.html ดึงจาก version.json มาให้ตอน bootstrap (window.__APP_VERSION)
 // เพื่อให้ "version.json" เป็นแหล่งความจริงจุดเดียว ไม่ต้องแก้เลขซ้ำในไฟล์นี้อีก
 // fallback ด้านหลังไว้เผื่อกรณี asset นี้ถูกโหลดตรงๆ นอก flow bootstrap ปกติเท่านั้น
-const APP_CACHE_VERSION = window.__APP_VERSION || "260914.001";
+const APP_CACHE_VERSION = window.__APP_VERSION || "260912.0007";
 // ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
 const APP_VERSION_MANIFEST_URL = "version.json";
 
@@ -379,3 +379,42 @@ function parseLetterRowToDoc(rowObj, id) {
     };
 }
 
+// ฟังก์ชันแจ้งเตือนทั่วไป (แทน alert)
+async function showAlert(message, icon = 'info', title = 'แจ้งเตือน') {
+    if (typeof window.Swal !== "undefined") {
+        await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon, // 'success', 'error', 'warning', 'info', 'question'
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#3b82f6', // สีฟ้ามาตรฐาน (ปรับเปลี่ยนได้)
+            heightAuto: false
+        });
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        alert(message);
+    }
+}
+
+// ฟังก์ชันยืนยัน (แทน confirm และ Swal.fire แบบมีปุ่มยกเลิก)
+async function showConfirm(message, title = 'ยืนยัน', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'warning') {
+    if (typeof window.Swal !== "undefined") {
+        const result = await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon,
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            confirmButtonColor: '#dc2626', // สีแดง (ใช้กับ action สำคัญเช่น ออกจากระบบ)
+            cancelButtonColor: '#64748b',  // สีเทา
+            reverseButtons: true,
+            focusCancel: true,
+            heightAuto: false
+        });
+        return result.isConfirmed;
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        return window.confirm(message);
+    }
+}
