@@ -1135,6 +1135,8 @@ function applyFilterStateToTab(state) {
 
 // รวม tab + คำค้นหา + ตัวกรองทั้งหมดของแท็บปัจจุบัน เขียนกลับเป็น URL hash เดียว
 // ใช้ replaceState เสมอ (ไม่เพิ่ม history entry ทุกครั้งที่พิมพ์/ติ๊กตัวกรอง)
+// สร้าง URL จาก origin + pathname ใหม่ทุกครั้ง (ไม่เอา search เดิมติดมา)
+// เพื่อกันพารามิเตอร์ตกค้าง เช่นจาก LIFF login ที่หลุดรอดมาจากจุดอื่น
 function syncURLHash() {
     const params = new URLSearchParams();
 
@@ -1156,8 +1158,10 @@ function syncURLHash() {
     const paramString = params.toString();
     const newHash = paramString ? `#${currentTab}?${paramString}` : `#${currentTab}`;
 
-    if (window.location.hash !== newHash) {
-        history.replaceState(null, '', newHash);
+    const cleanUrl = window.location.origin + window.location.pathname + newHash;
+
+    if (window.location.href !== cleanUrl) {
+        history.replaceState(null, '', cleanUrl);
     }
 }
 
