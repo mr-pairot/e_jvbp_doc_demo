@@ -524,6 +524,25 @@
     <!-- Version Bootstrap: อ่าน version.json ครั้งเดียว แล้วฉีด ?v= ให้สคริปต์ที่เหลือเอง
          ต้องแก้เลขเวอร์ชันแค่ที่ version.json จุดเดียว ไม่ต้องแตะไฟล์นี้อีก -->
     <script>
+        window.showAlert = async function(message, icon = 'info', title = 'แจ้งเตือน') {
+            if (typeof window.Swal !== "undefined") {
+                await window.Swal.fire({
+                    title: title,
+                    text: message,
+                    icon: icon, 
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#3b82f6',
+                    heightAuto: false,
+                    customClass: {
+                        container: 'swal2-high-zindex' // ไว้แก้ปัญหาโดน Modal บัง
+                    }
+                });
+            } else {
+                alert(message);
+            }
+        };
+    </script>
+    <script>
         (async () => {
             let v = Date.now(); // fallback กันเน็ตหลุด/fetch พัง
             try {
