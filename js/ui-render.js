@@ -717,50 +717,36 @@ function updateFilterStatusBox() {
     const lines = [];
     let hasAnyFilter = false;
 
-    // Line 1: Code (จากการคลิก Bar Chart)
     if (selectedCxFilter) {
         hasAnyFilter = true;
         lines.push(`เอกสารแสดงเฉพาะรายการ : Code ${selectedCxFilter}`);
     }
 
-    // Line 2 / 3: อ่านจาก Filter Dropdown จริง ตามแท็บที่เปิดอยู่
     if (currentTab === "rfa") {
         const cat = getDropdownStatusText("cat");
         const type = getDropdownStatusText("type");
-        if (cat.active) hasAnyFilter = true;
-        if (type.active) hasAnyFilter = true;
-        lines.push(`หมวดงาน: ${cat.text}`);
-        lines.push(`ประเภทรายการ: ${type.text}`);
+        if (cat.active) { hasAnyFilter = true; lines.push(`หมวดงาน: ${cat.text}`); }
+        if (type.active) { hasAnyFilter = true; lines.push(`ประเภทรายการ: ${type.text}`); }
     } else if (currentTab === "rfi") {
         const workType = getDropdownStatusText("workType");
-        if (workType.active) hasAnyFilter = true;
-        lines.push(`หมวดงาน: ${workType.text}`);
+        if (workType.active) { hasAnyFilter = true; lines.push(`หมวดงาน: ${workType.text}`); }
     } else if (currentTab === "letter") {
         const source = getDropdownStatusText("source");
-        if (source.active) hasAnyFilter = true;
-        lines.push(`แหล่งที่มา: ${source.text}`);
+        if (source.active) { hasAnyFilter = true; lines.push(`แหล่งที่มา: ${source.text}`); }
     }
 
-    // Line 4: คำค้นหา
     if (searchQuery) {
         hasAnyFilter = true;
         lines.push(`แสดงเฉพาะคำค้นหา: ${searchQuery}`);
     }
 
-    if (!hasAnyFilter) {
-        box.classList.remove("has-filter");
-        inner.innerHTML = "";
-    } else {
-        box.classList.add("has-filter");
-        inner.innerHTML = lines
-            .map(line => `<div class="filter_status_line" title="${escapeHTML(line)}">${escapeHTML(line)}</div>`)
-            .join('');
-    }
+    box.classList.toggle("has-filter", hasAnyFilter);
+    inner.innerHTML = hasAnyFilter
+        ? lines.map(line => `<div class="filter_status_line" title="${escapeHTML(line)}">${escapeHTML(line)}</div>`).join('')
+        : "";
 
     const btnClear = document.getElementById("btnClearSearch");
-    if (btnClear) {
-        btnClear.classList.toggle("is-visible", hasAnyFilter);
-    }
+    if (btnClear) btnClear.classList.toggle("is-visible", hasAnyFilter);
 }
 
 // ---------------------------------------------------------------------------
