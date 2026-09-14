@@ -196,7 +196,7 @@ async function initApp() {
 }
 
 // ฟังก์ชันล้างข้อมูล Session เครื่องและนำกลับสู่หน้าล็อกอิน
-function clearLocalSessionAndRedirect_(message) {
+async function clearLocalSessionAndRedirect_(message) {
     localStorage.removeItem('app_user_cache');
     try {
         if (typeof openCacheDB === 'function') {
@@ -210,11 +210,20 @@ function clearLocalSessionAndRedirect_(message) {
     if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
         try { liff.logout(); } catch (e) {}
     }
-    alert(message || 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่');
+    
+    // เรียกใช้ showAlert ที่เพิ่งย้ายไปไว้ที่ window
+    const msg = message || 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่';
+    const iconType = msg.includes('เรียบร้อย') ? 'success' : 'info';
+    
+    if (typeof window.showAlert === "function") {
+        await window.showAlert(msg, iconType, 'แจ้งเตือน');
+    } else {
+        alert(msg);
+    }
+    
     window.location.reload();
 }
 window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
-
 // Logout โดยผู้ใช้ต้องแจ้ง backend ก่อน เพื่อเปลี่ยน ActiveSessions เป็น LoggedOut
 async function logoutCurrentSession_() {
     if (logoutInProgress) return false;
@@ -323,9 +332,12 @@ async function logoutCurrentSession_() {
         
     } catch (error) {
         console.error('Unable to record logout session:', error);
-        alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
+        if (typeof window.showAlert === "function") {
+            await window.showAlert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง', 'error', 'เกิดข้อผิดพลาด');
+        } else {
+            alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
+        }
         
-        // กรณี Error ให้คืนค่า UI กลับมาเพื่อให้กดใหม่ได้
         if (ui.splash) ui.splash.classList.add('is-hidden');
         if (ui.app) ui.app.classList.remove('is-hidden');
         
