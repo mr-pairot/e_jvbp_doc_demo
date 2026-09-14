@@ -420,16 +420,18 @@ function renderSearchAndCount(config) {
 }
 
 // ผูก event ปุ่ม "คัดลอก Link ค้นหา" — คัดลอก URL ปัจจุบัน (มี hash ของแท็บ/คำค้นหา/
-// ตัวกรองที่ sync ไว้แล้วโดย syncURLHash()) เข้าคลิปบอร์ด พร้อมแสดงสถานะสำเร็จ/ล้มเหลวชั่วคราวบนปุ่ม
+// ตัวกรองที่ sync ไว้แล้วโดย syncURLHash()) พร้อมข้อความสรุปตัวกรองที่ใช้อยู่
+// เข้าคลิปบอร์ด พร้อมแสดงสถานะสำเร็จ/ล้มเหลวชั่วคราวบนปุ่ม
 function initCopySearchLinkButton() {
     const btn = document.getElementById("btnCopySearchLink");
+    if (!btn) return;
+
     btn.addEventListener("pointerenter", (e) => {
        if (e.pointerType === "pen") btn.classList.add("is-pen-hover");
     });
     btn.addEventListener("pointerleave", (e) => {
        if (e.pointerType === "pen") btn.classList.remove("is-pen-hover");
     });
-    if (!btn) return;
 
     const textSpan = btn.querySelector(".copy_search_link_text");
     const defaultLabel = textSpan ? textSpan.textContent : "คัดลอก Link ค้นหา";
@@ -450,19 +452,28 @@ function initCopySearchLinkButton() {
     }
 
     async function copyCurrentURL() {
-        // เขียน URL ปัจจุบันให้ตรงที่สุดก่อนคัดลอก เผื่อผู้ใช้พิมพ์ค้นหาแต่ยัง
-        // ไม่ทัน trigger event "input" ล่าสุด (เช่น auto-fill / กดคัดลอกทันทีหลังพิมพ์)
+        // เขียน URL ปัจจุบันให้ตรงที่สุดก่อนคัดลอก (syncURLHash() จะล้าง query string
+        // ตกค้าง เช่นจาก LIFF ออกไปด้วยในตัว) แล้วประกอบข้อความสรุปตัวกรอง + URL
         if (typeof syncURLHash === "function") syncURLHash();
 
         const urlToCopy = window.location.href;
 
+        const statusBoxInner = document.getElementById("filterStatusInner");
+        const lines = statusBoxInner
+            ? Array.from(statusBoxInner.querySelectorAll(".filter_status_line")).map(el => el.textContent.trim())
+            : [];
+
+        const heading = lines.length > 0 ? "Link เอกสารจากการกรอง" : "Link เอกสาร";
+        const filterSummaryText = lines.length > 0 ? lines.join("\n") + "\n\n" : "";
+        const textToCopy = `${heading}\n${filterSummaryText}${urlToCopy}`;
+
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(urlToCopy);
+                await navigator.clipboard.writeText(textToCopy);
             } else {
                 // Fallback สำหรับเบราว์เซอร์/บริบทที่ไม่รองรับ Clipboard API (เช่น http ที่ไม่ใช่ localhost)
                 const tempInput = document.createElement("textarea");
-                tempInput.value = urlToCopy;
+                tempInput.value = textToCopy;
                 tempInput.style.position = "fixed";
                 tempInput.style.opacity = "0";
                 document.body.appendChild(tempInput);
