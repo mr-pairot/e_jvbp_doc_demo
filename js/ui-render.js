@@ -451,27 +451,52 @@ function initCopySearchLinkButton() {
         }, 2000);
     }
 
+    // สร้างข้อความสรุปตัวกรองสำหรับ Clipboard โดยตรงจากสถานะปัจจุบัน
+    function buildFilterSummaryBlock_() {
+        const parts = [];
+
+        if (selectedCxFilter) {
+            parts.push(`เอกสารแสดงเฉพาะรายการ Code: \n${selectedCxFilter}`);
+        }
+
+        if (currentTab === "rfa") {
+            const cat = getDropdownStatusText("cat");
+            const type = getDropdownStatusText("type");
+            if (cat.active) parts.push(`หมวดงาน: \n${cat.text}`);
+            if (type.active) parts.push(`ประเภทรายการ: \n${type.text}`);
+        } else if (currentTab === "rfi") {
+            const workType = getDropdownStatusText("workType");
+            if (workType.active) parts.push(`หมวดงาน: \n${workType.text}`);
+        } else if (currentTab === "letter") {
+            const source = getDropdownStatusText("source");
+            if (source.active) parts.push(`แหล่งที่มา: \n${source.text}`);
+        }
+
+        const searchInput = document.getElementById("mainSearchInput");
+        const searchQuery = searchInput ? searchInput.value.trim() : "";
+        if (searchQuery) parts.push(`แสดงเฉพาะคำค้นหา: \n${searchQuery}`);
+
+        if (parts.length === 0) return "";
+
+        return "จากการกรอง" + parts.join("\n");
+    }
+
     async function copyCurrentURL() {
-        // เขียน URL ปัจจุบันให้ตรงที่สุดก่อนคัดลอก (syncURLHash() จะล้าง query string
+        // เขียน URL ปัจจุบันให้ตรงที่สุดก่อนคัดลอก (syncURLHash() ล้าง query string
         // ตกค้าง เช่นจาก LIFF ออกไปด้วยในตัว) แล้วประกอบข้อความสรุปตัวกรอง + URL
         if (typeof syncURLHash === "function") syncURLHash();
 
         const urlToCopy = window.location.href;
+        const filterBlock = buildFilterSummaryBlock_();
 
-        const statusBoxInner = document.getElementById("filterStatusInner");
-        const lines = statusBoxInner
-            ? Array.from(statusBoxInner.querySelectorAll(".filter_status_line")).map(el => el.textContent.trim())
-            : [];
-
-        const heading = lines.length > 0 ? "Link เอกสารจากการกรอง" : "Link เอกสาร";
-        const filterSummaryText = lines.length > 0 ? lines.join("\n") + "\n\n" : "";
-        const textToCopy = `${heading}\n${filterSummaryText}${urlToCopy}`;
+        const textToCopy = filterBlock
+            ? `Link เอกสารงานสารบรรณ\n${filterBlock}\n\n${urlToCopy}`
+            : `Link เอกสารงานสารบรรณ\n${urlToCopy}`;
 
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(textToCopy);
             } else {
-                // Fallback สำหรับเบราว์เซอร์/บริบทที่ไม่รองรับ Clipboard API (เช่น http ที่ไม่ใช่ localhost)
                 const tempInput = document.createElement("textarea");
                 tempInput.value = textToCopy;
                 tempInput.style.position = "fixed";
