@@ -1,13 +1,15 @@
 // js/auth.js
 
 const AUTH_CONFIG = {
-    liffId: '2007032148-vWobwLNE', 
+    liffId: '2007032148-vWobwLNE', // Demo
     gasUrl: 'https://script.google.com/macros/s/AKfycbwrnLHNeNb6GHCwVVQF0EGRzxUPrwHjk-Sosg-Wwt9DossOLeZ-nuul2McpLWBhFliP/exec',
     //Url: https://script.google.com/home/projects/1pZbca-IQ9peOsYBflHbdq1L4xTmHQAHQhY2hPA93skMRk9Dg5KePNZUU/edit
 };
 
 const APP_ASSETS = {
-    css: ['css/components.css'],
+    css: [
+        'css/components.css'
+    ],
     js: [
         'https://cdn.jsdelivr.net/npm/chart.js',
         'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js',
@@ -19,39 +21,16 @@ const APP_ASSETS = {
 };
 
 // ---------------------------------------------------------------------------
-// 1. Cookie Helpers (Dual Storage)
+// Auth / Login state guards
 // ---------------------------------------------------------------------------
-function setCookie(name, value, days = 7) {
-    const d = new Date();
-    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
-    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/;secure;samesite=strict`;
-}
+const LOGIN_PENDING_KEY = 'line_login_pending';
 
-function getCookie(name) {
-    const cname = name + "=";
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(';');
-    for(let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) == ' ') c = c.substring(1);
-        if (c.indexOf(cname) == 0) return c.substring(cname.length, c.length);
-    }
-    return "";
-}
-
-function clearAuthCaches() {
-    localStorage.removeItem('app_user_cache');
-    setCookie('sessionId', '', -1);
-    setCookie('userId', '', -1);
-}
-
-// ---------------------------------------------------------------------------
-// State Guards & UI Elements
-// ---------------------------------------------------------------------------
-let authInitializing = false; 
-let authCompleted = false; 
+let loginInProgress = false;   
+let authInitializing = false;  
+let authCompleted = false;     
 let logoutInProgress = false;
 
+// UI Elements
 const ui = {
     splash: document.getElementById('splashScreen'),
     splashStatus: document.getElementById('splashStatus'),
@@ -59,67 +38,148 @@ const ui = {
     error: document.getElementById('errorPage'),
     errorReason: document.getElementById('errorReason'),
     follow: document.getElementById('followPage'),
+    followReason: document.getElementById('followReason'),
     app: document.getElementById('appWrapper'),
     loginBtn: document.getElementById('lineLoginBtn'),
-    logoutBtn: document.getElementById('lineLogoutBtn')
+    logoutBtn: document.getElementById('lineLogoutBtn'),
+    recheckFriendBtn: document.getElementById('btnRecheckFriend')
 };
 
-// ---------------------------------------------------------------------------
-// 3. Remove Button Freeze (ปลดล็อคปุ่มล็อกอิน)
-// ---------------------------------------------------------------------------
-if (ui.loginBtn) {
-    ui.loginBtn.addEventListener('click', (e) => {
-        e.preventDefault(); 
-        if (typeof liff !== 'undefined' && liff.isLoggedIn()) return;
-        // ยิงคำสั่ง liff.login() ทันที โดยไม่บล็อก UI เพื่อลดปัญหา OS สลับแอปแล้วค้าง
-        liff.login(); 
+const LOGIN_BTN_DEFAULT_HTML = ui.loginBtn ? ui.loginBtn.innerHTML : '';
+
+function setLoginButtonLoading(isLoading) {
+    if (!ui.loginBtn) return;
+
+    if (isLoading) {
+        ui.loginBtn.disabled = true;
+        ui.loginBtn.innerHTML =
+            '<span class="btn_line_spinner" aria-hidden="true"></span>' +
+            '<span>กำลังเชื่อมต่อ LINE...</span>';
+    } else {
+        ui.loginBtn.disabled = false;
+        ui.loginBtn.innerHTML = LOGIN_BTN_DEFAULT_HTML;
+    }
+}
+
+// Event Listeners สำหรับหน้า Login / Error
+ui.loginBtn.addEventListener('click', (e) => {
+    e.preventDefault(); 
+
+    if (loginInProgress || (typeof liff !== 'undefined' && liff.isLoggedIn())) return;
+
+    loginInProgress = true;
+    setLoginButtonLoading(true); 
+
+    try {
+        sessionStorage.setItem(LOGIN_PENDING_KEY, '1');
+    } catch (err) {
+        console.warn('ไม่สามารถบันทึกสถานะ Login ลง sessionStorage ได้', err);
+    }
+
+    liff.login(); 
+});
+
+ui.logoutBtn.addEventListener('click', async () => {
+    if (ui.logoutBtn) ui.logoutBtn.disabled = true;
+    const didLogout = await logoutCurrentSession_();
+    if (!didLogout && ui.logoutBtn) ui.logoutBtn.disabled = false;
+});
+
+if (ui.recheckFriendBtn) {
+    ui.recheckFriendBtn.addEventListener('click', () => {
+        window.location.reload();
     });
 }
 
-if (ui.logoutBtn) {
-    ui.logoutBtn.addEventListener('click', async () => {
-        ui.logoutBtn.disabled = true;
-        await logoutCurrentSession_();
-    });
+// ---------------------------------------------------------------------------
+// Friendship Check
+// ---------------------------------------------------------------------------
+async function checkFriendshipClientSide() {
+    try {
+        const friendship = await liff.getFriendship();
+        return friendship.friendFlag; // true / false
+    } catch (error) {
+        console.warn('ไม่สามารถตรวจสอบสถานะเพื่อนฝั่ง client ได้', error);
+        return null;
+    }
 }
 
-// ---------------------------------------------------------------------------
-// 2. Fast Boot & Initialization
-// ---------------------------------------------------------------------------
+function isLoginPending() {
+    try {
+        return sessionStorage.getItem(LOGIN_PENDING_KEY) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearLoginPending() {
+    try {
+        sessionStorage.removeItem(LOGIN_PENDING_KEY);
+    } catch (e) {
+        // ignore
+    }
+}
+
+// Initialization Flow
 async function initApp() {
-    if (authInitializing) return;
+    if (authInitializing) {
+        console.log('Auth initialization already running.');
+        return;
+    }
     authInitializing = true;
 
     try {
+        // ตรวจสอบ Cache (Offline-First)
         const cachedUserStr = localStorage.getItem('app_user_cache');
-        const cookieSession = getCookie('sessionId');
-        
-        // แบบ Cache-First: โหลดเข้า Dashboard ทันทีถ้ามี Cache หรือ Cookie
-        if (cachedUserStr && cookieSession) {
-            console.log('Cache Hit: Fast booting app...');
+        if (cachedUserStr) {
+            const cachedUser = JSON.parse(cachedUserStr);
+            console.log('Cache Hit: Loading App immediately for', cachedUser.displayName);
+
             await loadAppAssets();
             showApp();
 
-            // เริ่มการตรวจสอบเบื้องหลังอย่างเงียบๆ
-            if (typeof liff !== 'undefined') {
+            if (liff) {
                 await liff.init({ liffId: AUTH_CONFIG.liffId });
+
+                console.log('LIFF initialized:', liff.isLoggedIn());
+                console.log('LOGIN BUTTON COUNT:', document.querySelectorAll('#lineLoginBtn').length);
+
                 if (liff.isLoggedIn()) {
+                    // รอให้ migration ของ cache เก่าสร้าง session เสร็จก่อน
+                    // เพื่อไม่ให้ผู้ใช้เข้าแอปต่อได้โดยไม่มี ActiveSessions record
                     await backgroundVerify();
                 }
             }
             return;
         }
 
-        // กรณีไม่มี Cache -> แสดงหน้า Login เต็มจอ
-        showLogin();
+        // กรณีไม่มี Cache -> Initialize LIFF
+        ui.splashStatus.innerText = 'กำลังเชื่อมต่อ LINE...';
         await liff.init({ liffId: AUTH_CONFIG.liffId });
 
-        if (liff.isLoggedIn()) {
+        console.log('LIFF initialized:', liff.isLoggedIn());
+        console.log('LOGIN BUTTON COUNT:', document.querySelectorAll('#lineLoginBtn').length);
+
+        // ต้องตรวจ liff.isLoggedIn() หลัง liff.init() เสร็จก่อนเสมอ
+        // ถ้า true ห้ามเรียก showLogin() ไม่ว่ากรณีใด ๆ
+        if (!liff.isLoggedIn()) {
+            // กลับมาจาก LINE แต่ยังไม่ login แปลว่าผู้ใช้กดยกเลิก/ล้มเหลว
+            if (isLoginPending()) {
+                clearLoginPending();
+                loginInProgress = false;
+                setLoginButtonLoading(false); 
+            }
+            showLogin();
+        } else {
+            if (isLoginPending()) {
+                clearLoginPending();
+            }
+            loginInProgress = false;
+
             ui.splashStatus.innerText = 'กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...';
-            showSplash();
-            
-            const friendship = await liff.getFriendship();
-            if (!friendship.friendFlag) {
+
+            const isFriendClientSide = await checkFriendshipClientSide();
+            if (isFriendClientSide === false) {
                 showFollowPrompt();
                 return;
             }
@@ -135,17 +195,259 @@ async function initApp() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// 4. Background Verification & Auth Calls
-// ---------------------------------------------------------------------------
-async function backgroundVerify() {
+// ฟังก์ชันล้างข้อมูล Session เครื่องและนำกลับสู่หน้าล็อกอิน
+function clearLocalSessionAndRedirect_(message) {
+    localStorage.removeItem('app_user_cache');
     try {
-        const cachedUser = JSON.parse(localStorage.getItem('app_user_cache') || '{}');
-        const sessionId = getCookie('sessionId') || cachedUser.sessionId;
+        if (typeof openCacheDB === 'function') {
+            openCacheDB().then(db => {
+                const tx = db.transaction("cache_store", "readwrite");
+                tx.objectStore("cache_store").delete("BPNP_DOC_CACHE");
+            }).catch(() => {});
+        }
+    } catch (e) {}
+
+    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+        try { liff.logout(); } catch (e) {}
+    }
+    alert(message || 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่');
+    window.location.reload();
+}
+window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
+
+// Logout โดยผู้ใช้ต้องแจ้ง backend ก่อน เพื่อเปลี่ยน ActiveSessions เป็น LoggedOut
+async function logoutCurrentSession_() {
+    if (logoutInProgress) return false;
+    logoutInProgress = true;
+
+    // --- 1. จัดการ UI เพื่อแสดงหน้าโหลด (Splash Screen) ---
+    
+    // ซ่อน Modal ยืนยันการออกจากระบบ
+    const logoutModal = document.getElementById('logoutConfirmModal');
+    if (logoutModal) logoutModal.classList.add('is-hidden');
+    
+    // ซ่อนหน้าต่างแอปพลิเคชันหลัก และบังคับล้าง display: block
+    if (ui.app) {
+        ui.app.classList.add('is-hidden');
+        ui.app.style.display = 'none'; // สำคัญ: ป้องกันการโดน display: block บังคับโชว์
+    }
+
+    // แสดง Splash Screen กลับขึ้นมา พร้อมบังคับเคลียร์สไตล์ที่อาจถูกดึงซ่อนไว้
+    if (ui.splash) {
+        ui.splash.classList.remove('is-hidden');
+        ui.splash.style.display = 'flex';    // บังคับให้กล่องกลับมาแสดง (Splash มักใช้ Flex)
+        ui.splash.style.opacity = '1';       // เคลียร์ค่าโปร่งใส
+        ui.splash.style.visibility = 'visible'; 
+    }
+    
+    // เปลี่ยนข้อความ และปรับแต่งให้เป็นสีส้ม
+    if (ui.splashStatus) {
+        ui.splashStatus.innerText = 'กำลังออกจากระบบ...';
+        ui.splashStatus.style.color = '#f97316'; // สีส้ม (Orange-500)
+        ui.splashStatus.style.fontWeight = '600'; 
+        ui.splashStatus.style.fontSize = '18px';
+    }
+    
+    const splashRings = document.getElementById('splashRingsBg');
+    if (splashRings) {
+        splashRings.style.display = 'block';
+        splashRings.style.opacity = '1';
+        splashRings.style.visibility = 'visible';
+    }
+    
+    if (typeof window.startMagicRingsBg === 'function') {
+        // เรียกฟังก์ชันเพื่อรีสตาร์ทแอนิเมชันวงแหวน
+        window.startMagicRingsBg();
+    }
+
+    // แสดง Spinner วงกลมหมุน
+  /*  const splashSpinner = document.getElementById('splashSpinner');
+    if (splashSpinner) {
+        splashSpinner.classList.remove('is-hidden');
+        splashSpinner.style.display = 'inline-block'; // บังคับแสดงผลเผื่อโดนซ่อน
+    } */
+
+    // ซ่อนหลอด Progress Bar ของเก่า
+    const splashProgressWrap = document.getElementById('splashProgressWrap');
+    if (splashProgressWrap) {
+        splashProgressWrap.classList.add('is-hidden');
+        splashProgressWrap.style.display = 'none';
+    }
+
+    // --------------------------------------------------
+
+    try {
+        let cachedUser = {};
+        try {
+            cachedUser = JSON.parse(localStorage.getItem('app_user_cache') || '{}');
+        } catch (cacheError) {
+            console.warn('Invalid local user cache during logout:', cacheError);
+        }
+        const hasSession = cachedUser.userId && cachedUser.sessionId;
+
+        // Cache จากระบบก่อนมี ActiveSessions ไม่มี sessionId จึงไม่มีแถวให้ปิด
+        if (hasSession) {
+            const response = await fetch(AUTH_CONFIG.gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    actionType: 'logout_session',
+                    action: 'logout_session',
+                    userId: cachedUser.userId,
+                    sessionId: cachedUser.sessionId,
+                    targetSessionId: cachedUser.sessionId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Logout request failed: HTTP ${response.status}`);
+            }
+
+            const result = await parseJsonResponseSafe_(response, 'logout_session');
+            
+            if (!result.success && !result.ok) {
+                // Session ที่ถูกปิด/หมดอายุไปแล้ว ไม่จำเป็นต้อง retry และออกจาก LIFF ได้เลย
+                if (!['SESSION_NOT_FOUND', 'SESSION_LOGGED_OUT', 'REQUESTER_SESSION_INVALID', 'TARGET_SESSION_NOT_FOUND'].includes(result.reason)) {
+                    throw new Error(result.reason || 'Backend rejected logout request');
+                }
+            }
+        }
+
+        if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+            liff.logout();
+        }
+        localStorage.removeItem('app_user_cache');
+        
+        // โหลดหน้าเว็บใหม่เมื่อเสร็จสิ้น
+        window.location.reload();
+        return true;
+        
+    } catch (error) {
+        console.error('Unable to record logout session:', error);
+        alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
+        
+        // กรณี Error ให้คืนค่า UI กลับมาเพื่อให้กดใหม่ได้
+        if (ui.splash) ui.splash.classList.add('is-hidden');
+        if (ui.app) ui.app.classList.remove('is-hidden');
+        
+        return false;
+    } finally {
+        logoutInProgress = false;
+    }
+}
+window.logoutCurrentSession_ = logoutCurrentSession_;
+
+// ตรวจสอบสิทธิ์กับ Backend (สำหรับ First Login) พร้อมสร้าง Session
+async function verifyWithBackend(profile) {
+    try {
+        const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
+        const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
+        const userAgentRaw = navigator.userAgent || '';
+
+        const response = await fetch(AUTH_CONFIG.gasUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: 'login_auth',
+                action: 'login_auth',
+                userId: profile.userId,
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+                os: os,
+                isInClient: isInClient,
+                userAgentRaw: userAgentRaw
+            })
+        });
+
+        const result = await parseJsonResponseSafe_(response, 'login_auth');
+        
+        if (result.success || result.ok) {
+            localStorage.setItem('app_user_cache', JSON.stringify({
+                userId: profile.userId,
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+                role: result.role,
+                sessionId: result.sessionId || '',
+                timestamp: new Date().getTime()
+            }));
+
+            if (typeof window.setLastVerifiedAt === 'function') {
+                window.setLastVerifiedAt(Date.now());
+            }
+
+            ui.splashStatus.innerText = 'กำลังดาวน์โหลดข้อมูลระบบ...';
+            await loadAppAssets();
+            showApp();
+        } else if (result.needFollow) {
+            showFollowPrompt(result.reason);
+        } else {
+            showError(result.reason || 'ไม่ได้รับสิทธิ์เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+        }
+    } catch (error) {
+        console.error('Verify Auth Error:', error);
+        showError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ตรวจสอบสิทธิ์');
+    }
+}
+
+// ตรวจสอบสิทธิ์แบบ Background (ตรวจ User Status + ตรวจ Session ใน ActiveSessions)
+// อ่าน response เป็น JSON อย่างปลอดภัย — ถ้า backend (Apps Script) ตอบกลับเป็น HTML
+// (เช่น หน้า error/sign-in ของ Google เวลา deployment/permission มีปัญหา) จะได้ error
+// ที่สื่อความหมายชัดเจน แทน SyntaxError ดิบๆ จาก JSON.parse
+async function parseJsonResponseSafe_(response, contextLabel) {
+    const rawText = await response.text();
+    try {
+        return JSON.parse(rawText);
+    } catch (e) {
+        console.error(`[${contextLabel}] Backend ตอบกลับไม่ใช่ JSON (อาจเป็นปัญหาที่ Apps Script deployment/permission):`, rawText.slice(0, 200));
+        throw new Error(`${contextLabel}: backend ส่งข้อมูลที่ไม่ใช่ JSON กลับมา`);
+    }
+}
+
+async function backgroundVerify() {
+    let hasSessionId = false;
+
+    try {
+        const cachedUserStr = localStorage.getItem('app_user_cache');
+        const cachedUser = cachedUserStr ? JSON.parse(cachedUserStr) : {};
+        hasSessionId = typeof cachedUser.sessionId === 'string' && cachedUser.sessionId.trim() !== '';
         const profile = await liff.getProfile();
 
-        if (!sessionId) {
-            clearLocalSessionAndRedirect_('ไม่สามารถระบุอุปกรณ์ของคุณได้ กรุณาเข้าสู่ระบบใหม่');
+        // User จาก cache รุ่นเก่าไม่มี sessionId จึงต้องสร้าง session ใหม่ให้สำเร็จ
+        // ห้าม fallback ไป verify_session แบบไม่มี sessionId เพราะ backend จะรองรับ
+        // legacy request และยอมให้เข้าใช้งานต่อโดยไม่มี ActiveSessions record.
+        if (!hasSessionId) {
+            const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
+            const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
+            const res = await fetch(AUTH_CONFIG.gasUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    actionType: 'login_auth',
+                    action: 'login_auth',
+                    userId: profile.userId,
+                    displayName: profile.displayName,
+                    pictureUrl: profile.pictureUrl,
+                    os: os,
+                    isInClient: isInClient,
+                    userAgentRaw: navigator.userAgent || ''
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`Session migration request failed: HTTP ${res.status}`);
+            }
+
+            const r = await parseJsonResponseSafe_(res, 'login_auth');
+            const newSessionId = typeof r.sessionId === 'string' ? r.sessionId.trim() : '';
+            if ((r.success || r.ok) && newSessionId) {
+                cachedUser.sessionId = newSessionId;
+                cachedUser.role = r.role || cachedUser.role;
+                localStorage.setItem('app_user_cache', JSON.stringify(cachedUser));
+                if (typeof window.setLastVerifiedAt === 'function') {
+                    window.setLastVerifiedAt(Date.now());
+                }
+                return true;
+            }
+
+            console.warn('Session migration failed:', r.reason || 'sessionId missing');
+            clearLocalSessionAndRedirect_('ไม่สามารถสร้างข้อมูลอุปกรณ์ของคุณได้ กรุณาเข้าสู่ระบบใหม่');
             return false;
         }
 
@@ -155,171 +457,73 @@ async function backgroundVerify() {
                 actionType: 'verify_session',
                 action: 'verify_session',
                 userId: profile.userId,
-                sessionId: sessionId
+                sessionId: cachedUser.sessionId
             })
         });
         
         const result = await parseJsonResponseSafe_(response, 'verify_session');
 
-        if (!result.success && !result.ok) {
-            let msg = result.reason === 'SESSION_LOGGED_OUT' ? 'คุณถูกออกจากระบบจากอุปกรณ์นี้' : 'สิทธิ์การเข้าใช้งานหมดอายุ';
+        const isOk = result.success || result.ok;
+        if (!isOk) {
+            let msg = result.needFollow ? 
+                'กรุณาเพิ่มเพื่อน LINE Official Account อีกครั้งเพื่อใช้งานต่อ' : 
+                'สิทธิ์การเข้าใช้งานของคุณถูกยกเลิกแล้ว';
+            
+            if (result.reason === 'SESSION_LOGGED_OUT') {
+                msg = 'คุณถูกออกจากระบบจากอุปกรณ์นี้ กรุณาเข้าสู่ระบบใหม่';
+            } else if (result.reason === 'SESSION_NOT_FOUND') {
+                msg = 'เซสชันหมดอายุหรือไม่พบข้อมูล กรุณาเข้าสู่ระบบใหม่';
+            }
+
             clearLocalSessionAndRedirect_(msg);
             return false;
-        }
-
-        if (typeof window.setLastVerifiedAt === 'function') {
-            window.setLastVerifiedAt(Date.now());
-        }
-        return true;
-
-    } catch (error) {
-        console.warn('Background verify network err', error);
-        return false;
-    }
-}
-
-async function verifyWithBackend(profile) {
-    try {
-        const response = await fetch(AUTH_CONFIG.gasUrl, {
-            method: 'POST',
-            body: JSON.stringify({
-                actionType: 'login_auth',
-                action: 'login_auth',
-                userId: profile.userId,
-                displayName: profile.displayName,
-                pictureUrl: profile.pictureUrl,
-                os: liff.getOS(),
-                isInClient: liff.isInClient(),
-                userAgentRaw: navigator.userAgent
-            })
-        });
-
-        const result = await parseJsonResponseSafe_(response, 'login_auth');
-        
-        if (result.success || result.ok) {
-            // เขียน Cache ลงทั้ง LocalStorage และ Cookie
-            const userData = {
-                userId: profile.userId,
-                displayName: profile.displayName,
-                pictureUrl: profile.pictureUrl,
-                role: result.role,
-                sessionId: result.sessionId,
-                timestamp: Date.now()
-            };
-            
-            localStorage.setItem('app_user_cache', JSON.stringify(userData));
-            setCookie('sessionId', result.sessionId, 7);
-            setCookie('userId', profile.userId, 7);
-
-            if (typeof window.setLastVerifiedAt === 'function') window.setLastVerifiedAt(Date.now());
-
-            ui.splashStatus.innerText = 'กำลังดาวน์โหลดข้อมูลระบบ...';
-            await loadAppAssets();
-            showApp();
-        } else if (result.needFollow) {
-            showFollowPrompt(result.reason);
         } else {
-            showError(result.reason || 'ไม่ได้รับสิทธิ์เข้าใช้งาน');
+            if (typeof window.setLastVerifiedAt === 'function') {
+                window.setLastVerifiedAt(Date.now());
+            }
+            return true;
         }
     } catch (error) {
-        console.error('Verify Auth Error:', error);
-        showError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ตรวจสอบสิทธิ์');
-    }
-}
-
-async function parseJsonResponseSafe_(response, contextLabel) {
-    const rawText = await response.text();
-    try {
-        return JSON.parse(rawText);
-    } catch (e) {
-        console.error(`[${contextLabel}] Invalid JSON:`, rawText.slice(0, 200));
-        throw new Error(`${contextLabel}: backend ส่งข้อมูลที่ไม่ใช่ JSON กลับมา`);
-    }
-}
-
-function clearLocalSessionAndRedirect_(message) {
-    clearAuthCaches();
-    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
-        try { liff.logout(); } catch (e) {}
-    }
-    alert(message || 'คุณถูกออกจากระบบ กรุณาเข้าสู่ระบบใหม่');
-    window.location.reload();
-}
-window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
-
-async function logoutCurrentSession_() {
-    if (logoutInProgress) return false;
-    logoutInProgress = true;
-
-    showSplash('กำลังออกจากระบบ...');
-
-    try {
-        const cachedUser = JSON.parse(localStorage.getItem('app_user_cache') || '{}');
-        const sessionId = getCookie('sessionId') || cachedUser.sessionId;
-        
-        if (sessionId) {
-            await fetch(AUTH_CONFIG.gasUrl, {
-                method: 'POST',
-                body: JSON.stringify({
-                    actionType: 'logout_session',
-                    action: 'logout_session',
-                    userId: cachedUser.userId || getCookie('userId'),
-                    sessionId: sessionId,
-                    targetSessionId: sessionId
-                })
-            });
+        // Network error ของ session ที่มีอยู่แล้วไม่ควรเตะผู้ใช้ออกทันที
+        // แต่ cache เก่าที่ไม่มี sessionId ต้อง login ใหม่ เพื่อไม่ให้ใช้งานแบบไร้ session.
+        console.warn('Background verify error', error);
+        if (!hasSessionId) {
+            clearLocalSessionAndRedirect_('ไม่สามารถสร้างข้อมูลอุปกรณ์ของคุณได้ กรุณาเข้าสู่ระบบใหม่');
         }
-
-        clearAuthCaches();
-        if (typeof liff !== 'undefined' && liff.isLoggedIn()) liff.logout();
-        window.location.reload();
-        return true;
-    } catch (error) {
-        console.error('Logout error:', error);
-        alert('ไม่สามารถบันทึกการออกจากระบบได้ กรุณาลองใหม่อีกครั้ง');
-        showApp(); // Revert UI on error
         return false;
-    } finally {
-        logoutInProgress = false;
     }
 }
-window.logoutCurrentSession_ = logoutCurrentSession_;
 
-// ---------------------------------------------------------------------------
-// 5. Visibility Change Listener (Auto-reload on Cache creation)
-// ---------------------------------------------------------------------------
-document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && !authCompleted) {
-        const hasCache = localStorage.getItem('app_user_cache') || getCookie('sessionId');
-        if (hasCache) {
-            console.log('Detected valid cache on app switch, reloading...');
-            window.location.reload();
-        }
-    }
-});
-
-// ---------------------------------------------------------------------------
-// Asset Loaders & App UI State Managers
-// ---------------------------------------------------------------------------
+// Cache-busting token สำหรับไฟล์ asset ของเราเอง (ไม่ใช้กับ CDN ภายนอก)
+// ลำดับการเลือกค่า:
+//   1) window.__APP_VERSION ที่ index.html ดึงจาก version.json มาให้ตอน bootstrap (แหล่งความจริงเดียว)
+//   2) ?appVersion=... ที่ updateAppToLatestVersion() เติมตอนสั่งอัปเดต (เผื่อกรณี edge case)
+//   3) timestamp วันนี้ กันไว้เผื่อ (1) และ (2) ไม่มีค่าจริงๆ
 function getAssetCacheBuster_() {
-    return window.__APP_VERSION || new URLSearchParams(window.location.search).get('appVersion') || new Date().toISOString().slice(0, 10);
+    if (window.__APP_VERSION) return window.__APP_VERSION;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('appVersion') || new Date().toISOString().slice(0, 10);
 }
 
 function withCacheBuster_(href) {
+    // ไม่แตะ URL ของ CDN ภายนอก (http/https เต็มรูปแบบ) เติมเฉพาะไฟล์ในโปรเจกต์ตัวเอง
     if (/^https?:\/\//i.test(href)) return href;
     const separator = href.includes('?') ? '&' : '?';
     return `${href}${separator}v=${encodeURIComponent(getAssetCacheBuster_())}`;
 }
 
+// Dynamic Loader แบบเรียงลำดับ
 async function loadAppAssets() {
-    const cssPromises = APP_ASSETS.css.map(href => new Promise((resolve) => {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = withCacheBuster_(href);
-        link.onload = resolve;
-        link.onerror = resolve;
-        document.head.appendChild(link);
-    }));
+    const cssPromises = APP_ASSETS.css.map(href => {
+        return new Promise((resolve) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = withCacheBuster_(href);
+            link.onload = resolve;
+            link.onerror = resolve;
+            document.head.appendChild(link);
+        });
+    });
     await Promise.all(cssPromises);
 
     for (const src of APP_ASSETS.js) {
@@ -333,37 +537,138 @@ async function loadAppAssets() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// จัดการ UI โปรไฟล์ผู้ใช้ (ดึงข้อมูลจาก Cache ที่บันทึกไว้ตอน Login)
+// ---------------------------------------------------------------------------
+function initProfileUI() {
+    const cachedUserStr = localStorage.getItem('app_user_cache');
+    if (!cachedUserStr) return;
+    const user = JSON.parse(cachedUserStr);
+
+    // ดึง Elements
+    const profileImg = document.getElementById('userProfileImg');
+    const tooltip = document.getElementById('userTooltip');
+    const dropdownName = document.getElementById('userDropdownName');
+    const modalUserName = document.getElementById('logoutModalUserName');
+
+    // ใส่ข้อมูลผู้ใช้ (รูป และ ชื่อ)
+    if (profileImg && user.pictureUrl) profileImg.src = user.pictureUrl;
+    if (tooltip) tooltip.innerText = user.displayName;
+    if (dropdownName) dropdownName.innerText = user.displayName;
+    if (modalUserName) modalUserName.innerText = user.displayName;
+
+    // ป้องกันการผูก Event Listener ซ้ำ (กรณีถูกเรียกหลายรอบ)
+    if (window.__profileEventsBound) return;
+    window.__profileEventsBound = true;
+
+    const profileArea = document.getElementById('userProfileArea');
+    const dropdown = document.getElementById('userDropdown');
+    const btnProfileRefresh = document.getElementById('btnProfileRefresh');
+    const btnProfileLogout = document.getElementById('btnProfileLogout');
+    const logoutModal = document.getElementById('logoutConfirmModal');
+    const btnCancelLogout = document.getElementById('btnCancelLogout');
+    const btnConfirmLogout = document.getElementById('btnConfirmLogout');
+
+    // คลิกเพื่อเปิด/ปิดเมนู Dropdown
+    if (profileArea && dropdown) {
+        profileArea.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('is-active');
+
+            if (tooltip) {
+                tooltip.style.display = dropdown.classList.contains('is-active') ? 'none' : '';
+            }
+        });
+
+        profileArea.addEventListener('mouseleave', () => {
+            if (tooltip) tooltip.style.display = '';
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (dropdown && dropdown.classList.contains('is-active') && profileArea && !profileArea.contains(e.target)) {
+            dropdown.classList.remove('is-active');
+        }
+    });
+
+    const btnMySessionInfo = document.getElementById('btnMySessionInfo');
+    if (btnMySessionInfo) {
+        btnMySessionInfo.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            if (typeof window.openSessionInfoModal === 'function') {
+                window.openSessionInfoModal();
+            }
+        });
+    }
+
+    if (btnProfileRefresh) {
+        btnProfileRefresh.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            const mainRefreshBtn = document.getElementById('btnForceRefresh');
+            if (mainRefreshBtn) mainRefreshBtn.click();
+        });
+    }
+
+    // ปุ่ม Logout ในเมนู (เปิด Popup)
+    if (btnProfileLogout) {
+        btnProfileLogout.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            logoutModal.classList.remove('is-hidden');
+        });
+    }
+
+    // กดยกเลิกใน Popup (ปิด Popup)
+    if (btnCancelLogout) {
+        btnCancelLogout.addEventListener('click', () => {
+            logoutModal.classList.add('is-hidden');
+        });
+    }
+
+    // กดยืนยันใน Popup (เคลียร์ข้อมูลและกลับไป Login)
+    if (btnConfirmLogout) {
+        btnConfirmLogout.addEventListener('click', async () => {
+            btnConfirmLogout.disabled = true;
+            const didLogout = await logoutCurrentSession_();
+            if (!didLogout) btnConfirmLogout.disabled = false;
+        });
+    }
+}
+
+// การแสดงผลหน้าต่างๆ
 function showApp() {
     authCompleted = true; 
+
     ui.login.classList.add('is-hidden');
     ui.error.classList.add('is-hidden');
     if (ui.follow) ui.follow.classList.add('is-hidden');
     ui.app.classList.remove('is-hidden');
     ui.app.style.display = 'block';
 
-    if (typeof window.initProfileUI === 'function') window.initProfileUI();
-    if (typeof window.initDashboardApp === 'function') window.initDashboardApp();
+    initProfileUI();
+
+    if (typeof window.initDashboardApp === 'function') {
+        window.initDashboardApp();
+    } else {
+        console.error('window.initDashboardApp ไม่พร้อมใช้งาน (data-service.js อาจโหลดไม่สำเร็จ)');
+    }
 }
 
 function showLogin() {
-    if (authCompleted) return;
+    if (loginInProgress || authCompleted) {
+        return;
+    }
+
     ui.splash.classList.add('is-hidden');
     ui.error.classList.add('is-hidden');
+    if (ui.follow) ui.follow.classList.add('is-hidden');
     ui.app.classList.add('is-hidden');
     ui.login.classList.remove('is-hidden');
-}
-
-function showSplash(msg) {
-    ui.app.classList.add('is-hidden');
-    ui.login.classList.add('is-hidden');
-    ui.splash.classList.remove('is-hidden');
-    ui.splash.style.display = 'flex';
-    if (msg) ui.splashStatus.innerText = msg;
 }
 
 function showError(reasonText) {
     ui.splash.classList.add('is-hidden');
     ui.login.classList.add('is-hidden');
+    if (ui.follow) ui.follow.classList.add('is-hidden');
     ui.app.classList.add('is-hidden');
     ui.error.classList.remove('is-hidden');
     ui.errorReason.innerText = reasonText;
@@ -372,16 +677,22 @@ function showError(reasonText) {
 function showFollowPrompt(reasonText) {
     ui.splash.classList.add('is-hidden');
     ui.login.classList.add('is-hidden');
+    ui.error.classList.add('is-hidden');
     ui.app.classList.add('is-hidden');
     if (ui.follow) {
         ui.follow.classList.remove('is-hidden');
-        if (ui.followReason && reasonText) ui.followReason.innerText = reasonText;
+        if (ui.followReason && reasonText) {
+            ui.followReason.innerText = reasonText;
+        }
     }
 }
 
+// เริ่มการทำงานเมื่อโหลดหน้าเสร็จ
+// หมายเหตุ: ตอนนี้ auth.js ถูกโหลดแบบ dynamic (รอ fetch version.json ก่อน)
+// ทำให้ DOMContentLoaded อาจยิงไปแล้วก่อนโค้ดตรงนี้จะรัน ถ้ารอ event เฉยๆ initApp() จะไม่ถูกเรียกเลย
+// จึงต้องเช็ค document.readyState ก่อน ถ้า DOM พร้อมแล้วให้เรียก initApp() ทันที
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', initApp);
 } else {
     initApp();
 }
-
