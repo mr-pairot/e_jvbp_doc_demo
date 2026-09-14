@@ -3,7 +3,7 @@
    ========================================================================= */
 
 // ---------------------------------------------------------------------------
-// [เพิ่มใหม่] Session Guard & Auth Revalidation
+// Session Guard & Auth Revalidation
 // ---------------------------------------------------------------------------
 window.lastVerifiedAt = 0;
 window.REVALIDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 นาที (300,000 ms)
@@ -171,6 +171,18 @@ window.requestLogoutSession = async function(targetSessionId) {
     });
     return response.json();
 };
+
+// ---------------------------------------------------------------------------
+// ล้างพารามิเตอร์ auth ของ LIFF (state, code, liffClientId ฯลฯ)
+// ออกจาก query string ทันทีหลัง login สำเร็จ เพื่อไม่ให้ค้างติด URL
+// ---------------------------------------------------------------------------
+function cleanupLiffAuthParamsFromURL() {
+    const url = new URL(window.location.href);
+    if (url.search) {
+        const cleanUrl = url.origin + url.pathname + url.hash;
+        history.replaceState(null, '', cleanUrl);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // 1. Bootstrap
