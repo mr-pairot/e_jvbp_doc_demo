@@ -8,23 +8,6 @@
    และหลัง data-service.js (ใช้ updateLatestDateDisplay)
    ========================================================================= */
 
-// ฟังก์ชันแจ้งเตือนทั่วไป (แทน alert)
-async function showAlert(message, icon = 'info', title = 'แจ้งเตือน') {
-    if (typeof window.Swal !== "undefined") {
-        await window.Swal.fire({
-            title: title,
-            text: message,
-            icon: icon, // 'success', 'error', 'warning', 'info', 'question'
-            confirmButtonText: 'ตกลง',
-            confirmButtonColor: '#3b82f6', // สีฟ้ามาตรฐาน (ปรับเปลี่ยนได้)
-            heightAuto: false
-        });
-    } else {
-        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
-        alert(message);
-    }
-}
-
 // ฟังก์ชันยืนยัน (แทน confirm และ Swal.fire แบบมีปุ่มยกเลิก)
 async function showConfirm(message, title = 'ยืนยัน', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'warning') {
     if (typeof window.Swal !== "undefined") {
