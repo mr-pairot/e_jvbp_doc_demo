@@ -3,7 +3,3 @@
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-[[headers]]
-  for = "/site.webmanifest"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
