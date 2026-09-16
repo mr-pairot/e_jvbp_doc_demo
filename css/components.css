@@ -27,6 +27,7 @@
 .custom_dropdown_container {
     position: relative;
     min-width: 0;
+    z-index: 10;
 }
 
 .filter_dropdowns_row .custom_dropdown_container:last-child {
