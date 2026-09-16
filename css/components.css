@@ -20,6 +20,8 @@
     gap: 9px;
     width: 95%;
     --filter_box_height: 44px; 
+    position: relative; 
+    z-index: 10;  
 }
 
 .custom_dropdown_container {
