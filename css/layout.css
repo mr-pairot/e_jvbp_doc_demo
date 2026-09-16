@@ -267,6 +267,8 @@ body {
     column-gap: var(--layout-header-grid-gap);
     align-items: start;
     padding-bottom: 10px;
+    position: relative;
+    z-index: 99; 
 }
 
 /* 6.1 Column ซ้าย - แถวบน (Logo + Title) + Tabs  */
