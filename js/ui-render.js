@@ -1387,3 +1387,30 @@ async function confirmSessionLogout_(deviceLabel) {
     return await showConfirm(message, "ยืนยันการออกจากระบบ", "ออกจากระบบ", "ยกเลิก", "warning");
 }
 
+// =========================================================================
+// เพิ่มระบบ: ปิด Dropdown อัตโนมัติเมื่อมีการ Scroll หน้าจอ (หน่วงเวลา 2 วินาที)
+// =========================================================================
+let scrollDropdownTimer = null;
+
+// ใช้ capture: true เพื่อให้ดักจับการเลื่อนจอได้ครอบคลุมทั้งหน้าเว็บและตารางด้านใน
+window.addEventListener("scroll", function() {
+    // หาว่ามี Dropdown ไหนที่กำลังเปิดอยู่บ้าง
+    const activePopups = document.querySelectorAll(".dropdown_popup.active");
+    
+    // ถ้ามี Dropdown เปิดอยู่ถึงจะเริ่มนับเวลา
+    if (activePopups.length > 0) {
+        
+        // ถ้าระหว่างรอ 2 วินาที ผู้ใช้เลื่อนจอต่อ ให้รีเซ็ตเวลานับใหม่
+   //     if (scrollDropdownTimer) {
+   //         clearTimeout(scrollDropdownTimer);
+   //     }
+        
+        // ตั้งเวลา 2 วินาที (2000 ms) ก่อนซ่อน Dropdown
+        scrollDropdownTimer = setTimeout(() => {
+            activePopups.forEach(popup => {
+                popup.classList.remove("active");
+            });
+        }, 2000); 
+    }
+}, true);
+
