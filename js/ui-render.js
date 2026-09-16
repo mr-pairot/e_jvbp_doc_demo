@@ -1392,20 +1392,20 @@ async function confirmSessionLogout_(deviceLabel) {
 // =========================================================================
 let scrollDropdownTimer = null;
 
-// ใช้ capture: true เพื่อให้ดักจับการเลื่อนจอได้ครอบคลุมทั้งหน้าเว็บและตารางด้านใน
-window.addEventListener("scroll", function() {
-    // หาว่ามี Dropdown ไหนที่กำลังเปิดอยู่บ้าง
+window.addEventListener("scroll", function(event) {
+    // 1. ตรวจสอบก่อนว่าจุดที่กำลังเลื่อน อยู่ข้างในกล่อง Dropdown หรือไม่
+    // (ใช้ event.target เพื่อหา element ที่เกิดการเลื่อน)
+    if (event.target && event.target.nodeType === 1) {
+        if (event.target.closest('.dropdown_popup')) {
+            // ถ้าเลื่อนข้างใน Dropdown ให้หยุดการทำงาน (return) ทันที ไม่นับถอยหลังปิด
+            return; 
+        }
+    }
+
+    // 2. ถ้าไม่ใช่การเลื่อนใน Dropdown ถึงจะมาทำงานส่วนนับถอยหลัง
     const activePopups = document.querySelectorAll(".dropdown_popup.active");
     
-    // ถ้ามี Dropdown เปิดอยู่ถึงจะเริ่มนับเวลา
-    if (activePopups.length > 0) {
-        
-        // ถ้าระหว่างรอ 2 วินาที ผู้ใช้เลื่อนจอต่อ ให้รีเซ็ตเวลานับใหม่
-   //     if (scrollDropdownTimer) {
-   //         clearTimeout(scrollDropdownTimer);
-   //     }
-        
-        // ตั้งเวลา 2 วินาที (2000 ms) ก่อนซ่อน Dropdown
+    if (activePopups.length > 0) {     
         scrollDropdownTimer = setTimeout(() => {
             activePopups.forEach(popup => {
                 popup.classList.remove("active");
@@ -1413,4 +1413,5 @@ window.addEventListener("scroll", function() {
         }, 2000); 
     }
 }, true);
+
 
