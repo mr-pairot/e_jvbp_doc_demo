@@ -865,8 +865,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
    .col_update { display: none;  }
 }
 @media (max-width: 700px) {
-   .col_receive { width: 80px; white-space: nowrap; }
-   .col_letterno { width: 120px; }
+   .col_receive { width: 80px; }
 }
 /* =============================================================================
    12. CACHE DIAGNOSTIC REPORT (รายงานตรวจสอบระบบแคช)
