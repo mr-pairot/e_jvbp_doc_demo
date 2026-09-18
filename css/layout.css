@@ -614,7 +614,7 @@ body {
     flex-direction: row;
     gap: 5px;
     margin-top: 6px;
-    padding: 8px 16px;
+    padding: 8px 6px;
     font-size: var(--font-size-2xs);
     color: var(--color-text-placeholder);
     font-family: monospace;
