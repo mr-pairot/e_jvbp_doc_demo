@@ -1421,12 +1421,11 @@ function updateInfoVersionBox() {
     const resEl = document.getElementById("infoScreenResText");
 
     if (versionEl) {
-        versionEl.textContent = `version: ${APP_CACHE_VERSION}`;
+        versionEl.textContent = `Version: ${APP_CACHE_VERSION}`;
     }
     if (resEl) {
         resEl.textContent =
-            `ความละเอียดหน้าจอ: ${window.screen.width}x${window.screen.height}` +
-            ` (Viewport: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio})`;
+            `( Viewport: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio} )`;
     }
 }
 window.addEventListener("resize", updateInfoVersionBox);
