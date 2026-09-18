@@ -605,3 +605,17 @@ body {
     .pagination_footer { flex-direction: column; }
     .cache_control_And_sheet_status { flex-direction: column; }
 }
+
+/* =============================================================================
+   17. INFO VERSION BOX (แสดง Version Manifest URL + ความละเอียดหน้าจอ)
+   ========================================================================= */
+.info_version {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+    padding: 8px 16px;
+    font-size: var(--font-size-2xs);
+    color: var(--color-text-placeholder);
+    font-family: monospace;
+}
