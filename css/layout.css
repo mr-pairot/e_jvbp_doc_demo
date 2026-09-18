@@ -611,8 +611,8 @@ body {
    ========================================================================= */
 .info_version {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-direction: row;
+    gap: 5px;
     margin-top: 6px;
     padding: 8px 16px;
     font-size: var(--font-size-2xs);
