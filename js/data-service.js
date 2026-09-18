@@ -198,6 +198,7 @@ window.initDashboardApp = function () {
     if (typeof window.initProfileMenuEvents === 'function') {
         window.initProfileMenuEvents();
     }
+    updateInfoVersionBox();
     initAppFlow();
 };
 
