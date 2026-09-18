@@ -680,7 +680,7 @@
 .col_title { width: auto; }
 .col_update { width: var(--layout-col-update-width); text-align: right !important; white-space: nowrap; }
 
-.col_receive { width: 80px; white-space: nowrap; }
+.col_receive { width: 100px; white-space: nowrap; }
 .col_letterno { width: 120px; }
 
 .sortable {
@@ -863,10 +863,11 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 }
 @media (max-width: 450px) {
    .col_update { display: none;  }
-   .doc_update_date {font-size: var(--font-size-2xs);}
+   .col_receive { width: 80px; white-space: nowrap; }
+   .col_letterno { width: 120px; }
 }
 @media (max-width: 700px) {
-   .doc_update_date {font-size: var(--font-size-2xs);}
+   
 }
 /* =============================================================================
    12. CACHE DIAGNOSTIC REPORT (รายงานตรวจสอบระบบแคช)
