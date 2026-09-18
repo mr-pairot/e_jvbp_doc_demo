@@ -863,11 +863,10 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 }
 @media (max-width: 450px) {
    .col_update { display: none;  }
-   .col_receive { width: 80px; white-space: nowrap; }
-   .col_letterno { width: 120px; }
 }
 @media (max-width: 700px) {
-   
+   .col_receive { width: 80px; white-space: nowrap; }
+   .col_letterno { width: 120px; }
 }
 /* =============================================================================
    12. CACHE DIAGNOSTIC REPORT (รายงานตรวจสอบระบบแคช)
