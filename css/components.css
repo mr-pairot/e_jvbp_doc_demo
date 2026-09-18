@@ -680,7 +680,7 @@
 .col_title { width: auto; }
 .col_update { width: var(--layout-col-update-width); text-align: right !important; white-space: nowrap; }
 
-.col_receive { width: 100px; white-space: nowrap; }
+.col_receive { width: 90px; white-space: nowrap; }
 .col_letterno { width: 120px; }
 
 .sortable {
