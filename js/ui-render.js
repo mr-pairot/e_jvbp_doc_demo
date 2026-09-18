@@ -1388,7 +1388,7 @@ async function confirmSessionLogout_(deviceLabel) {
 }
 
 // =========================================================================
-// เพิ่มระบบ: ปิด Dropdown อัตโนมัติเมื่อมีการ Scroll หน้าจอ (หน่วงเวลา 2 วินาที)
+// ปิด Dropdown อัตโนมัติเมื่อมีการ Scroll หน้าจอ (หน่วงเวลา 2 วินาที)
 // =========================================================================
 let scrollDropdownTimer = null;
 
@@ -1397,7 +1397,6 @@ window.addEventListener("scroll", function(event) {
     // (ใช้ event.target เพื่อหา element ที่เกิดการเลื่อน)
     if (event.target && event.target.nodeType === 1) {
         if (event.target.closest('.dropdown_popup')) {
-            // ถ้าเลื่อนข้างใน Dropdown ให้หยุดการทำงาน (return) ทันที ไม่นับถอยหลังปิด
             return; 
         }
     }
@@ -1414,4 +1413,20 @@ window.addEventListener("scroll", function(event) {
     }
 }, true);
 
+// ---------------------------------------------------------------------------
+// Info Version Box (แสดง Manifest URL + ความละเอียดหน้าจอปัจจุบัน)
+// ---------------------------------------------------------------------------
+function updateInfoVersionBox() {
+    const versionEl = document.getElementById("infoVersionText");
+    const resEl = document.getElementById("infoScreenResText");
 
+    if (versionEl) {
+        versionEl.textContent = `Manifest URL: ${APP_VERSION_MANIFEST_URL}`;
+    }
+    if (resEl) {
+        resEl.textContent =
+            `ความละเอียดหน้าจอ: ${window.screen.width}x${window.screen.height}` +
+            ` (Viewport: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio})`;
+    }
+}
+window.addEventListener("resize", updateInfoVersionBox);
