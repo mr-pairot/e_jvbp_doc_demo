@@ -1421,7 +1421,7 @@ function updateInfoVersionBox() {
     const resEl = document.getElementById("infoScreenResText");
 
     if (versionEl) {
-        versionEl.textContent = `Manifest URL: ${APP_VERSION_MANIFEST_URL}`;
+        versionEl.textContent = `version: ${APP_CACHE_VERSION}`;
     }
     if (resEl) {
         resEl.textContent =
