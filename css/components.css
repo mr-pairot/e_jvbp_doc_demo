@@ -1127,8 +1127,8 @@ button.doc_hyperlink_title.btn-as-link:disabled {
         visibility 0s linear 0s;
 }
 .update_notify_bubble.is-scrolling .update_notify_viewport {
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+     -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 12px, black calc(100% - 12px), transparent 100%);
 }
 
 .update_notify_viewport {
