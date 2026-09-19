@@ -1098,11 +1098,11 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     --update-notify-fold-ms: 400ms; /* JS เขียนทับจาก UPDATE_NOTIFY_CONFIG.foldMs */
     box-sizing: border-box;
     position: fixed;
-    bottom: 28px;                   /* กึ่งกลางแนวตั้งเดียวกับปุ่ม (สูง 36px) */
+    bottom: 28px;                   
     right: 46px;
-    width: 160px;
+    width: 120px;
     height: 36px;
-    padding: 0 20px 0 12px;         /* ขวา 30px กันข้อความไปอยู่ใต้ปุ่ม */
+    padding: 0 20px 0 12px;         
     background: var(--color-brand-primary);
     border: 2px solid #fff;
     border-right: none;
