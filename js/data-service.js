@@ -979,6 +979,7 @@ function cancelNotifyMarqueeAnimations() {
 function stopNotifyMarquee() {
     cancelNotifyMarqueeAnimations();
     if (updateNotifyTrackEl) updateNotifyTrackEl.style.transform = "";
+    if (updateNotifyBubbleEl) updateNotifyBubbleEl.classList.remove("is-scrolling"); // เพิ่มบรรทัดนี้
 }
 
 // วิ่งวน (loops - 1) รอบเต็ม แล้วรอบสุดท้ายวิ่งเข้ามาหยุดค้างที่ actionText
@@ -987,6 +988,8 @@ function startNotifyMarquee() {
     updateNotifyMarqueeTimerId = null;
     cancelNotifyMarqueeAnimations();
     if (!isNotifyMarqueeAvailable()) return;
+
+    if (updateNotifyBubbleEl) updateNotifyBubbleEl.classList.add("is-scrolling"); 
 
     const cfg = UPDATE_NOTIFY_CONFIG;
     const viewW = updateNotifyViewportEl.clientWidth;
@@ -1022,7 +1025,14 @@ function startNotifyMarquee() {
             { duration, easing: "linear", fill: "forwards" }
         );
         updateNotifyMarqueeAnims.push(anim);
-        if (!isLast) anim.onfinish = () => runPass(index + 1);
+       
+        if (!isLast) {
+            anim.onfinish = () => runPass(index + 1);
+        } else {
+            anim.onfinish = () => {
+                if (updateNotifyBubbleEl) updateNotifyBubbleEl.classList.remove("is-scrolling");
+            };
+        }
     };
     runPass(0);
 }
