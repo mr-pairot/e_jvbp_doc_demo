@@ -921,6 +921,8 @@ function createUpdateNotifyButton() {
             </div>
         </div>
     `;
+   updateNotifyBubbleEl.addEventListener("click", applyPendingUpdate);
+
     updateNotifyViewportEl = updateNotifyBubbleEl.querySelector(".update_notify_viewport");
     updateNotifyTrackEl = updateNotifyBubbleEl.querySelector(".update_notify_track");
     updateNotifyPrefixEl = updateNotifyBubbleEl.querySelector(".update_notify_prefix");
