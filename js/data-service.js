@@ -46,7 +46,7 @@ async function checkForAppVersionUpdate(force = false) {
 
         versionPromptShownFor = latestVersion;
         pendingAppVersion = latestVersion;
-        showUpdateNotifyButton(`พบแอปเวอร์ชันใหม่ (${latestVersion}) กดเพื่ออัปเดต`);
+        showUpdateNotifyButton(`พบแอปเวอร์ชันใหม่ (${latestVersion}) ${UPDATE_NOTIFY_CONFIG.actionText}`);
         return true;
     } catch (error) {
         // การตรวจ version เป็น enhancement: network error ต้องไม่กระทบการใช้งานปกติ
@@ -867,16 +867,70 @@ function hideNoDataState() {
 // ---------------------------------------------------------------------------
 // Update Notify Button
 // ---------------------------------------------------------------------------
+
+// ค่าตั้งต้นทั้งหมดของปุ่ม + กล่องข้อความ แก้ที่นี่ที่เดียว
+const UPDATE_NOTIFY_CONFIG = {
+    // --- จังหวะเวลา ---
+    showDelayMs: 500,            // กล่องโผล่ช้ากว่าปุ่มกี่ ms
+    foldMs: 400,                 // ระยะเวลาคลี่/ยุบกล่อง (ส่งให้ CSS ผ่านตัวแปร)
+    displayMs: 10000,            // กล่องค้างอยู่กี่ ms (นับจากเริ่มคลี่) ก่อนยุบ
+    hoverReplay: true,           // hover ด้วยเมาส์/ปากกา แล้วเล่นซ้ำ
+
+    // --- ข้อความ ---
+    actionText: "แตะเพื่ออัปเดต", // ส่วนท้ายที่ตัววิ่งจะหยุดค้าง
+
+    // --- ตัววิ่ง ---
+    marqueeEnabled: true,        // false = ข้อความนิ่ง (ตัดได้ 2 บรรทัด ไม่วิ่ง)
+    marqueeLoops: 2,             // จำนวนรอบ (รอบสุดท้ายจะหยุดค้างที่ actionText)
+    marqueeSpeedPxPerSec: 90,    // ความเร็ว (พิกเซล/วินาที) ยิ่งมากยิ่งเร็ว
+    marqueeGapPx: 24,            // ระยะห่างระหว่างข้อความหน้ากับ actionText
+    marqueeAutoFit: true,        // true = เร่งความเร็วอัตโนมัติถ้าวิ่งไม่จบก่อนกล่องยุบ
+    marqueeHoldMs: 500           // เวลาที่ต้องการให้ข้อความนิ่งค้างก่อนกล่องยุบ (ใช้กับ autoFit)
+};
+
 let updateNotifyBtnEl = null;
-let pendingUpdateData = null; 
+let updateNotifyBubbleEl = null;
+let updateNotifyViewportEl = null;
+let updateNotifyTrackEl = null;
+let updateNotifyPrefixEl = null;
+let updateNotifyActionEl = null;
+let pendingUpdateData = null;
+
+let updateNotifyMessage = "";
+let updateNotifyBubbleState = "idle"; // idle | pending | open
+let updateNotifyShowTimerId = null;
+let updateNotifyMarqueeTimerId = null;
+let updateNotifyHideTimerId = null;
+let updateNotifyCleanupTimerId = null;
+let updateNotifyMarqueeAnims = [];
+let updateNotifyMarqueeToken = 0;
 
 function createUpdateNotifyButton() {
     if (updateNotifyBtnEl) return;
 
+    // กล่องข้อความ (สร้างแยกจากปุ่ม เพื่อให้ z-index ต่ำกว่าปุ่มได้จริง)
+    updateNotifyBubbleEl = document.createElement("div");
+    updateNotifyBubbleEl.className = "update_notify_bubble";
+    updateNotifyBubbleEl.setAttribute("aria-hidden", "true");
+    updateNotifyBubbleEl.style.setProperty("--update-notify-fold-ms", `${UPDATE_NOTIFY_CONFIG.foldMs}ms`);
+    updateNotifyBubbleEl.innerHTML = `
+        <div class="update_notify_viewport">
+            <div class="update_notify_track">
+                <span class="update_notify_prefix"></span>
+                <span class="update_notify_action"></span>
+            </div>
+        </div>
+    `;
+    updateNotifyViewportEl = updateNotifyBubbleEl.querySelector(".update_notify_viewport");
+    updateNotifyTrackEl = updateNotifyBubbleEl.querySelector(".update_notify_track");
+    updateNotifyPrefixEl = updateNotifyBubbleEl.querySelector(".update_notify_prefix");
+    updateNotifyActionEl = updateNotifyBubbleEl.querySelector(".update_notify_action");
+
+    // ตัวปุ่ม (ไม่มี title / data-update-message แล้ว)
     updateNotifyBtnEl = document.createElement("div");
     updateNotifyBtnEl.className = "update_notify_btn";
-    updateNotifyBtnEl.title = "พบข้อมูลใหม่ แตะเพื่ออัปเดต";
-    updateNotifyBtnEl.setAttribute("data-update-message", "พบข้อมูลใหม่ กดเพื่ออัปเดต");
+    updateNotifyBtnEl.setAttribute("role", "button");
+    updateNotifyBtnEl.setAttribute("aria-label", `พบข้อมูลใหม่ ${UPDATE_NOTIFY_CONFIG.actionText}`);
     updateNotifyBtnEl.innerHTML = `
         <svg class="update_notify_icon" viewBox="0 0 24 24">
             <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -885,25 +939,184 @@ function createUpdateNotifyButton() {
     `;
     updateNotifyBtnEl.addEventListener("click", applyPendingUpdate);
 
-    if (document.body) {
+    // hover (เมาส์/ปากกา เท่านั้น) -> เล่นซ้ำทันที ไม่มี delay
+    updateNotifyBtnEl.addEventListener("pointerenter", (event) => {
+        if (!UPDATE_NOTIFY_CONFIG.hoverReplay) return;
+        if (event.pointerType === "touch") return;
+        if (!updateNotifyBtnEl.classList.contains("show")) return;
+        if (updateNotifyBubbleState !== "idle") return; // กำลังเล่น/รอเล่นอยู่ ไม่ต้องซ้ำ
+        playUpdateNotifyBubble(0);
+    });
+
+    const mount = () => {
+        document.body.appendChild(updateNotifyBubbleEl);
         document.body.appendChild(updateNotifyBtnEl);
+    };
+    if (document.body) {
+        mount();
     } else {
-        document.addEventListener("DOMContentLoaded", () => document.body.appendChild(updateNotifyBtnEl));
+        document.addEventListener("DOMContentLoaded", mount);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Update Notify: ตัววิ่ง (แยกฟังก์ชัน ปิดได้ที่ UPDATE_NOTIFY_CONFIG.marqueeEnabled)
+// ---------------------------------------------------------------------------
+function isNotifyMarqueeAvailable() {
+    return !!UPDATE_NOTIFY_CONFIG.marqueeEnabled
+        && !!updateNotifyTrackEl
+        && typeof updateNotifyTrackEl.animate === "function";
+}
+
+function cancelNotifyMarqueeAnimations() {
+    updateNotifyMarqueeToken++;
+    updateNotifyMarqueeAnims.forEach(anim => {
+        try { anim.cancel(); } catch (e) { /* ignore */ }
+    });
+    updateNotifyMarqueeAnims = [];
+}
+
+function stopNotifyMarquee() {
+    cancelNotifyMarqueeAnimations();
+    if (updateNotifyTrackEl) updateNotifyTrackEl.style.transform = "";
+}
+
+// วิ่งวน (loops - 1) รอบเต็ม แล้วรอบสุดท้ายวิ่งเข้ามาหยุดค้างที่ actionText
+// (ข้อความหน้า actionText ถูกดันพ้นขอบซ้าย ไม่แสดงแม้กล่องมีที่ว่าง)
+function startNotifyMarquee() {
+    updateNotifyMarqueeTimerId = null;
+    cancelNotifyMarqueeAnimations();
+    if (!isNotifyMarqueeAvailable()) return;
+
+    const cfg = UPDATE_NOTIFY_CONFIG;
+    const viewW = updateNotifyViewportEl.clientWidth;
+    const textW = updateNotifyTrackEl.offsetWidth;
+    const finalX = updateNotifyActionEl.hidden ? 0 : -updateNotifyActionEl.offsetLeft;
+    const loops = Math.max(1, Math.floor(cfg.marqueeLoops) || 1);
+
+    const passes = [];
+    for (let i = 0; i < loops - 1; i++) passes.push({ from: viewW, to: -textW });
+    passes.push({ from: viewW, to: finalX });
+
+    let speed = Math.max(10, Number(cfg.marqueeSpeedPxPerSec) || 90);
+    if (cfg.marqueeAutoFit) {
+        const totalDistance = passes.reduce((sum, p) => sum + Math.abs(p.from - p.to), 0);
+        const budgetMs = cfg.displayMs - cfg.foldMs - cfg.marqueeHoldMs;
+        if (budgetMs > 0 && (totalDistance / speed) * 1000 > budgetMs) {
+            speed = totalDistance / (budgetMs / 1000);
+        }
+    }
+
+    const token = updateNotifyMarqueeToken;
+    const runPass = (index) => {
+        if (token !== updateNotifyMarqueeToken) return;
+        const { from, to } = passes[index];
+        const isLast = index === passes.length - 1;
+        const duration = Math.max(1, (Math.abs(from - to) / speed) * 1000);
+
+        const anim = updateNotifyTrackEl.animate(
+            [
+                { transform: `translateX(${from}px)` },
+                { transform: `translateX(${to}px)` }
+            ],
+            { duration, easing: "linear", fill: "forwards" }
+        );
+        updateNotifyMarqueeAnims.push(anim);
+        if (!isLast) anim.onfinish = () => runPass(index + 1);
+    };
+    runPass(0);
+}
+
+// ---------------------------------------------------------------------------
+// Update Notify: จังหวะการแสดงกล่องข้อความ
+// ---------------------------------------------------------------------------
+function splitUpdateNotifyMessage(message) {
+    const action = UPDATE_NOTIFY_CONFIG.actionText;
+    const text = (message || "").trim();
+    if (action && text.endsWith(action)) {
+        return { prefix: text.slice(0, text.length - action.length).trim(), action };
+    }
+    return { prefix: text, action: "" };
+}
+
+function renderUpdateNotifyText(canMarquee) {
+    const { prefix, action } = splitUpdateNotifyMessage(updateNotifyMessage);
+    updateNotifyPrefixEl.textContent = prefix;
+    updateNotifyPrefixEl.hidden = !prefix;
+    updateNotifyActionEl.textContent = action;
+    updateNotifyActionEl.hidden = !action;
+    updateNotifyTrackEl.style.gap = `${UPDATE_NOTIFY_CONFIG.marqueeGapPx}px`;
+    updateNotifyBubbleEl.classList.toggle("is-static", !canMarquee);
+}
+
+function clearUpdateNotifyBubbleTimers() {
+    [updateNotifyShowTimerId, updateNotifyMarqueeTimerId, updateNotifyHideTimerId, updateNotifyCleanupTimerId]
+        .forEach(id => { if (id) clearTimeout(id); });
+    updateNotifyShowTimerId = null;
+    updateNotifyMarqueeTimerId = null;
+    updateNotifyHideTimerId = null;
+    updateNotifyCleanupTimerId = null;
+}
+
+// ยุบกล่อง (ซ้าย -> ขวา) เหลือแต่ปุ่ม
+function closeUpdateNotifyBubble() {
+    clearUpdateNotifyBubbleTimers();
+    updateNotifyBubbleState = "idle";
+    if (updateNotifyBubbleEl) updateNotifyBubbleEl.classList.remove("is-open");
+    // รอให้ยุบเสร็จก่อน ค่อยหยุดตัววิ่ง (ไม่ให้ข้อความกระโดดตอนยุบ)
+    updateNotifyCleanupTimerId = setTimeout(() => {
+        updateNotifyCleanupTimerId = null;
+        stopNotifyMarquee();
+    }, UPDATE_NOTIFY_CONFIG.foldMs + 50);
+}
+
+// เล่นทั้งชุด: รอ delay -> คลี่ (ขวา -> ซ้าย) -> ตัววิ่ง -> ครบ displayMs แล้วยุบ
+function playUpdateNotifyBubble(delayMs = UPDATE_NOTIFY_CONFIG.showDelayMs) {
+    if (!updateNotifyBubbleEl) return;
+    const cfg = UPDATE_NOTIFY_CONFIG;
+
+    clearUpdateNotifyBubbleTimers();
+    updateNotifyBubbleState = "pending";
+    updateNotifyBubbleEl.classList.remove("is-open"); // ถ้าเปิดค้างอยู่ จะยุบก่อนแล้วเริ่มใหม่
+
+    updateNotifyShowTimerId = setTimeout(() => {
+        updateNotifyShowTimerId = null;
+
+        const canMarquee = isNotifyMarqueeAvailable();
+        stopNotifyMarquee();
+        renderUpdateNotifyText(canMarquee);
+        if (canMarquee) {
+            // ให้ข้อความรออยู่นอกขอบขวา ระหว่างกล่องกำลังคลี่
+            updateNotifyTrackEl.style.transform = `translateX(${updateNotifyViewportEl.clientWidth}px)`;
+        }
+
+        updateNotifyBubbleEl.classList.add("is-open");
+        updateNotifyBubbleState = "open";
+
+        if (canMarquee) {
+            updateNotifyMarqueeTimerId = setTimeout(startNotifyMarquee, cfg.foldMs);
+        }
+        updateNotifyHideTimerId = setTimeout(closeUpdateNotifyBubble, cfg.displayMs);
+    }, Math.max(0, delayMs));
 }
 
 function showUpdateNotifyButton(message) {
     if (!updateNotifyBtnEl) createUpdateNotifyButton();
+    const action = UPDATE_NOTIFY_CONFIG.actionText;
     const defaultMessage = pendingAppVersion
-        ? `พบแอปเวอร์ชันใหม่ (${pendingAppVersion}) กดเพื่ออัปเดต`
-        : "พบข้อมูลใหม่ กดเพื่ออัปเดต";
-    const displayMessage = message || defaultMessage;
-    updateNotifyBtnEl.title = displayMessage;
-    updateNotifyBtnEl.setAttribute("data-update-message", displayMessage);
+        ? `พบแอปเวอร์ชันใหม่ (${pendingAppVersion}) ${action}`
+        : `พบข้อมูลใหม่ ${action}`;
+
+    updateNotifyMessage = message || defaultMessage;
+    updateNotifyBtnEl.setAttribute("aria-label", updateNotifyMessage);
     updateNotifyBtnEl.classList.add("show");
+
+    // เรียกซ้ำเมื่อไหร่ เริ่มเล่นใหม่ทุกครั้ง (มี delay 500ms)
+    playUpdateNotifyBubble(UPDATE_NOTIFY_CONFIG.showDelayMs);
 }
 
 function hideUpdateNotifyButton() {
+    closeUpdateNotifyBubble();
     if (updateNotifyBtnEl) updateNotifyBtnEl.classList.remove("show");
 }
 
