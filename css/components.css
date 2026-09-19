@@ -1102,7 +1102,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     right: 46px;
     width: 160px;
     height: 36px;
-    padding: 0 30px 0 12px;         /* ขวา 30px กันข้อความไปอยู่ใต้ปุ่ม */
+    padding: 0 20px 0 12px;         /* ขวา 30px กันข้อความไปอยู่ใต้ปุ่ม */
     background: var(--color-brand-primary);
     border: 2px solid #fff;
     border-right: none;
