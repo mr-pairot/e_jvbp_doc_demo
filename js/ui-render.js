@@ -1424,8 +1424,8 @@ function updateInfoVersionBox() {
         versionEl.textContent = `Version: ${APP_CACHE_VERSION}`;
     }
     if (resEl) {
-        resEl.textContent =
-            `( Viewport: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio} )`;
+    resEl.textContent =
+        `( Viewport: ${window.innerWidth}x${window.innerHeight}, DPR: ${window.devicePixelRatio.toFixed(2)} )`;
     }
 }
 window.addEventListener("resize", updateInfoVersionBox);
