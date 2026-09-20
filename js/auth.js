@@ -7,6 +7,26 @@ const AUTH_CONFIG = {
     //Url: https://script.google.com/home/projects/1pZbca-IQ9peOsYBflHbdq1L4xTmHQAHQhY2hPA93skMRk9Dg5KePNZUU/edit
 };
 
+// ---------------------------------------------------------------------------
+// Guest Mode Configuration
+// กำหนดวันและเวลาสิ้นสุด Guest Mode (1 ตุลาคม 2569 เวลา 12:00 น.)
+// ---------------------------------------------------------------------------
+const GUEST_CONFIG = {
+    expiryDate: window.__GUEST_EXPIRY_DATE || '2026-10-01T12:00:00+07:00',
+    guestName: 'Guest',
+    guestAvatar: 'img/guest.svg',
+    guestRole: 'Guest'
+};
+
+const REGISTRATION_PENDING_KEY = 'bpnp_reg_pending';
+const REGISTRATION_STATUS_KEY = 'bpnp_reg_status'; // 'pending' | 'active'
+
+function isGuestModeValid() {
+    if (!GUEST_CONFIG.expiryDate) return false;
+    const expiryTime = new Date(GUEST_CONFIG.expiryDate).getTime();
+    return Date.now() < expiryTime;
+}
+
 const APP_ASSETS = {
     css: [
         'css/components.css'
@@ -74,7 +94,7 @@ function getCachedUser() {
     let cookieUserId = getCookie('BPNP_DOC_USER_ID');
     let cookieSessionId = getCookie('BPNP_DOC_SESSION_ID');
     
-    if (cachedObj && cachedObj.sessionId) {
+    if (cachedObj && (cachedObj.sessionId || cachedObj.isGuest)) {
         return cachedObj;
     } else if (cookieUserId && cookieSessionId) {
         return { userId: cookieUserId, sessionId: cookieSessionId, role: 'User' };
@@ -155,7 +175,7 @@ async function checkFriendshipClientSide() {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Initialization Flow (Cache-First Fast Boot)
+// 3. Initialization Flow (Cache-First Fast Boot & Guest Mode)
 // ---------------------------------------------------------------------------
 async function initApp() {
     if (authInitializing) return;
@@ -164,8 +184,8 @@ async function initApp() {
     try {
         const cachedUser = getCachedUser();
 
-        // --- CACHE-FIRST: ถ้าเคยล็อกอินแล้ว ให้เข้าสู่แอปทันทีไม่ต้องรอ LIFF ---
-        if (cachedUser && cachedUser.sessionId) {
+        // 1. ถ้าเป็น Registered User (มี sessionId และไม่ใช่ Guest) -> Fast Boot
+        if (cachedUser && cachedUser.sessionId && !cachedUser.isGuest) {
             console.log('Cache Hit: Loading App immediately for session:', cachedUser.sessionId);
             
             ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
@@ -180,7 +200,72 @@ async function initApp() {
             return;
         }
 
-        // --- NO CACHE: ต้องเชื่อมต่อ LIFF เพื่อเริ่มกระบวนการ ---
+        // 2. ตรวจสอบว่ากำลังกลับมาจากการ Login LINE เพื่อลงทะเบียนหรือไม่
+        const isRegPending = sessionStorage.getItem(REGISTRATION_PENDING_KEY) === '1';
+        if (isRegPending) {
+            sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
+            ui.splashStatus.innerText = 'กำลังเชื่อมต่อ LINE เพื่อลงทะเบียน...';
+            try {
+                if (typeof liff !== 'undefined') {
+                    await liff.init({ liffId: AUTH_CONFIG.liffId });
+                    if (liff.isLoggedIn()) {
+                        const profile = await liff.getProfile();
+                        window.__pendingLineProfile = profile;
+
+                        if (isGuestModeValid()) {
+                            const guestUser = {
+                                userId: 'guest',
+                                displayName: GUEST_CONFIG.guestName,
+                                pictureUrl: GUEST_CONFIG.guestAvatar,
+                                role: GUEST_CONFIG.guestRole,
+                                isGuest: true,
+                                timestamp: Date.now()
+                            };
+                            setCachedUser(guestUser);
+
+                            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
+                            await loadAppAssets();
+                            showApp();
+                            openRegisterModal(profile);
+                            return;
+                        }
+                    }
+                }
+            } catch (regErr) {
+                console.warn('Liff reg init error:', regErr);
+            }
+        }
+
+        // 3. ตรวจสอบ Guest Mode (หากยังไม่หมดอายุตาม GUEST_CONFIG.expiryDate)
+        if (isGuestModeValid()) {
+            console.log('Guest Mode Active: Entering without LINE login');
+            const guestUser = (cachedUser && cachedUser.isGuest) ? cachedUser : {
+                userId: 'guest',
+                displayName: GUEST_CONFIG.guestName,
+                pictureUrl: GUEST_CONFIG.guestAvatar,
+                role: GUEST_CONFIG.guestRole,
+                sessionId: '',
+                isGuest: true,
+                timestamp: Date.now()
+            };
+            setCachedUser(guestUser);
+
+            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
+            await loadAppAssets();
+            showApp();
+
+            // กำหนดค่า LIFF ไว้เบื้องหลังเพื่อพร้อมสำหรับการลงทะเบียน
+            if (typeof liff !== 'undefined') {
+                liff.init({ liffId: AUTH_CONFIG.liffId }).catch(console.warn);
+            }
+            return;
+        }
+
+        // 4. หากหมดอายุ Guest Mode: ล้างแคช Guest ออก และเข้าสู่การบังคับ Login
+        if (cachedUser && cachedUser.isGuest) {
+            clearCachedUser();
+        }
+
         ui.splashStatus.innerText = 'กำลังเตรียมระบบ...';
         await liff.init({ liffId: AUTH_CONFIG.liffId });
 
@@ -278,7 +363,7 @@ async function verifyWithBackend(profile) {
 async function backgroundVerify(cachedUser = null) {
     try {
         const user = cachedUser || getCachedUser();
-        if (!user || !user.sessionId) return false;
+        if (!user || !user.sessionId || user.isGuest) return false;
 
         // ดึง userId จาก LIFF ก่อนถ้าทำได้ (ถ้าแอปไม่ได้ล็อคอิน LIFF แต่มี cookie จะใช้ userId จาก cookie)
         let userId = user.userId;
@@ -467,27 +552,67 @@ function initProfileUI() {
     const cachedUser = getCachedUser();
     if (!cachedUser) return;
 
+    const isGuest = !cachedUser.sessionId || cachedUser.isGuest;
+
     const profileImg = document.getElementById('userProfileImg');
     const tooltip = document.getElementById('userTooltip');
     const dropdownName = document.getElementById('userDropdownName');
     const modalUserName = document.getElementById('logoutModalUserName');
+    const btnMySessionInfo = document.getElementById('btnMySessionInfo');
+    const btnProfileRefresh = document.getElementById('btnProfileRefresh');
+    const btnProfileLogout = document.getElementById('btnProfileLogout');
+    const btnOpenRegisterModal = document.getElementById('btnOpenRegisterModal');
+    const registerSubText = document.getElementById('registerSubText');
 
-    if (profileImg && cachedUser.pictureUrl) profileImg.src = cachedUser.pictureUrl;
-    if (tooltip && cachedUser.displayName) tooltip.innerText = cachedUser.displayName;
-    if (dropdownName && cachedUser.displayName) dropdownName.innerText = cachedUser.displayName;
-    if (modalUserName && cachedUser.displayName) modalUserName.innerText = cachedUser.displayName;
+    if (isGuest) {
+        // --- สถานะ Guest Mode ---
+        if (profileImg) profileImg.src = GUEST_CONFIG.guestAvatar;
+        if (tooltip) tooltip.innerText = GUEST_CONFIG.guestName;
+        if (dropdownName) dropdownName.innerText = GUEST_CONFIG.guestName;
+        if (modalUserName) modalUserName.innerText = GUEST_CONFIG.guestName;
+
+        // เมนูของ Guest: แสดงเฉพาะ "รีเฟรชข้อมูล" และ "ลงทะเบียนเข้าใช้" (ซ่อนที่เหลือ)
+        if (btnMySessionInfo) btnMySessionInfo.style.display = 'none';
+        if (btnProfileLogout) btnProfileLogout.style.display = 'none';
+        if (btnProfileRefresh) btnProfileRefresh.style.display = '';
+
+        if (btnOpenRegisterModal) {
+            btnOpenRegisterModal.classList.remove('is-hidden');
+            btnOpenRegisterModal.style.display = 'flex';
+        }
+
+        // ตรวจสอบสถานะว่าลงทะเบียนแล้วและรออนุมัติหรือไม่
+        const regStatus = localStorage.getItem(REGISTRATION_STATUS_KEY);
+        if (regStatus === 'pending') {
+            if (registerSubText) registerSubText.style.display = 'inline-block';
+        } else {
+            if (registerSubText) registerSubText.style.display = 'none';
+        }
+    } else {
+        // --- สถานะ Registered User ---
+        if (profileImg && cachedUser.pictureUrl) profileImg.src = cachedUser.pictureUrl;
+        if (tooltip && cachedUser.displayName) tooltip.innerText = cachedUser.displayName;
+        if (dropdownName && cachedUser.displayName) dropdownName.innerText = cachedUser.displayName;
+        if (modalUserName && cachedUser.displayName) modalUserName.innerText = cachedUser.displayName;
+
+        // เมนูเดิมแสดงครบทั้งหมด และซ่อนปุ่มลงทะเบียน
+        if (btnMySessionInfo) btnMySessionInfo.style.display = '';
+        if (btnProfileLogout) btnProfileLogout.style.display = '';
+        if (btnProfileRefresh) btnProfileRefresh.style.display = '';
+        if (btnOpenRegisterModal) {
+            btnOpenRegisterModal.classList.add('is-hidden');
+            btnOpenRegisterModal.style.display = 'none';
+        }
+    }
 
     if (window.__profileEventsBound) return;
     window.__profileEventsBound = true;
 
     const profileArea = document.getElementById('userProfileArea');
     const dropdown = document.getElementById('userDropdown');
-    const btnProfileRefresh = document.getElementById('btnProfileRefresh');
-    const btnProfileLogout = document.getElementById('btnProfileLogout');
     const logoutModal = document.getElementById('logoutConfirmModal');
     const btnCancelLogout = document.getElementById('btnCancelLogout');
     const btnConfirmLogout = document.getElementById('btnConfirmLogout');
-    const btnMySessionInfo = document.getElementById('btnMySessionInfo');
 
     if (profileArea && dropdown) {
         profileArea.addEventListener('click', (e) => {
@@ -521,6 +646,41 @@ function initProfileUI() {
         });
     }
 
+    if (btnOpenRegisterModal) {
+        btnOpenRegisterModal.addEventListener('click', () => {
+            dropdown.classList.remove('is-active');
+            const regStatus = localStorage.getItem(REGISTRATION_STATUS_KEY);
+            if (regStatus === 'pending') {
+                const rawInfo = localStorage.getItem('bpnp_reg_info');
+                let infoHtml = '';
+                if (rawInfo) {
+                    try {
+                        const info = JSON.parse(rawInfo);
+                        const safeNick = (info.nickname || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        const safeOrg = (info.org || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        infoHtml = `<div style="text-align:left; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin:12px 0; font-size:13px; line-height:1.6;">` +
+                                   `<div><b>ชื่อที่ลงทะเบียน:</b> ${safeNick}</div>` +
+                                   `<div><b>หน่วยงาน:</b> ${safeOrg}</div>` +
+                                   `</div>`;
+                    } catch (e) {}
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'อยู่ระหว่างรอการอนุมัติ',
+                        html: `คุณได้ส่งข้อมูลลงทะเบียนเข้าใช้งานระบบแล้ว${infoHtml}<span style="font-size:13px; color:#64748b;">กรุณารอผู้ดูแลระบบตรวจสอบและอนุมัติสิทธิ์การเข้าใช้งาน</span>`,
+                        confirmButtonColor: '#0d6efd',
+                        confirmButtonText: 'รับทราบ'
+                    });
+                } else {
+                    alert('คุณได้ลงทะเบียนเข้าใช้ระบบเรียบร้อยแล้ว กรุณารอผู้ดูแลระบบตรวจสอบและอนุมัติสิทธิ์');
+                }
+            } else {
+                openRegisterModal();
+            }
+        });
+    }
+
     if (btnProfileLogout) {
         btnProfileLogout.addEventListener('click', () => {
             dropdown.classList.remove('is-active');
@@ -535,6 +695,248 @@ function initProfileUI() {
             const didLogout = await logoutCurrentSession_();
             if (!didLogout) btnConfirmLogout.disabled = false;
         });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 5.1 Registration Modal Management
+// ---------------------------------------------------------------------------
+let currentRegisterProfile = null;
+let __registerModalEventsBound = false;
+
+function openRegisterModal(lineProfile = null) {
+    const modal = document.getElementById('registerModal');
+    if (!modal) return;
+
+    setupRegisterModalEvents();
+
+    const stepLineConnect = document.getElementById('regStepLineConnect');
+    const stepForm = document.getElementById('regStepForm');
+    const avatar = document.getElementById('regLineAvatar');
+    const nameSpan = document.getElementById('regLineDisplayName');
+    const nicknameInput = document.getElementById('regNicknameInput');
+
+    const profile = lineProfile || window.__pendingLineProfile;
+
+    if (profile && profile.userId) {
+        currentRegisterProfile = profile;
+        if (avatar) avatar.src = profile.pictureUrl || 'img/doc-icon.svg';
+        if (nameSpan) nameSpan.innerText = profile.displayName || '-';
+
+        if (stepLineConnect) stepLineConnect.classList.add('is-hidden');
+        if (stepForm) stepForm.classList.remove('is-hidden');
+
+        if (nicknameInput && !nicknameInput.value && profile.displayName) {
+            nicknameInput.value = profile.displayName;
+        }
+        setTimeout(() => {
+            if (nicknameInput) nicknameInput.focus();
+        }, 150);
+    } else {
+        currentRegisterProfile = null;
+        if (stepLineConnect) stepLineConnect.classList.remove('is-hidden');
+        if (stepForm) stepForm.classList.add('is-hidden');
+    }
+
+    validateRegisterForm();
+    modal.classList.remove('is-hidden');
+}
+window.openRegisterModal = openRegisterModal;
+
+function closeRegisterModal() {
+    const modal = document.getElementById('registerModal');
+    if (modal) modal.classList.add('is-hidden');
+}
+window.closeRegisterModal = closeRegisterModal;
+
+function validateRegisterForm() {
+    const submitBtn = document.getElementById('btnSubmitRegister');
+    const nicknameInput = document.getElementById('regNicknameInput');
+    const orgSelect = document.getElementById('regOrgSelect');
+    const otherOrgInput = document.getElementById('regOtherOrgInput');
+
+    if (!submitBtn) return;
+
+    const hasProfile = !!currentRegisterProfile && !!currentRegisterProfile.userId;
+    const nickname = (nicknameInput ? nicknameInput.value : '').trim();
+    const org = (orgSelect ? orgSelect.value : '').trim();
+    
+    let isOrgValid = false;
+    if (org === 'อื่นๆ(ระบุ)') {
+        isOrgValid = (otherOrgInput ? otherOrgInput.value.trim() : '').length > 0;
+    } else if (org !== '') {
+        isOrgValid = true;
+    }
+
+    const isValid = hasProfile && nickname.length > 0 && isOrgValid;
+    submitBtn.disabled = !isValid;
+}
+
+function setupRegisterModalEvents() {
+    if (__registerModalEventsBound) return;
+    __registerModalEventsBound = true;
+
+    const closeBtn = document.getElementById('btnCloseRegisterModal');
+    const cancelBtn = document.getElementById('btnCancelRegister');
+    const submitBtn = document.getElementById('btnSubmitRegister');
+    const lineConnectBtn = document.getElementById('btnLineConnectForReg');
+    const nicknameInput = document.getElementById('regNicknameInput');
+    const orgSelect = document.getElementById('regOrgSelect');
+    const otherOrgGroup = document.getElementById('regOtherOrgGroup');
+    const otherOrgInput = document.getElementById('regOtherOrgInput');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeRegisterModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeRegisterModal);
+
+    if (lineConnectBtn) {
+        lineConnectBtn.addEventListener('click', async () => {
+            try {
+                sessionStorage.setItem(REGISTRATION_PENDING_KEY, '1');
+                if (typeof liff === 'undefined') {
+                    alert('ไม่พบ LINE LIFF SDK');
+                    return;
+                }
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    const profile = await liff.getProfile();
+                    openRegisterModal(profile);
+                }
+            } catch (err) {
+                console.error('Line login for reg error:', err);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE: ' + (err.message || err));
+            }
+        });
+    }
+
+    if (nicknameInput) {
+        nicknameInput.addEventListener('input', validateRegisterForm);
+    }
+
+    if (orgSelect) {
+        orgSelect.addEventListener('change', () => {
+            if (orgSelect.value === 'อื่นๆ(ระบุ)') {
+                if (otherOrgGroup) otherOrgGroup.classList.remove('is-hidden');
+                if (otherOrgInput) otherOrgInput.focus();
+            } else {
+                if (otherOrgGroup) otherOrgGroup.classList.add('is-hidden');
+            }
+            validateRegisterForm();
+        });
+    }
+
+    if (otherOrgInput) {
+        otherOrgInput.addEventListener('input', validateRegisterForm);
+    }
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', submitRegistration);
+    }
+}
+
+async function submitRegistration() {
+    const submitBtn = document.getElementById('btnSubmitRegister');
+    const nicknameInput = document.getElementById('regNicknameInput');
+    const orgSelect = document.getElementById('regOrgSelect');
+    const otherOrgInput = document.getElementById('regOtherOrgInput');
+
+    if (!currentRegisterProfile || !currentRegisterProfile.userId) {
+        alert('กรุณาเชื่อมต่อบัญชี LINE ก่อนลงทะเบียน');
+        return;
+    }
+
+    const nickname = (nicknameInput ? nicknameInput.value : '').trim();
+    if (!nickname) {
+        alert('กรุณากรอกชื่อจริงหรือชื่อเล่น');
+        return;
+    }
+
+    let finalOrg = (orgSelect ? orgSelect.value : '').trim();
+    if (!finalOrg) {
+        alert('กรุณาเลือกหน่วยงาน');
+        return;
+    }
+    if (finalOrg === 'อื่นๆ(ระบุ)') {
+        finalOrg = (otherOrgInput ? otherOrgInput.value.trim() : '');
+        if (!finalOrg) {
+            alert('กรุณาระบุชื่อหน่วยงาน');
+            return;
+        }
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'กำลังส่งข้อมูล...';
+    }
+
+    try {
+        const payload = {
+            actionType: 'register_user',
+            userId: currentRegisterProfile.userId,
+            displayName: currentRegisterProfile.displayName || '',
+            pictureUrl: currentRegisterProfile.pictureUrl || '',
+            nickname: nickname,
+            organization: finalOrg
+        };
+
+        const response = await fetch(AUTH_CONFIG.gasUrl, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        const result = await parseJsonResponseSafe_(response, 'register_user');
+
+        if (result.success || result.ok) {
+            // บันทึกสถานะว่าลงทะเบียนแล้ว รออนุมัติ
+            localStorage.setItem(REGISTRATION_STATUS_KEY, result.status === 'Active' ? 'active' : 'pending');
+            localStorage.setItem('bpnp_reg_info', JSON.stringify({
+                userId: payload.userId,
+                displayName: payload.displayName,
+                nickname: payload.nickname,
+                org: payload.organization,
+                registeredAt: new Date().toISOString()
+            }));
+
+            closeRegisterModal();
+
+            // แสดงข้อความ "(รออนุมัติ)" ใต้ปุ่มลงทะเบียน
+            const registerSubText = document.getElementById('registerSubText');
+            if (registerSubText) {
+                registerSubText.style.display = 'inline-block';
+            }
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลงทะเบียนสำเร็จ',
+                    text: result.message || 'ข้อมูลของคุณอยู่ระหว่างรอผู้ดูแลระบบตรวจสอบและอนุมัติสิทธิ์',
+                    confirmButtonColor: '#0d6efd',
+                    confirmButtonText: 'ตกลง'
+                });
+            } else {
+                alert(result.message || 'ลงทะเบียนสำเร็จ กรุณารอผู้ดูแลระบบตรวจสอบและอนุมัติสิทธิ์');
+            }
+        } else {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่สามารถลงทะเบียนได้',
+                    text: result.message || result.reason || 'เกิดข้อผิดพลาดในการลงทะเบียน',
+                    confirmButtonColor: '#0d6efd',
+                    confirmButtonText: 'ตกลง'
+                });
+            } else {
+                alert(result.message || result.reason || 'เกิดข้อผิดพลาดในการลงทะเบียน');
+            }
+        }
+    } catch (err) {
+        console.error('Submit registration error:', err);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ลงทะเบียน: ' + (err.message || err));
+    } finally {
+        if (submitBtn) {
+            submitBtn.innerText = 'ลงทะเบียน';
+            validateRegisterForm();
+        }
     }
 }
 
