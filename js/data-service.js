@@ -882,7 +882,7 @@ const UPDATE_NOTIFY_CONFIG = {
     // --- ตัววิ่ง ---
     marqueeEnabled: true,        // false = ข้อความนิ่ง (ตัดได้ 2 บรรทัด ไม่วิ่ง)
     marqueeLoops: 2,             // จำนวนรอบ (รอบสุดท้ายจะหยุดค้างที่ actionText)
-    marqueeSpeedPxPerSec: 70,    // ความเร็ว (พิกเซล/วินาที) ยิ่งมากยิ่งเร็ว
+    marqueeSpeedPxPerSec: 60,    // ความเร็ว (พิกเซล/วินาที) ยิ่งมากยิ่งเร็ว
     marqueeGapPx: 24,            // ระยะห่างระหว่างข้อความหน้ากับ actionText
     marqueeAutoFit: true,        // true = เร่งความเร็วอัตโนมัติถ้าวิ่งไม่จบก่อนกล่องยุบ
     marqueeHoldMs: 500           // เวลาที่ต้องการให้ข้อความนิ่งค้างก่อนกล่องยุบ (ใช้กับ autoFit)
