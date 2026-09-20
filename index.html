@@ -299,6 +299,135 @@
         .btn_modal_confirm:hover {
             background: #b91c1c;
         }
+
+        /* =========================================
+           ส่วน UI ของ Popup ลงทะเบียนผู้ใช้งาน (Register Modal)
+           ========================================= */
+        .register_modal_box {
+            max-width: 440px;
+            width: 92%;
+            text-align: left;
+            padding: 24px 28px;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .register_modal_header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--color-border-default, #cbd5e1);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        .register_modal_title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--color-text-heading, #1e293b);
+        }
+        .reg_step_box {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .reg_desc {
+            font-size: 14px;
+            color: var(--color-text-muted, #64748b);
+            line-height: 1.5;
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+        .reg_line_profile_badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 4px;
+        }
+        .reg_line_avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #06C755;
+            flex-shrink: 0;
+            background: #e2e8f0;
+        }
+        .reg_line_info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .reg_line_label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .reg_line_name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .reg_form_group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .reg_form_label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-text-heading, #334155);
+        }
+        .reg_input, .reg_select {
+            width: 100%;
+            height: 42px;
+            padding: 8px 12px;
+            border: 1px solid var(--color-border-default, #cbd5e1);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--color-text-body, #1e293b);
+            background: #fff;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .reg_input:focus, .reg_select:focus {
+            border-color: var(--color-brand-primary, #0d6efd);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+        .reg_actions_bar {
+            margin-top: 22px;
+            padding-top: 14px;
+            border-top: 1px solid var(--color-border-default, #cbd5e1);
+        }
+        .btn_modal_register {
+            background: var(--color-brand-primary, #0d6efd);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 14px;
+            transition: background 0.2s ease, opacity 0.2s ease;
+        }
+        .btn_modal_register:hover:not(:disabled) {
+            background: #0b5ed7;
+        }
+        .btn_modal_register:disabled {
+            background: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -373,6 +502,14 @@
                 </button>
                 <button id="btnProfileRefresh" class="user_dropdown_btn">
                     <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
+                </button>
+                <button id="btnOpenRegisterModal" class="user_dropdown_btn is-hidden">
+                    <div style="display: flex; flex-direction: column; width: 100%; gap: 2px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 16px;">📝</span> <span>ลงทะเบียนเข้าใช้</span>
+                        </div>
+                        <span id="registerSubText" style="font-size: 11px; color: #f59e0b; margin-left: 26px; display: none; font-weight: 500;">(รออนุมัติ)</span>
+                    </div>
                 </button>
                 <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
                     <span style="font-size: 16px;">↪️</span> ออกจากระบบ
@@ -514,6 +651,68 @@
             </div>
             <div id="sessionListContainer" class="session_list">
                 <!-- render โดย renderSessionList() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup ลงทะเบียนเข้าใช้งานระบบ (Register Modal) -->
+    <div id="registerModal" class="custom_modal is-hidden">
+        <div class="custom_modal_content register_modal_box">
+            <div class="register_modal_header">
+                <div class="register_modal_title">
+                    <span>📝 ลงทะเบียนเข้าใช้งานระบบ</span>
+                </div>
+                <button type="button" id="btnCloseRegisterModal" class="btn_close_session_modal" aria-label="ปิด">✕</button>
+            </div>
+
+            <!-- Step 1: ถ้ายังไม่ได้ต่อ LINE -->
+            <div id="regStepLineConnect" class="reg_step_box">
+                <p class="reg_desc">กรุณาเชื่อมต่อบัญชี LINE เพื่อเริ่มต้นการลงทะเบียนเข้าใช้งานระบบ</p>
+                <button id="btnLineConnectForReg" type="button" class="btn_line">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64"><path d="M64 27.487c0-14.32-14.355-25.97-32-25.97S0 13.168 0 27.487c0 12.837 11.384 23.588 26.762 25.62 1.042.225 2.46.688 2.82 1.578.322.81.21 2.076.103 2.894l-.457 2.74c-.14.81-.643 3.164 2.772 1.725s18.428-10.852 25.143-18.58h-.001C61.78 38.38 64 33.218 64 27.487" fill="#fff"/><g fill="#00b900"><path d="M25.498 20.568h-2.245c-.344 0-.623.28-.623.623v13.943a.62.62 0 0 0 .623.62h2.245a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623m15.45-.01h-2.244c-.345 0-.624.28-.624.623v8.284l-6.4-8.63c-.014-.022-.03-.043-.048-.063l-.004-.004a.4.4 0 0 0-.038-.038l-.044-.04c-.006-.004-.01-.008-.016-.012l-.032-.022-.02-.012-.033-.02c-.006-.002-.014-.006-.02-.01-.012-.006-.023-.012-.036-.016s-.014-.006-.02-.006c-.012-.006-.025-.008-.037-.012l-.022-.006c-.012-.002-.023-.006-.035-.008l-.026-.004c-.008-.002-.022-.004-.033-.004l-.032-.002c-.008 0-.014-.001-.022-.001h-2.244c-.344 0-.623.28-.623.623V35.13a.62.62 0 0 0 .623.62h2.244c.344 0 .624-.278.624-.62v-8.28l6.397 8.64a.63.63 0 0 0 .158.154c.018.014.032.022.045.03.006.004.012.008.018.01s.02.01.03.014.02.008.03.014l.06.022a.62.62 0 0 0 .168.022h2.244a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623"/><path d="M20.087 32.264h-6.1V21.2c0-.344-.28-.623-.623-.623H11.12c-.344 0-.623.28-.623.623v13.942a.62.62 0 0 0 .174.431c.012.012.014.016.016.018.113.107.264.174.43.174h8.968c.344 0 .623-.28.623-.623v-2.245c0-.344-.278-.623-.623-.623m33.258-8.214c.344 0 .623-.28.623-.623V21.2c0-.344-.278-.623-.623-.623h-8.968c-.168 0-.32.067-.432.176-.012.01-.016.014-.018.018-.107.1-.173.262-.173.43v13.943a.62.62 0 0 0 .174.431l.016.016a.62.62 0 0 0 .431.174h8.968c.344 0 .623-.28.623-.623v-2.246c0-.344-.278-.623-.623-.623h-6.098v-2.357h6.098a.62.62 0 0 0 .623-.623V27.04c0-.344-.278-.624-.623-.624h-6.098V24.06h6.098z"/></g></svg>
+                    เชื่อมต่อด้วย LINE
+                </button>
+            </div>
+
+            <!-- Step 2: เมื่อเชื่อมต่อ LINE แล้ว -->
+            <div id="regStepForm" class="reg_step_box is-hidden">
+                <div class="reg_line_profile_badge">
+                    <img id="regLineAvatar" src="img/doc-icon.svg" alt="Line Profile" class="reg_line_avatar">
+                    <div class="reg_line_info">
+                        <span class="reg_line_label">บัญชี LINE ที่เชื่อมต่อ:</span>
+                        <span id="regLineDisplayName" class="reg_line_name">-</span>
+                    </div>
+                </div>
+
+                <div class="reg_form_group">
+                    <label for="regNicknameInput" class="reg_form_label">ชื่อจริงหรือชื่อเล่น <span class="text-danger">*</span></label>
+                    <input type="text" id="regNicknameInput" class="reg_input" placeholder="เช่น นายสมชาย (บอล)" autocomplete="off">
+                </div>
+
+                <div class="reg_form_group">
+                    <label for="regOrgSelect" class="reg_form_label">หน่วยงาน <span class="text-danger">*</span></label>
+                    <select id="regOrgSelect" class="reg_select">
+                        <option value="">-- กรุณาเลือกหน่วยงาน --</option>
+                        <option value="JV">JV</option>
+                        <option value="CSBN">CSBN</option>
+                        <option value="SRT">SRT</option>
+                        <option value="Zone1">Zone1</option>
+                        <option value="Zone2">Zone2</option>
+                        <option value="Zone3">Zone3</option>
+                        <option value="Zone4">Zone4</option>
+                        <option value="อื่นๆ(ระบุ)">อื่นๆ(ระบุ)</option>
+                    </select>
+                </div>
+
+                <div id="regOtherOrgGroup" class="reg_form_group is-hidden">
+                    <label for="regOtherOrgInput" class="reg_form_label">โปรดระบุชื่อหน่วยงาน <span class="text-danger">*</span></label>
+                    <input type="text" id="regOtherOrgInput" class="reg_input" placeholder="ระบุชื่อหน่วยงานของคุณ" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="custom_modal_actions reg_actions_bar">
+                <button type="button" id="btnCancelRegister" class="btn_modal_cancel">ยกเลิก</button>
+                <button type="button" id="btnSubmitRegister" class="btn_modal_register" disabled>ลงทะเบียน</button>
             </div>
         </div>
     </div>
