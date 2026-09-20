@@ -175,8 +175,43 @@ async function checkFriendshipClientSide() {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Initialization Flow (Cache-First Fast Boot & Guest Mode)
+// 3. Initialization Flow (Active User Check -> Guest Mode Fallback)
 // ---------------------------------------------------------------------------
+function enterGuestMode_() {
+    const cachedUser = getCachedUser();
+    const guestUser = (cachedUser && cachedUser.isGuest) ? cachedUser : {
+        userId: 'guest',
+        displayName: GUEST_CONFIG.guestName,
+        pictureUrl: GUEST_CONFIG.guestAvatar,
+        role: GUEST_CONFIG.guestRole,
+        sessionId: '',
+        isGuest: true,
+        timestamp: Date.now()
+    };
+    setCachedUser(guestUser);
+}
+
+async function checkBackendAuth_(profile) {
+    const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
+    const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
+
+    const response = await fetch(AUTH_CONFIG.gasUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+            actionType: 'login_auth',
+            action: 'login_auth',
+            userId: profile.userId,
+            displayName: profile.displayName,
+            pictureUrl: profile.pictureUrl,
+            os: os,
+            isInClient: isInClient,
+            userAgentRaw: navigator.userAgent || ''
+        })
+    });
+
+    return await parseJsonResponseSafe_(response, 'login_auth');
+}
+
 async function initApp() {
     if (authInitializing) return;
     authInitializing = true;
@@ -184,7 +219,7 @@ async function initApp() {
     try {
         const cachedUser = getCachedUser();
 
-        // 1. ถ้าเป็น Registered User (มี sessionId และไม่ใช่ Guest) -> Fast Boot
+        // 1. ถ้ามี Cache เดิมที่เป็น Registered User (มี sessionId และไม่ใช่ Guest) -> Fast Boot เข้าสู่ระบบทันที
         if (cachedUser && cachedUser.sessionId && !cachedUser.isGuest) {
             console.log('Cache Hit: Loading App immediately for session:', cachedUser.sessionId);
             
@@ -200,99 +235,119 @@ async function initApp() {
             return;
         }
 
-        // 2. ตรวจสอบว่ากำลังกลับมาจากการ Login LINE เพื่อลงทะเบียนหรือไม่
-        const isRegPending = sessionStorage.getItem(REGISTRATION_PENDING_KEY) === '1';
-        if (isRegPending) {
-            sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
-            ui.splashStatus.innerText = 'กำลังเชื่อมต่อ LINE เพื่อลงทะเบียน...';
-            try {
-                if (typeof liff !== 'undefined') {
-                    await liff.init({ liffId: AUTH_CONFIG.liffId });
-                    if (liff.isLoggedIn()) {
-                        const profile = await liff.getProfile();
-                        window.__pendingLineProfile = profile;
-
-                        if (isGuestModeValid()) {
-                            const guestUser = {
-                                userId: 'guest',
-                                displayName: GUEST_CONFIG.guestName,
-                                pictureUrl: GUEST_CONFIG.guestAvatar,
-                                role: GUEST_CONFIG.guestRole,
-                                isGuest: true,
-                                timestamp: Date.now()
-                            };
-                            setCachedUser(guestUser);
-
-                            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
-                            await loadAppAssets();
-                            showApp();
-                            openRegisterModal(profile);
-                            return;
-                        }
-                    }
-                }
-            } catch (regErr) {
-                console.warn('Liff reg init error:', regErr);
-            }
-        }
-
-        // 3. ตรวจสอบ Guest Mode (หากยังไม่หมดอายุตาม GUEST_CONFIG.expiryDate)
-        if (isGuestModeValid()) {
-            console.log('Guest Mode Active: Entering without LINE login');
-            const guestUser = (cachedUser && cachedUser.isGuest) ? cachedUser : {
-                userId: 'guest',
-                displayName: GUEST_CONFIG.guestName,
-                pictureUrl: GUEST_CONFIG.guestAvatar,
-                role: GUEST_CONFIG.guestRole,
-                sessionId: '',
-                isGuest: true,
-                timestamp: Date.now()
-            };
-            setCachedUser(guestUser);
-
-            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
-            await loadAppAssets();
-            showApp();
-
-            // กำหนดค่า LIFF ไว้เบื้องหลังเพื่อพร้อมสำหรับการลงทะเบียน
-            if (typeof liff !== 'undefined') {
-                liff.init({ liffId: AUTH_CONFIG.liffId }).catch(console.warn);
-            }
-            return;
-        }
-
-        // 4. หากหมดอายุ Guest Mode: ล้างแคช Guest ออก และเข้าสู่การบังคับ Login
-        if (cachedUser && cachedUser.isGuest) {
-            clearCachedUser();
-        }
-
+        // 2. ถ้าไม่มี session ที่เป็น Registered User -> เรียก liff.init ตรวจสอบสถานะบัญชี LINE ก่อน
         ui.splashStatus.innerText = 'กำลังเตรียมระบบ...';
         await liff.init({ liffId: AUTH_CONFIG.liffId });
 
-        if (!liff.isLoggedIn()) {
-            if (isLoginPending()) {
-                clearLoginPending();
-                loginInProgress = false;
-            }
-            showLogin();
-        } else {
+        // ตรวจสอบว่าผู้ใช้ล็อกอิน LINE อยู่แล้วหรือไม่ (เปิดในแอป LINE หรือเคยล็อกอินไว้ในเบราว์เซอร์)
+        if (liff.isLoggedIn()) {
             if (isLoginPending()) clearLoginPending();
             loginInProgress = false;
 
             ui.splashStatus.innerText = 'กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...';
 
-            const isFriendClientSide = await checkFriendshipClientSide();
-            if (isFriendClientSide === false) {
-                showFollowPrompt();
+            const profile = await liff.getProfile().catch(console.error);
+
+            if (profile && profile.userId) {
+                // ตรวจสอบสิทธิ์กับชีต Authorized_Users ผ่าน Google Apps Script
+                const authResult = await checkBackendAuth_(profile).catch(err => {
+                    console.warn('checkBackendAuth_ error:', err);
+                    return null;
+                });
+
+                if (authResult && (authResult.success || authResult.ok)) {
+                    // ผู้ใช้มีสิทธิ์ Active ในระบบอยู่แล้ว! -> เข้าสู่ระบบเป็น Registered User ทันที
+                    setCachedUser({
+                        userId: profile.userId,
+                        displayName: profile.displayName,
+                        pictureUrl: profile.pictureUrl,
+                        role: authResult.role || 'User',
+                        sessionId: authResult.sessionId || '',
+                        isGuest: false,
+                        timestamp: new Date().getTime()
+                    });
+
+                    if (typeof window.setLastVerifiedAt === 'function') {
+                        window.setLastVerifiedAt(Date.now());
+                    }
+
+                    ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
+                    await loadAppAssets();
+                    showApp();
+                    return;
+                }
+
+                // หากไม่ใช่ Active (เช่น รออนุมัติ หรือเป็นผู้ใช้ใหม่):
+                // ตรวจสอบว่ากำลังกลับมาจากการกดลงทะเบียนหรือไม่
+                const isRegPending = sessionStorage.getItem(REGISTRATION_PENDING_KEY) === '1';
+                if (isRegPending) {
+                    sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
+                    window.__pendingLineProfile = profile;
+                    if (isGuestModeValid()) {
+                        enterGuestMode_();
+                        ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ...';
+                        await loadAppAssets();
+                        showApp();
+                        openRegisterModal(profile);
+                        return;
+                    }
+                }
+
+                // ถ้าสถานะเป็น Pending (รออนุมัติ) ให้บันทึกสถานะเพื่อแสดงผลที่เมนู
+                if (authResult && (authResult.status === 'Pending' || (authResult.reason && authResult.reason.includes('ขอสิทธิ์')))) {
+                    localStorage.setItem(REGISTRATION_STATUS_KEY, 'pending');
+                }
+
+                // ถ้า Guest Mode ยังไม่หมดอายุ -> ให้เข้าสู่ Guest Mode
+                if (isGuestModeValid()) {
+                    enterGuestMode_();
+                    ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ (Guest Mode)...';
+                    await loadAppAssets();
+                    showApp();
+                    return;
+                }
+
+                // ถ้า Guest Mode หมดอายุแล้ว -> แสดงหน้าแจ้งเตือนตามผลจาก Backend
+                if (authResult && authResult.needFollow) {
+                    showFollowPrompt(authResult.reason);
+                } else {
+                    showError((authResult && authResult.reason) || 'ไม่ได้รับสิทธิ์เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+                }
                 return;
             }
-
-            const profile = await liff.getProfile();
-            await verifyWithBackend(profile);
         }
+
+        // 3. กรณีไม่ได้ล็อกอิน LINE (liff.isLoggedIn() === false)
+        if (isLoginPending()) {
+            clearLoginPending();
+            loginInProgress = false;
+        }
+
+        // ตรวจสอบ Guest Mode (หากยังไม่หมดอายุตาม GUEST_CONFIG.expiryDate)
+        if (isGuestModeValid()) {
+            enterGuestMode_();
+            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ (Guest Mode)...';
+            await loadAppAssets();
+            showApp();
+            return;
+        }
+
+        // ถ้าหมดอายุ Guest Mode: ล้างแคช Guest ออก และแสดงหน้า Login
+        if (cachedUser && cachedUser.isGuest) {
+            clearCachedUser();
+        }
+        showLogin();
+
     } catch (error) {
         console.error('LIFF Init Error:', error);
-        showError('ไม่สามารถเชื่อมต่อระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+        if (isGuestModeValid()) {
+            enterGuestMode_();
+            ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ (Guest Mode)...';
+            await loadAppAssets();
+            showApp();
+        } else {
+            showError('ไม่สามารถเชื่อมต่อระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+        }
     } finally {
         authInitializing = false;
     }
@@ -800,6 +855,34 @@ function setupRegisterModalEvents() {
                     liff.login();
                 } else {
                     const profile = await liff.getProfile();
+                    // ตรวจสอบกับ Backend ก่อน เผื่อว่าบัญชีนี้ได้รับการอนุมัติเป็น Active แล้ว
+                    const authResult = await checkBackendAuth_(profile).catch(() => null);
+                    if (authResult && (authResult.success || authResult.ok)) {
+                        setCachedUser({
+                            userId: profile.userId,
+                            displayName: profile.displayName,
+                            pictureUrl: profile.pictureUrl,
+                            role: authResult.role || 'User',
+                            sessionId: authResult.sessionId || '',
+                            isGuest: false,
+                            timestamp: Date.now()
+                        });
+                        closeRegisterModal();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'คุณมีสิทธิ์เข้าใช้งานแล้ว',
+                                text: 'บัญชีของคุณได้รับการอนุมัติเรียบร้อยแล้ว กำลังเข้าสู่ระบบ...',
+                                timer: 1800,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
+                    }
                     openRegisterModal(profile);
                 }
             } catch (err) {
@@ -887,8 +970,38 @@ async function submitRegistration() {
         const result = await parseJsonResponseSafe_(response, 'register_user');
 
         if (result.success || result.ok) {
+            if (result.status === 'Active') {
+                closeRegisterModal();
+                const authResult = await checkBackendAuth_(currentRegisterProfile).catch(() => null);
+                if (authResult && (authResult.success || authResult.ok)) {
+                    setCachedUser({
+                        userId: currentRegisterProfile.userId,
+                        displayName: currentRegisterProfile.displayName,
+                        pictureUrl: currentRegisterProfile.pictureUrl,
+                        role: authResult.role || 'User',
+                        sessionId: authResult.sessionId || '',
+                        isGuest: false,
+                        timestamp: Date.now()
+                    });
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'คุณมีสิทธิ์เข้าใช้งานแล้ว',
+                        text: 'บัญชีของคุณได้รับการอนุมัติเรียบร้อยแล้ว กำลังเข้าสู่ระบบ...',
+                        timer: 1800,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+                return;
+            }
+
             // บันทึกสถานะว่าลงทะเบียนแล้ว รออนุมัติ
-            localStorage.setItem(REGISTRATION_STATUS_KEY, result.status === 'Active' ? 'active' : 'pending');
+            localStorage.setItem(REGISTRATION_STATUS_KEY, 'pending');
             localStorage.setItem('bpnp_reg_info', JSON.stringify({
                 userId: payload.userId,
                 displayName: payload.displayName,
