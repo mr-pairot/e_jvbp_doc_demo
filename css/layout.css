@@ -301,10 +301,10 @@ body {
 }
 
 .title_banner {
-    width: 80%;
+    width: 75%;
     color: var(--color-text-on-brand);
     text-align: center;
-    padding: 6px 14px;
+    padding: 6px 10px;
     border-radius: 6px;
     border: 2px solid var(--color-text-on-brand);
     background: linear-gradient(180deg, var(--color-brand-primary) 0%, var(--color-brand-primary-dark) 100%);
