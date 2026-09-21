@@ -277,7 +277,7 @@ body {
     grid-row: 1 / 2; /* ให้อยู่แถวบนสุด */
     display: flex;
     flex-direction: column; /* ให้โลโก้กับแท็บเรียงซ้อนกันบน-ล่าง */
-    gap: 12px; /* ระยะห่างระหว่างโลโก้กับแท็บ */
+    gap: 15px; /* ระยะห่างระหว่างโลโก้กับแท็บ */
     min-width: 0;
 }
 .logo_and_banner {
