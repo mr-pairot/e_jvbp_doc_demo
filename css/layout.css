@@ -604,6 +604,7 @@ body {
 @media (max-width: 450px) {
     .pagination_footer { flex-direction: column; }
     .cache_control_And_sheet_status { flex-direction: column; }
+    .title_banner { width: 68%; }
 }
 
 /* =============================================================================
