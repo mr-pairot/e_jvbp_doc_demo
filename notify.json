@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "config": {
+    "foldMs": 400,
+    "displayMs": 10000,
+    "marqueeEnabled": true,
+    "marqueeSpeedPxPerSec": 50,
+    "marqueeLoops": 2,
+    "hoverReplay": true
+  },
+  "notifications": {
+    "guest": {
+      "enabled": true,
+      "text": "กรุณาลงทะเบียนเข้าใช้งาน",
+      "actionText": "แตะเพื่อลงทะเบียน",
+      "actionType": "openRegisterModal",
+      "theme": "warning"
+    },
+    "pending": {
+      "enabled": true,
+      "text": "คำขอลงทะเบียนอยู่ระหว่างรออนุมัติ",
+      "actionText": "",
+      "actionType": "none",
+      "theme": "warning"
+    },
+    "active": {
+      "enabled": false,
+      "text": "ยินดีต้อนรับเข้าสู่ระบบ",
+      "actionText": "",
+      "actionType": "none",
+      "theme": "success"
+    }
+  }
+}
