@@ -37,7 +37,8 @@ const APP_ASSETS = {
         'js/config.js',
         'js/data-service.js',
         'js/ui-render.js',
-        'js/about-popup.js'
+        'js/about-popup.js',
+        'js/user-notify.js'
     ]
 };
 
@@ -1062,6 +1063,11 @@ function showApp() {
     ui.app.style.display = 'block';
 
     initProfileUI();
+
+    // เริ่มต้น User Notification Bubble (โหลดข้อมูลจาก data/notify.json)
+    if (typeof window.initUserNotify === 'function') {
+        window.initUserNotify();
+    }
 
     if (typeof window.initDashboardApp === 'function') {
         window.initDashboardApp();
