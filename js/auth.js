@@ -9,7 +9,6 @@ const AUTH_CONFIG = {
 
 // ---------------------------------------------------------------------------
 // Guest Mode Configuration
-// กำหนดวันและเวลาสิ้นสุด Guest Mode (1 ตุลาคม 2569 เวลา 12:00 น.)
 // ---------------------------------------------------------------------------
 const GUEST_CONFIG = {
     expiryDate: window.__GUEST_EXPIRY_DATE || '2026-10-01T12:00:00+07:00',
@@ -55,6 +54,41 @@ let logoutInProgress = false;
 // --- Auth State Recovery Guards (กัน refreshAuthState / liff.init ทำงานซ้ำซ้อน) ---
 let authRefreshInProgress = false;
 let liffInitPromise = null;
+
+// ---------------------------------------------------------------------------
+// Persistent Pending-Flag Helpers (ใช้ localStorage แทน sessionStorage)
+// ---------------------------------------------------------------------------
+// เหตุผล: เมื่อ PWA (โดยเฉพาะที่ติดตั้งแบบ Add to Home Screen บน iOS) นำทางออกไปยัง
+// โดเมนภายนอก (LINE Login) ระบบปฏิบัติการมักจะ "ฆ่า/รีสตาร์ท" instance ของแอปเดิม
+// แล้วเปิดหน้าต่าง/แอปแยกต่างหากเพื่อจัดการ OAuth (พฤติกรรมนี้เกิดจาก OS ไม่ใช่จากโค้ด
+// ที่เรียก window.open) เมื่อผู้ใช้กลับมาที่ไอคอนแอปเดิม บางครั้งจึงเป็นการ "เปิดใหม่"
+// ทั้งหมด ไม่ใช่แค่ resume แท็บเดิม sessionStorage จะหายไปในกรณีนี้ (ผูกกับ browsing
+// context เดิมที่ถูกทำลายไปแล้ว) จึงต้องใช้ localStorage ซึ่งอยู่ระดับ origin แทน
+// พร้อมกำกับ timestamp เพื่อไม่ให้ธงค้างอยู่ถาวรหากผู้ใช้เปิดค้างไว้นานผิดปกติ
+const PENDING_FLAG_TTL_MS = 15 * 60 * 1000; // 15 นาที
+
+function setPendingFlag_(key) {
+    try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
+}
+
+function isPendingFlagActive_(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return false;
+        const ts = parseInt(raw, 10);
+        if (!ts || (Date.now() - ts) > PENDING_FLAG_TTL_MS) {
+            localStorage.removeItem(key);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearPendingFlag_(key) {
+    try { localStorage.removeItem(key); } catch (e) {}
+}
 
 // UI Elements
 const ui = {
@@ -141,10 +175,13 @@ ui.loginBtn.addEventListener('click', (e) => {
     if (loginInProgress || (typeof liff !== 'undefined' && liff.isLoggedIn())) return;
 
     loginInProgress = true;
-    try { sessionStorage.setItem(LOGIN_PENDING_KEY, '1'); } catch (err) {}
+    setPendingFlag_(LOGIN_PENDING_KEY);
 
     // ปลดล็อคปุ่ม UI - เอา setLoginButtonLoading(true) ออกเพื่อแก้ปัญหาค้าง 
-    // ยิง liff.login() ทันที (นำทางในบริบทเดิม ไม่เปิด window/tab ใหม่)
+    // ยิง liff.login() ทันที (โค้ดฝั่งเราไม่เปิด window/tab ใหม่ - liff.login() นำทางในบริบทเดิม
+    // หมายเหตุ: บางเบราว์เซอร์/OS อาจเปิดโดเมนภายนอกเป็นหน้าต่างแยกเองโดยอัตโนมัติเมื่อออกนอก
+    // scope ของ PWA ที่ติดตั้งไว้ ซึ่งเป็นพฤติกรรมระดับ OS ที่ควบคุมจาก JS ไม่ได้ จึงต้องพึ่ง
+    // refreshAuthState() + persistent flag ด้านบนเพื่อกู้สถานะเมื่อกลับมาแทน)
     liff.login(); 
 });
 
@@ -187,12 +224,28 @@ window.addEventListener('pageshow', (e) => {
 // focus ใช้เป็น fallback เท่านั้น ไม่ใช่ตัวตัดสินใจหลัก (refreshAuthState มี lock กันเรียกซ้ำอยู่แล้ว)
 window.addEventListener('focus', () => handleAppResume('focus'));
 
+// --- Cross-Window/Tab Sync ---
+// เมื่อ LINE Login ถูกเปิดเป็นหน้าต่าง/แท็บแยกโดย OS (กรณี PWA ติดตั้งแล้วนำทางออกนอก scope)
+// หน้าต่างเดิมอาจไม่ได้ถูกซ่อน/ระงับจริง ๆ (visibilitychange/focus จึงไม่ทำงานจนกว่าผู้ใช้จะ
+// สลับกลับมาเอง) แต่ localStorage เป็นของ origin เดียวกัน เมื่อหน้าต่างใหม่เขียนค่าลง (เช่น
+// Token ของ LIFF เอง หรือ app_user_cache/ธง pending ของเรา) เบราว์เซอร์จะยิง 'storage' event
+// ไปยังหน้าต่าง/แท็บอื่น ๆ ของ origin เดียวกันโดยอัตโนมัติ ใช้จุดนี้เป็นอีกช่องทางกระตุ้น
+// refreshAuthState() แบบเรียลไทม์ โดยไม่ต้องรอผู้ใช้สลับหน้าต่างเอง
+window.addEventListener('storage', (e) => {
+    if (!e.key) return; // key เป็น null หมายถึง localStorage.clear() ทั้งหมด ไม่ต้องรีบตอบสนอง
+    const isRelevantKey = e.key === 'app_user_cache'
+        || e.key === REGISTRATION_PENDING_KEY
+        || e.key === LOGIN_PENDING_KEY
+        || /liff/i.test(e.key); // LIFF SDK เก็บ access token ของตัวเองด้วย key ที่มีคำว่า liff
+    if (isRelevantKey) handleAppResume('storage:' + e.key);
+});
+
 function isLoginPending() {
-    try { return sessionStorage.getItem(LOGIN_PENDING_KEY) === '1'; } catch (e) { return false; }
+    return isPendingFlagActive_(LOGIN_PENDING_KEY);
 }
 
 function clearLoginPending() {
-    try { sessionStorage.removeItem(LOGIN_PENDING_KEY); } catch (e) {}
+    clearPendingFlag_(LOGIN_PENDING_KEY);
 }
 
 async function checkFriendshipClientSide() {
@@ -225,7 +278,7 @@ async function refreshAuthState(reason) {
             if (isLoggedIn) {
                 const profile = await liff.getProfile().catch(() => null);
                 if (profile && profile.userId) {
-                    sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
+                    clearPendingFlag_(REGISTRATION_PENDING_KEY);
 
                     // ตรวจสอบกับ Backend ก่อนเผื่อบัญชีนี้ได้รับอนุมัติ (Active) อยู่แล้ว
                     const authResult = await checkBackendAuth_(profile).catch(() => null);
@@ -381,9 +434,9 @@ async function initApp() {
 
                 // หากไม่ใช่ Active (เช่น รออนุมัติ หรือเป็นผู้ใช้ใหม่):
                 // ตรวจสอบว่ากำลังกลับมาจากการกดลงทะเบียนหรือไม่
-                const isRegPending = sessionStorage.getItem(REGISTRATION_PENDING_KEY) === '1';
+                const isRegPending = isPendingFlagActive_(REGISTRATION_PENDING_KEY);
                 if (isRegPending) {
-                    sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
+                    clearPendingFlag_(REGISTRATION_PENDING_KEY);
                     window.__pendingLineProfile = profile;
 
                     // ไม่ว่า Guest Mode จะยังใช้ได้หรือหมดอายุแล้วก็ตาม ผู้ใช้ที่อยู่ระหว่างขั้นตอน
@@ -915,10 +968,42 @@ function closeRegisterModal() {
     // ปิด Modal ด้วยมือ (ยังไม่ authenticated) -> เคลียร์ pending flag กันไม่ให้ refreshAuthState()
     // หรือ initApp() รอบถัดไปดึง Modal นี้กลับมาเปิดโดยที่ผู้ใช้ไม่ได้ตั้งใจ
     if (!(currentRegisterProfile && currentRegisterProfile.userId)) {
-        try { sessionStorage.removeItem(REGISTRATION_PENDING_KEY); } catch (e) {}
+        clearPendingFlag_(REGISTRATION_PENDING_KEY);
     }
 }
 window.closeRegisterModal = closeRegisterModal;
+
+// ---------------------------------------------------------------------------
+// ชั้นสุดท้ายของการกู้สถานะ: ก่อนปิด Modal ด้วยมือ ให้ตรวจสอบ Auth ซ้ำอีกครั้งก่อนเสมอ
+// ---------------------------------------------------------------------------
+// เผื่อกรณี visibilitychange / pageshow / focus / storage event ทั้งหมดพลาดไปด้วยเหตุผลใดก็ตาม
+// (เช่น OS เปิด LINE Login เป็นแอปแยกและ event เหล่านี้ไม่ทำงานตามคาด) การกดปุ่ม "ปิด"/"ยกเลิก"
+// ของผู้ใช้จะกลายเป็นจังหวะสุดท้ายที่ระบบเช็ค Auth จริงก่อน แล้วค่อยตัดสินใจว่าจะปิดตามที่ขอ
+// หรือแก้ไข UI ให้ตรงกับความเป็นจริง (เช่น เลื่อนไป Step 2 หรือเข้าระบบเลยถ้า Active แล้ว)
+// หลักการเดิมยังคงอยู่: การกดปุ่มไม่ใช่ตัวกำหนด Auth State, Auth State เป็นตัวกำหนด UI
+async function handleManualCloseRegisterModal_() {
+    const closeBtn = document.getElementById('btnCloseRegisterModal');
+    const cancelBtn = document.getElementById('btnCancelRegister');
+    if (closeBtn) closeBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    try {
+        await refreshAuthState('manual-close-recheck');
+    } catch (e) {
+        console.warn('recheck before close failed:', e);
+    } finally {
+        if (closeBtn) closeBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+    }
+
+    // ถ้าหลังตรวจสอบแล้วยังไม่ได้เชื่อมต่อ LINE (ยังอยู่ Step 1) หรือ Modal ถูกปิดไปแล้วจากการ
+    // ตรวจสอบข้างต้น (Authenticated -> ปิด+reload ไปแล้ว) -> ปิดตามที่ผู้ใช้ต้องการได้เลย
+    // แต่ถ้าระบบเพิ่งเลื่อนไป Step 2 ระหว่างตรวจสอบ (เชื่อมต่อ LINE สำเร็จแต่รออนุมัติ) ให้คงเปิดไว้
+    // เพื่อไม่ทำให้ผู้ใช้เสียข้อมูล/ต้องกดเชื่อมต่อ LINE ซ้ำโดยไม่จำเป็น
+    if (!(currentRegisterProfile && currentRegisterProfile.userId)) {
+        closeRegisterModal();
+    }
+}
 
 function validateRegisterForm() {
     const submitBtn = document.getElementById('btnSubmitRegister');
@@ -956,8 +1041,8 @@ function setupRegisterModalEvents() {
     const otherOrgGroup = document.getElementById('regOtherOrgGroup');
     const otherOrgInput = document.getElementById('regOtherOrgInput');
 
-    if (closeBtn) closeBtn.addEventListener('click', closeRegisterModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeRegisterModal);
+    if (closeBtn) closeBtn.addEventListener('click', handleManualCloseRegisterModal_);
+    if (cancelBtn) cancelBtn.addEventListener('click', handleManualCloseRegisterModal_);
 
     if (lineConnectBtn) {
         lineConnectBtn.addEventListener('click', async () => {
@@ -965,7 +1050,7 @@ function setupRegisterModalEvents() {
             if (lineConnectBtn.disabled) return;
             lineConnectBtn.disabled = true;
             try {
-                sessionStorage.setItem(REGISTRATION_PENDING_KEY, '1');
+                setPendingFlag_(REGISTRATION_PENDING_KEY);
                 if (typeof liff === 'undefined') {
                     alert('ไม่พบ LINE LIFF SDK');
                     return;
@@ -978,7 +1063,7 @@ function setupRegisterModalEvents() {
                     const profile = await liff.getProfile();
                     // ตรวจสอบกับ Backend ก่อน เผื่อว่าบัญชีนี้ได้รับการอนุมัติเป็น Active แล้ว
                     const authResult = await checkBackendAuth_(profile).catch(() => null);
-                    sessionStorage.removeItem(REGISTRATION_PENDING_KEY);
+                    clearPendingFlag_(REGISTRATION_PENDING_KEY);
                     if (authResult && (authResult.success || authResult.ok)) {
                         setCachedUser({
                             userId: profile.userId,
