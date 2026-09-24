@@ -723,12 +723,17 @@
     gap: 4px;
     min-width: 0;
 }
+.doc_row_container .doc_hyperlink_title,
+.doc_row_container .doc_hyperlink_title--disabled {
+    line-height: 1;  
+}
 
 .doc_number_index {
     color: var(--color-text-secondary);
     font-weight: var(--font-weight-bold);
     font-size: var(--font-size-xs-alt);
     min-width: 26px;
+    line-height: 1;  
     flex-shrink: 0;
 }
 
