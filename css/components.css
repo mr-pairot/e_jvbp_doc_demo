@@ -719,7 +719,7 @@
 
 .doc_row_container {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 4px;
     min-width: 0;
 }
@@ -730,7 +730,6 @@
     font-size: var(--font-size-xs-alt);
     min-width: 26px;
     flex-shrink: 0;
-    padding-top: 1px;
 }
 
 .doc_hyperlink_title {
