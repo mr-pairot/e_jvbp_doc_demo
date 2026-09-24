@@ -727,7 +727,7 @@
 .doc_row_container .doc_hyperlink_title,
 .doc_row_container .doc_hyperlink_title--disabled {
     line-height: 1;  
-    padding-top: 3px;
+    padding-top: 2px;
 }
 
 .doc_number_index {
