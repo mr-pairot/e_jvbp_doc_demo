@@ -1,5 +1,11 @@
 // js/auth.js
 // ระบบสารบรรณอิเล็กทรอนิกส์ - ปรับปรุง Authentication แบบ Fast-Boot & Dual Storage
+//
+// [แก้ไข] checkBackendAuth_() ถูกห่อด้วย Web Locks API (navigator.locks) เพื่อป้องกัน
+// การยิง login_auth ซ้ำซ้อนข้ามแท็บ/หน้าต่างของ origin เดียวกัน (เช่นกรณี LIFF ถูก OS
+// เปิดเป็นหน้าต่างแยกขณะแท็บเดิมยังทำงานอยู่) — ดูคอมเมนต์ // [FIX] ในฟังก์ชันนั้น
+// นี่เป็นการป้องกันชั้นเสริมที่ฝั่ง client เท่านั้น ตัวป้องกันหลักอยู่ที่ Code.gs
+// (handleLoginAuth + findRecentActiveSession_)
 
 const AUTH_CONFIG = {
     liffId: '2007032148-vWobwLNE', // Demo 
@@ -9,6 +15,7 @@ const AUTH_CONFIG = {
 
 // ---------------------------------------------------------------------------
 // Guest Mode Configuration
+// กำหนดวันและเวลาสิ้นสุด Guest Mode (1 ตุลาคม 2569 เวลา 12:00 น.)
 // ---------------------------------------------------------------------------
 const GUEST_CONFIG = {
     expiryDate: window.__GUEST_EXPIRY_DATE || '2026-10-01T12:00:00+07:00',
@@ -346,25 +353,59 @@ function enterGuestMode_() {
     setCachedUser(guestUser);
 }
 
+// ---------------------------------------------------------------------------
+// [FIX] checkBackendAuth_() — ป้องกันการยิง login_auth ซ้ำซ้อนข้ามแท็บ/หน้าต่าง
+// ---------------------------------------------------------------------------
+// ปัญหาเดิม: ฟังก์ชันนี้ถูกเรียกจาก 3 จุด (initApp, refreshAuthState, ปุ่มเชื่อมต่อ LINE
+// ตอนลงทะเบียน) หากผู้ใช้กด login แล้ว OS เปิดหน้าต่างแยก (พฤติกรรมที่คอมเมนต์ด้านบน
+// อธิบายไว้) ทั้งหน้าต่างเดิมและหน้าต่างใหม่อาจเห็น liff.isLoggedIn() === true พร้อมกัน
+// และยิง login_auth เกือบพร้อมกัน ทำให้ backend (Code.gs) สร้าง session ใหม่ 2 อัน
+// สำหรับอุปกรณ์เดียวกัน (เห็นเป็น "2 อุปกรณ์" ในหน้าข้อมูลการเข้าใช้งานทั้งที่จริงเป็นเครื่องเดียว)
+//
+// วิธีแก้: ห่อการเรียก fetch ด้วย Web Locks API (navigator.locks) โดยใช้ชื่อ lock ที่ผูก
+// กับ userId เพื่อบังคับให้คำขอ login_auth ของผู้ใช้คนเดียวกันทำงานเรียงลำดับกัน (ไม่บล็อก
+// ผู้ใช้คนอื่น) นี่เป็นการป้องกันชั้นเสริมฝั่ง client เท่านั้น — ตัวป้องกันหลักที่แท้จริง
+// (idempotency) อยู่ที่ handleLoginAuth() + findRecentActiveSession_() ใน Code.gs
+// เผื่อกรณี Web Locks API ไม่รองรับในเบราว์เซอร์นั้น หรือ 2 request มาจากคนละ browser
+// context กันจริงๆ (ซึ่ง lock ฝั่ง client คุมไม่ถึง)
 async function checkBackendAuth_(profile) {
     const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
     const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
 
-    const response = await fetch(AUTH_CONFIG.gasUrl, {
-        method: 'POST',
-        body: JSON.stringify({
-            actionType: 'login_auth',
-            action: 'login_auth',
-            userId: profile.userId,
-            displayName: profile.displayName,
-            pictureUrl: profile.pictureUrl,
-            os: os,
-            isInClient: isInClient,
-            userAgentRaw: navigator.userAgent || ''
-        })
-    });
+    const doFetch = async () => {
+        const response = await fetch(AUTH_CONFIG.gasUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: 'login_auth',
+                action: 'login_auth',
+                userId: profile.userId,
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+                os: os,
+                isInClient: isInClient,
+                userAgentRaw: navigator.userAgent || ''
+            })
+        });
 
-    return await parseJsonResponseSafe_(response, 'login_auth');
+        return await parseJsonResponseSafe_(response, 'login_auth');
+    };
+
+    // ตั้งชื่อ lock ให้ผูกกับ userId เพื่อไม่ให้ผู้ใช้คนละคนบล็อกกันเอง
+    const lockName = 'bpnp_login_auth_lock_' + String(profile.userId);
+
+    if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function') {
+        try {
+            return await navigator.locks.request(lockName, doFetch);
+        } catch (lockErr) {
+            // ถ้า Web Locks ทำงานผิดพลาดโดยไม่คาดคิด ให้ fallback ไปยิง fetch ตรงๆ
+            // ดีกว่าทำให้ login ใช้งานไม่ได้เลย
+            console.warn('navigator.locks error, fallback to direct fetch:', lockErr);
+            return await doFetch();
+        }
+    }
+
+    // Fallback สำหรับเบราว์เซอร์ที่ไม่รองรับ Web Locks API (เช่น Safari รุ่นเก่า)
+    return await doFetch();
 }
 
 async function initApp() {
