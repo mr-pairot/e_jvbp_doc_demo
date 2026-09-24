@@ -623,8 +623,8 @@ function renderTableBody() {
                             ${receiveNoLinkHTML}
                         </div>
                     </td>
-                    <td>${letterNoLinkHTML}</td>
-                    <td>${linkHTML}</td>
+                    <td><div class="doc_row_container">${letterNoLinkHTML}</div></td>
+                    <td><div class="doc_row_container">${linkHTML}</div></td>
                     <td class="col_update"><span class="doc_update_date">${doc.updateDate}</span></td>
                 `;
             } else {
