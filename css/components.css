@@ -725,8 +725,7 @@
     padding-top: 2px;
 }
 .doc_row_container .doc_hyperlink_title,
-.doc_row_container .doc_hyperlink_title--disabled {
-    line-height: 1;  
+.doc_row_container .doc_hyperlink_title--disabled { 
     padding-top: 2px;
 }
 
