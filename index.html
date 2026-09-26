@@ -107,6 +107,10 @@
             font-family: inherit;
         }
         .btn_recheck:hover { background: var(--color-brand-primary-dark); }
+        .btn_recheck:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
 
         /* =========================================
            ส่วน UI ของ Profile ผู้ใช้ (มุมขวาบน - Absolute)
@@ -579,11 +583,21 @@
     </div>
 
     <!-- 3.1 Follow Page -->
+    <!-- การ์ดแสดงรูป+ชื่อบัญชี LINE OA (Admin JVBP) และแก้ href เป็นลิงก์เพิ่มเพื่อนจริง -->
     <div id="followPage" class="auth_page is-hidden">
         <div class="auth_box">
             <h1>กรุณาเพิ่มเพื่อน LINE OA</h1>
             <p id="followReason">เพื่อใช้งานระบบ กรุณาเพิ่มเพื่อนบัญชีทางการก่อน แล้วกดตรวจสอบอีกครั้ง</p>
-            <a id="btnAddFriend" href="https://line.me/R/ti/p/@YOUR_OA_ID" target="_blank" class="btn_line">
+
+            <div class="reg_line_profile_badge" style="justify-content: center;">
+                <img src="img/AdminJVBP.jpg" alt="Admin JVBP" class="reg_line_avatar">
+                <div class="reg_line_info">
+                    <span class="reg_line_label">เพิ่มเพื่อนบัญชีทางการ</span>
+                    <span class="reg_line_name">Admin JVBP</span>
+                </div>
+            </div>
+
+            <a id="btnAddFriend" href="https://line.me/R/ti/p/%40520qkrvo" target="_blank" rel="noopener" class="btn_line">
                 เพิ่มเพื่อน LINE OA
             </a>
             <button id="btnRecheckFriend" class="btn_recheck">ตรวจสอบอีกครั้ง</button>
@@ -620,12 +634,22 @@
                 <button id="btnProfileRefresh" class="user_dropdown_btn">
                     <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
                 </button>
+                <!-- ปุ่มนี้มี 2 สถานะภายใน สลับด้วย JS (initProfileUI):
+                     registerBtnContent_normal    = สถานะปกติ (เป็นเพื่อน LINE OA แล้ว) -> เปิด Registration Modal
+                     registerBtnContent_addFriend = สถานะยังไม่เป็นเพื่อน -> เปิดลิงก์เพิ่มเพื่อนแทน -->
                 <button id="btnOpenRegisterModal" class="user_dropdown_btn is-hidden">
-                    <div style="display: flex; flex-direction: column; width: 100%; gap: 2px;">
+                    <div id="registerBtnContent_normal" style="display: flex; flex-direction: column; width: 100%; gap: 2px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span style="font-size: 16px;">📝</span> <span>ลงทะเบียนเข้าใช้</span>
                         </div>
                         <span id="registerSubText" style="font-size: 11px; color: #f59e0b; margin-left: 26px; display: none; font-weight: 500;">(รออนุมัติ)</span>
+                    </div>
+                    <div id="registerBtnContent_addFriend" class="is-hidden" style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                        <img src="img/AdminJVBP.jpg" alt="Admin JVBP" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #06C755; flex-shrink: 0; background: #fff;">
+                        <div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">
+                            <span style="font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Admin JVBP</span>
+                            <span style="font-size: 11px; color: #64748b;">แตะเพื่อเพิ่มเพื่อนก่อนลงทะเบียน</span>
+                        </div>
                     </div>
                 </button>
                 <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
@@ -838,10 +862,6 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- v= ต้องอัปเดตพร้อม APP_CACHE_VERSION (config.js) และ version.json ทุกครั้งที่ deploy
-         ไม่งั้น browser จะแคช auth.js เก่าไว้ และปุ่มแจ้งเตือนอัปเดตจะโผล่ไม่รู้จบ -->
-    <!-- Version Bootstrap: อ่าน version.json ครั้งเดียว แล้วฉีด ?v= ให้สคริปต์ที่เหลือเอง
-         ต้องแก้เลขเวอร์ชันแค่ที่ version.json จุดเดียว ไม่ต้องแตะไฟล์นี้อีก -->
     <script>
         (async () => {
             let v = Date.now(); // fallback กันเน็ตหลุด/fetch พัง
