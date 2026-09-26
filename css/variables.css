@@ -23,8 +23,14 @@
      1.16 เอฟเฟกต์ — เงาและระยะเปลี่ยนผ่าน (Shadows / Transitions)
    ========================================================================= */
 
+/* =============================================================================
+   1. CSS CUSTOM PROPERTIES
+   ========================================================================= */
 :root {
-    /* 1.1 สี — พื้นหลังหน้าเว็บ (Page Background) */
+
+    /* -------------------------------------------------------------------
+       1.1 สี — พื้นหลังหน้าเว็บ (Page Background)
+       ------------------------------------------------------------------- */
     --color-page-bg-1: #e2eaf4;
     --color-page-bg-2: #eff4fa;
     --color-page-bg-3: #e6effa;
@@ -35,28 +41,34 @@
     --color-dashboard-glow-cyan: rgba(0, 188, 212, 0.07);
     --color-dashboard-glow-purple: rgba(126, 87, 194, 0.03);
 
-    /* 1.2 สี — แบรนด์หลัก (Brand / Primary) */
+    /* -------------------------------------------------------------------
+       1.2 สี — แบรนด์หลัก (Brand / Primary)
+       ------------------------------------------------------------------- */
     --color-brand-primary-violet: #6c25d4;
     --color-brand-primary: #0d6efd;
     --color-brand-primary-dark: #0a58ca;
     --color-brand-primary-darker: #0b5ed7;
     --color-brand-primary-soft-bg: #eff6ff;
     --color-brand-primary-soft-border: #3b82f6;
-    --color-line-brand: #06C755;
-    --color-line-brand-hover: #05b04c;
 
-    /* 1.3 สี — ประเภทเอกสาร (Document Type Accents) */
+    /* -------------------------------------------------------------------
+       1.3 สี — ประเภทเอกสาร (Document Type Accents: RFA / RFI / Letter)
+       ------------------------------------------------------------------- */
     --color-accent-rfa: #0d6efd;
     --color-accent-rfi: #d6007b;
     --color-accent-letter: #ff9900;
 
-    /* 1.4 สี — สถานะ/แจ้งเตือน (Status / Feedback) */
+    /* -------------------------------------------------------------------
+       1.4 สี — สถานะ/แจ้งเตือน (Status / Feedback)
+       ------------------------------------------------------------------- */
     --color-status-success-bg: #e8f5e9;
     --color-status-success-border: #c8e6c9;
     --color-status-success-text: #1b5e20;
     --color-status-danger-text: #d93025;
 
-    /* 1.5 สี — ตัวอักษร (Text) */
+    /* -------------------------------------------------------------------
+       1.5 สี — ตัวอักษร (Text)
+       ------------------------------------------------------------------- */
     --color-text-body: #333333;
     --color-text-heading: #1e293b;
     --color-text-strong: #111111;
@@ -71,7 +83,9 @@
     --color-text-dropdown-title: #222222;
     --color-text-dropdown-count: #6c25d4;
 
-    /* 1.6 สี — เส้นขอบ (Borders) */
+    /* -------------------------------------------------------------------
+       1.6 สี — เส้นขอบ (Borders)
+       ------------------------------------------------------------------- */
     --color-border-container: #e2e8f0;
     --color-border-header: #e8ecf0;
     --color-border-default: #cbd5e1;
@@ -82,7 +96,9 @@
     --color-border-popup-header: #cccccc;
     --color-border-popup-search: #e5e5e5;
 
-    /* 1.7 สี — พื้นผิวการ์ด/ตาราง/แผงควบคุม (Surfaces) */
+    /* -------------------------------------------------------------------
+       1.7 สี — พื้นผิวการ์ด/ตาราง/แผงควบคุม (Surfaces)
+       ------------------------------------------------------------------- */
     --color-surface-card: #ffffff;
     --color-surface-splash: #08080d;
     --color-surface-tabs-bg: #f1f5f9;
@@ -96,7 +112,9 @@
     --color-surface-page-btn-hover: #e2e8f0;
     --color-surface-tab-hover: rgba(255, 255, 255, 0.5);
 
-    /* 1.8 สี — กล่องค้นหา ตามแท็บ (Search Box Themes) */
+    /* -------------------------------------------------------------------
+       1.8 สี — กล่องค้นหา ตามแท็บ (Search Box Themes per Tab)
+       ------------------------------------------------------------------- */
     --color-search-yellow-bg: #fdf5d3;
     --color-search-yellow-border: #f2e3a1;
     --color-search-orange-bg: #fdecd3;
@@ -104,12 +122,16 @@
     --color-search-lightblue-bg: #dcf0fe;
     --color-search-lightblue-border: #bde2fc;
 
-    /* 1.9 สี — ป้าย CODE / จำนวนเอกสาร */
+    /* -------------------------------------------------------------------
+       1.9 สี — ป้าย CODE / จำนวนเอกสาร
+       ------------------------------------------------------------------- */
     --color-code-badge-bg: #ff6600;
     --color-code-badge-shadow: rgba(255, 102, 0, 0.35);
     --color-doc-count-text: #6c25d4;
 
-    /* 1.10 สี — กราฟ (Chart Palette & Elements) */
+    /* -------------------------------------------------------------------
+       1.10 สี — กราฟ (Chart Palette & Elements)
+       ------------------------------------------------------------------- */
     --chart-color-1: #4b92fa;
     --chart-color-2: #66bb6a;
     --chart-color-3: #ffa500;
@@ -123,7 +145,9 @@
     --chart-datalabel-color: #04041B;
     --chart-donut-center-color: #6c25d4;
 
-    /* 1.11 ตัวอักษร — ฟอนต์และน้ำหนัก */
+    /* -------------------------------------------------------------------
+       1.11 ตัวอักษร — ฟอนต์และน้ำหนัก (Typography Family / Weight)
+       ------------------------------------------------------------------- */
     --font-family-base: 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-family-chart: 'Prompt', sans-serif;
 
@@ -132,7 +156,9 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
 
-    /* 1.12 ตัวอักษร — ขนาด */
+    /* -------------------------------------------------------------------
+       1.12 ตัวอักษร — ขนาด (Font Sizes) เรียงจากเล็กไปใหญ่
+       ------------------------------------------------------------------- */
     --font-size-legend: 8px;
     --font-size-2xs: 11px;
     --font-size-xs: 12px;
@@ -149,7 +175,9 @@
     --font-size-2xl: 24px;
     --font-size-count-value: 40px;
 
-    /* 1.13 กราฟ — ขนาดตัวอักษรเฉพาะ Chart.js */
+    /* -------------------------------------------------------------------
+       1.13 กราฟ — ขนาดตัวอักษรเฉพาะ Chart.js (อ่านค่าใน JS ผ่าน getComputedStyle)
+       ------------------------------------------------------------------- */
     --chart-font-size-legend: 8px;
     --chart-font-size-datalabel-pie: 10px;
     --chart-font-size-datalabel-bar: 11px;
@@ -158,7 +186,9 @@
     --chart-font-size-donut-center: 24px;
     --chart-donut-center-font-weight: 700;
 
-    /* 1.14 เลย์เอาต์ — สัดส่วนและขนาด */
+    /* -------------------------------------------------------------------
+       1.14 เลย์เอาต์ — สัดส่วนและขนาด (Layout Proportions & Dimensions)
+       ------------------------------------------------------------------- */
     --layout-header-grid-columns: 1fr 220px;
     --layout-header-grid-gap: 15px;
     --layout-logo-height: 58px;
@@ -173,14 +203,19 @@
     --layout-search-count-columns: 1fr 130px;
     --layout-page-btn-size: 34px;
     --layout-pie-date-gap: 6px;
+
     --layout-col-update-width: 100px;
 
-    /* 1.15 กราฟ — พฤติกรรมการแสดงผลข้อมูล */
-    --chart-datalabel-min-percent: 0.05;
-    --chart-pie-top-n: 6;
+    /* -------------------------------------------------------------------
+       1.15 กราฟ — พฤติกรรมการแสดงผลข้อมูล (Chart Data Display Rules)
+       ------------------------------------------------------------------- */
+    --chart-datalabel-min-percent: 0.05;   /* ซ่อน label ถ้าสัดส่วนต่ำกว่านี้ */
+    --chart-pie-top-n: 6;                  /* จำนวนหมวดสูงสุดก่อนรวมเป็น "Others" */
     --chart-bar-thickness: 14;
 
-    /* 1.16 เอฟเฟกต์ — เงาและระยะเปลี่ยนผ่าน */
+    /* -------------------------------------------------------------------
+       1.16 เอฟเฟกต์ — เงาและระยะเปลี่ยนผ่าน (Shadows / Transitions)
+       ------------------------------------------------------------------- */
     --shadow-splash: 0 4px 20px rgba(0, 0, 0, 0.1);
     --shadow-dashboard-container:
         0 10px 30px -5px rgba(15, 23, 42, 0.08),
