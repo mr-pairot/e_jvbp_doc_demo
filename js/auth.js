@@ -1,17 +1,27 @@
 // js/auth.js
 // ระบบสารบรรณอิเล็กทรอนิกส์ - ปรับปรุง Authentication แบบ Fast-Boot & Dual Storage
 //
-// [แก้ไข] checkBackendAuth_() ถูกห่อด้วย Web Locks API (navigator.locks) เพื่อป้องกัน
-// การยิง login_auth ซ้ำซ้อนข้ามแท็บ/หน้าต่างของ origin เดียวกัน (เช่นกรณี LIFF ถูก OS
-// เปิดเป็นหน้าต่างแยกขณะแท็บเดิมยังทำงานอยู่) — ดูคอมเมนต์ // [FIX] ในฟังก์ชันนั้น
-// นี่เป็นการป้องกันชั้นเสริมที่ฝั่ง client เท่านั้น ตัวป้องกันหลักอยู่ที่ Code.gs
-// (handleLoginAuth + findRecentActiveSession_)
+// [แก้ไขรอบก่อนหน้า] checkBackendAuth_() ถูกห่อด้วย Web Locks API (navigator.locks) เพื่อป้องกัน
+// การยิง login_auth ซ้ำซ้อนข้ามแท็บ/หน้าต่างของ origin เดียวกัน — ดูคอมเมนต์ // [FIX]
+//
+// [แก้ไขรอบนี้] เพิ่ม flow ตรวจสอบสถานะการเป็นเพื่อน LINE OA สำหรับผู้ใช้สถานะ NotFound:
+//   - Guest Mode มีสิทธิ์เหนือกว่า Follow Page เสมอ (แสดง Follow Page เฉพาะตอน Guest Mode หมดอายุแล้ว)
+//   - ถ้ายังไม่เป็นเพื่อน -> บังคับแสดง Follow Page ก่อน
+//   - ถ้าเป็นเพื่อนแล้ว -> ให้เป็นไปตามเกณฑ์ผู้ใช้ login LINE แล้ว (เปิด Registration Modal)
+//   - เมนู "ลงทะเบียนเข้าใช้" ใน Guest Mode จะสลับเป็นลิงก์เพิ่มเพื่อนถ้ายังไม่เป็นเพื่อน
+//   ดูคอมเมนต์ // [เพิ่ม] ทุกจุดที่เกี่ยวข้อง
 
 const AUTH_CONFIG = {
     liffId: '2007032148-vWobwLNE', // Demo 
     gasUrl: 'https://script.google.com/macros/s/AKfycbwrnLHNeNb6GHCwVVQF0EGRzxUPrwHjk-Sosg-Wwt9DossOLeZ-nuul2McpLWBhFliP/exec'
     //Url: https://script.google.com/home/projects/1pZbca-IQ9peOsYBflHbdq1L4xTmHQAHQhY2hPA93skMRk9Dg5KePNZUU/edit
 };
+
+// ---------------------------------------------------------------------------
+// [เพิ่ม] LINE OA Add-Friend Link & Friendship Status
+// ---------------------------------------------------------------------------
+const LINE_OA_ADD_FRIEND_URL = 'https://line.me/R/ti/p/%40520qkrvo';
+const LINE_FRIEND_STATUS_KEY = 'bpnp_is_line_friend'; // 'true' | 'false' — เก็บถาวรจนกว่าจะ logout/ล้าง cache ทั้งระบบ
 
 // ---------------------------------------------------------------------------
 // Guest Mode Configuration
@@ -97,6 +107,25 @@ function clearPendingFlag_(key) {
     try { localStorage.removeItem(key); } catch (e) {}
 }
 
+// ---------------------------------------------------------------------------
+// [เพิ่ม] Friendship Status Helpers (สถานะการเป็นเพื่อน LINE OA)
+// ---------------------------------------------------------------------------
+function setLineFriendStatus_(isFriend) {
+    try { localStorage.setItem(LINE_FRIEND_STATUS_KEY, isFriend ? 'true' : 'false'); } catch (e) {}
+}
+
+function getLineFriendStatus_() {
+    try {
+        return localStorage.getItem(LINE_FRIEND_STATUS_KEY) === 'true';
+    } catch (e) {
+        return false; // ไม่เคยเช็คมาก่อน หรืออ่านไม่ได้ -> ถือว่ายังไม่เป็นเพื่อน (ค่า default ตามที่ตกลง)
+    }
+}
+
+function clearLineFriendStatus_() {
+    try { localStorage.removeItem(LINE_FRIEND_STATUS_KEY); } catch (e) {}
+}
+
 // UI Elements
 const ui = {
     splash: document.getElementById('splashScreen'),
@@ -158,6 +187,7 @@ function clearCachedUser() {
     localStorage.removeItem('app_user_cache');
     clearCookie('BPNP_DOC_USER_ID');
     clearCookie('BPNP_DOC_SESSION_ID');
+    clearLineFriendStatus_(); // [เพิ่ม] ล้างสถานะเพื่อนด้วยเมื่อ logout/ล้าง cache ทั้งระบบ
 }
 
 // ---------------------------------------------------------------------------
@@ -198,8 +228,40 @@ ui.logoutBtn.addEventListener('click', async () => {
     if (!didLogout && ui.logoutBtn) ui.logoutBtn.disabled = false;
 });
 
+// [แก้ไข] ปุ่ม "ตรวจสอบอีกครั้ง" ใน Follow Page — เดิมแค่ reload() เฉยๆ
+// เปลี่ยนเป็นเช็คสถานะเพื่อนซ้ำก่อน ถ้ายังไม่เป็นเพื่อนจริง จะแจ้งเตือนแทนการ reload วนไปเรื่อยๆ
 if (ui.recheckFriendBtn) {
-    ui.recheckFriendBtn.addEventListener('click', () => window.location.reload());
+    ui.recheckFriendBtn.addEventListener('click', async () => {
+        const originalText = ui.recheckFriendBtn.innerText;
+        ui.recheckFriendBtn.disabled = true;
+        ui.recheckFriendBtn.innerText = 'กำลังตรวจสอบ...';
+        try {
+            await ensureLiffInit();
+            const isFriend = await checkAndStoreFriendshipStatus_();
+            if (isFriend) {
+                window.location.reload();
+                return;
+            }
+            ui.recheckFriendBtn.disabled = false;
+            ui.recheckFriendBtn.innerText = originalText;
+            const msg = 'ยังไม่พบการเพิ่มเพื่อน กรุณากดปุ่ม "เพิ่มเพื่อน LINE OA" แล้วลองตรวจสอบอีกครั้ง';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ยังไม่พบการเพิ่มเพื่อน',
+                    text: msg,
+                    confirmButtonText: 'รับทราบ',
+                    confirmButtonColor: '#0d6efd'
+                });
+            } else {
+                alert(msg);
+            }
+        } catch (err) {
+            console.warn('ตรวจสอบสถานะเพื่อนล้มเหลว:', err);
+            // เผื่อ error ไม่คาดคิด ให้ reload กลับไปเริ่ม flow ใหม่ตามพฤติกรรมเดิม
+            window.location.reload();
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -257,6 +319,16 @@ function clearLoginPending() {
 
 async function checkFriendshipClientSide() {
     try { return (await liff.getFriendship()).friendFlag; } catch (e) { return null; }
+}
+
+// [เพิ่ม] เช็คสถานะเพื่อน LINE OA แล้วบันทึกผลไว้ใน localStorage
+// (ใช้กับทั้ง Follow Page และเมนู "ลงทะเบียนเข้าใช้")
+// กรณีเช็คไม่ได้ (error/undefined) ถือว่า "ยังไม่เป็นเพื่อน" ไว้ก่อนเพื่อความปลอดภัย (จุดที่ 2 ที่ตกลงไว้)
+async function checkAndStoreFriendshipStatus_() {
+    const flag = await checkFriendshipClientSide();
+    const isFriend = flag === true;
+    setLineFriendStatus_(isFriend);
+    return isFriend;
 }
 
 // ---------------------------------------------------------------------------
@@ -366,8 +438,6 @@ function enterGuestMode_() {
 // กับ userId เพื่อบังคับให้คำขอ login_auth ของผู้ใช้คนเดียวกันทำงานเรียงลำดับกัน (ไม่บล็อก
 // ผู้ใช้คนอื่น) นี่เป็นการป้องกันชั้นเสริมฝั่ง client เท่านั้น — ตัวป้องกันหลักที่แท้จริง
 // (idempotency) อยู่ที่ handleLoginAuth() + findRecentActiveSession_() ใน Code.gs
-// เผื่อกรณี Web Locks API ไม่รองรับในเบราว์เซอร์นั้น หรือ 2 request มาจากคนละ browser
-// context กันจริงๆ (ซึ่ง lock ฝั่ง client คุมไม่ถึง)
 async function checkBackendAuth_(profile) {
     const os = (typeof liff !== 'undefined' && typeof liff.getOS === 'function') ? liff.getOS() : 'web';
     const isInClient = (typeof liff !== 'undefined' && typeof liff.isInClient === 'function') ? liff.isInClient() : false;
@@ -503,7 +573,7 @@ async function initApp() {
                     localStorage.setItem(REGISTRATION_STATUS_KEY, 'pending');
                 }
 
-                // ถ้า Guest Mode ยังไม่หมดอายุ -> ให้เข้าสู่ Guest Mode
+                // ถ้า Guest Mode ยังไม่หมดอายุ -> ให้เข้าสู่ Guest Mode (Guest Mode มีสิทธิ์เหนือกว่า Follow Page เสมอ)
                 if (isGuestModeValid()) {
                     enterGuestMode_();
                     ui.splashStatus.innerText = 'กำลังเปิดระบบสารบรรณ (Guest Mode)...';
@@ -512,7 +582,31 @@ async function initApp() {
                     return;
                 }
 
-                // ถ้า Guest Mode หมดอายุแล้ว -> แสดงหน้าแจ้งเตือนตามผลจาก Backend
+                // [เพิ่ม] ถ้า Guest Mode หมดอายุแล้ว และสถานะบัญชีคือ "NotFound" (ยังไม่เคยลงทะเบียนในระบบ)
+                // ให้เช็คสถานะการเป็นเพื่อน LINE OA ก่อนเสมอ:
+                //   - ยังไม่เป็นเพื่อน -> บังคับแสดง Follow Page ให้เพิ่มเพื่อนก่อน
+                //   - เป็นเพื่อนแล้ว -> ให้เป็นไปตามเกณฑ์ผู้ใช้ login LINE แล้ว: เปิด Registration Modal ทันที
+                if (authResult && authResult.status === 'NotFound') {
+                    ui.splashStatus.innerText = 'กำลังตรวจสอบสถานะการเพิ่มเพื่อน...';
+                    const isFriend = await checkAndStoreFriendshipStatus_();
+
+                    if (!isFriend) {
+                        showFollowPrompt('เพื่อใช้งานระบบ กรุณาเพิ่มเพื่อนบัญชีทางการก่อน แล้วกดตรวจสอบอีกครั้ง');
+                        return;
+                    }
+
+                    // เป็นเพื่อนแล้ว -> ข้าม Error Page ไปเปิด Registration Modal ได้เลย
+                    window.__pendingLineProfile = profile;
+                    ui.splash.classList.add('is-hidden');
+                    ui.error.classList.add('is-hidden');
+                    if (ui.follow) ui.follow.classList.add('is-hidden');
+                    ui.app.classList.add('is-hidden');
+                    ui.login.classList.remove('is-hidden');
+                    openRegisterModal(profile);
+                    return;
+                }
+
+                // ถ้า Guest Mode หมดอายุแล้ว (และไม่ใช่กรณี NotFound ด้านบน) -> แสดงหน้าแจ้งเตือนตามผลจาก Backend
                 if (authResult && authResult.needFollow) {
                     showFollowPrompt(authResult.reason);
                 } else {
@@ -848,6 +942,17 @@ function initProfileUI() {
         } else {
             if (registerSubText) registerSubText.style.display = 'none';
         }
+
+        // [เพิ่ม] สลับเนื้อหาปุ่ม "ลงทะเบียนเข้าใช้" ตามสถานะเพื่อน LINE OA
+        // ยังไม่เป็นเพื่อน -> แสดงเป็นลิงก์เพิ่มเพื่อนแทน (พร้อมรูป+ชื่อ Admin JVBP)
+        // เป็นเพื่อนแล้ว -> แสดงเมนูลงทะเบียนแบบเดิม
+        const isFriendNow = getLineFriendStatus_();
+        const regBtnNormal = document.getElementById('registerBtnContent_normal');
+        const regBtnAddFriend = document.getElementById('registerBtnContent_addFriend');
+        if (regBtnNormal && regBtnAddFriend) {
+            regBtnNormal.classList.toggle('is-hidden', !isFriendNow);
+            regBtnAddFriend.classList.toggle('is-hidden', isFriendNow);
+        }
     } else {
         // --- สถานะ Registered User ---
         if (profileImg && cachedUser.pictureUrl) profileImg.src = cachedUser.pictureUrl;
@@ -909,6 +1014,13 @@ function initProfileUI() {
     if (btnOpenRegisterModal) {
         btnOpenRegisterModal.addEventListener('click', () => {
             dropdown.classList.remove('is-active');
+
+            // [เพิ่ม] ถ้ายังไม่เป็นเพื่อน LINE OA -> เปิดลิงก์เพิ่มเพื่อนแทนการเปิด Modal ลงทะเบียน
+            if (!getLineFriendStatus_()) {
+                window.open(LINE_OA_ADD_FRIEND_URL, '_blank', 'noopener');
+                return;
+            }
+
             const regStatus = localStorage.getItem(REGISTRATION_STATUS_KEY);
             if (regStatus === 'pending') {
                 const rawInfo = localStorage.getItem('bpnp_reg_info');
