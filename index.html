@@ -2,893 +2,300 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>ระบบสารบรรณอิเล็กทรอนิกส์ | AS - CH and Associates Joint Venture</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BPNP Document Center</title>
 
-    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png" />
-    <link rel="icon" type="image/svg+xml" href="img/doc-icon.svg" />
-    <link rel="shortcut icon" href="img/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png" />
-
-    <meta name="apple-mobile-web-app-title" content="BPNP : E-Doc" >
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="site.webmanifest">
-    <meta name="theme-color" content="#0d6efd" >
-
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Stylesheets -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets (แบ่งไฟล์ตามหลัก Clean Code) -->
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/layout.css">
-
-    <!-- Auth pages, Profile, & Modal Styles -->
-    <style>
-        .auth_page {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            text-align: center;
-            padding: 20px;
-            background-color: var(--color-surface-splash)
-        }
-        .auth_box {
-            background: var(--color-surface-page-btn);
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: var(--shadow-dashboard-container);
-            max-width: 400px;
-            width: 100%;
-        }
-        .auth_box img.logo { max-width: 150px; margin-bottom: 20px; }
-        .auth_box h1 {
-            font-size: var(--font-size-xl);
-            font-weight: var(--font-weight-bold);
-            color: var(--color-text-heading);
-            margin-bottom: 10px;
-        }
-        .auth_box p {
-            color: var(--color-text-muted);
-            margin-bottom: 30px;
-            font-size: var(--font-size-base);
-            line-height: 1.6;
-        }
-        .btn_line {
-            height: 48px;        
-            padding: 0 24px;
-            background-color: #06C755;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            text-decoration: none;
-            box-sizing: border-box;
-            font-family: inherit;
-            transition: background-color 0.2s;
-        }
-        .btn_line:hover { background-color: #05b04c; }
-        .btn_logout {
-            background-color: var(--color-status-danger-text);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 15px;
-            font-family: inherit;
-        }
-        .btn_recheck {
-            background: var(--color-brand-primary);
-            color: var(--color-text-on-brand);
-            border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 15px;
-            font-family: inherit;
-        }
-        .btn_recheck:hover { background: var(--color-brand-primary-dark); }
-        .btn_recheck:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
-        /* =========================================
-           ส่วน UI ของ Profile ผู้ใช้ (มุมขวาบน - Absolute)
-           ========================================= */
-        .user_profile_area {
-            position: absolute;
-            top: 18px;
-            right: 18px;
-            z-index: 9000;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .user_profile_avatar_wrap {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
-        }
-        .user_profile_img {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--color-brand-primary, #0d6efd);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            background: #fff;
-        }
-        .user_profile_img:hover {
-            transform: scale(1.08);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        .user_notify_badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 12px;
-            height: 12px;
-            background-color: #f59e0b; /* สีส้ม */
-            border: 2px solid #fff;
-            border-radius: 50%;
-            z-index: 3;
-            pointer-events: none;
-            animation: user_notify_pulse 2s infinite;
-        }
-        .user_notify_badge.is-hidden {
-            display: none !important;
-        }
-
-        /* ยกเลิกการแสดงข้อความชื่อผู้ใช้เมื่อ hover ตามความต้องการ */
-        .user_tooltip {
-            display: none !important;
-        }
-
-        /* =========================================
-           User Notification Bubble (กว้าง 150px ข้างซ้ายรูปโปรไฟล์)
-           คลี่ขวาไปซ้าย และยุบซ้ายไปขวา เลียนแบบ update_notify_bubble
-           ========================================= */
-        .user_notify_bubble {
-            --user-notify-fold-ms: 400ms;
-            box-sizing: border-box;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            right: 20px; /* ขอบขวาซ่อนอยู่ใต้กึ่งกลางรูปโปรไฟล์ */
-            width: 150px;
-            height: 36px;
-            padding: 0 24px 0 14px;
-            background: #f59e0b;
-            border: 2px solid #fff;
-            border-right: none;
-            border-radius: 18px 0 0 18px;
-            color: #f9fcff;
-            font-size: var(--font-size-base);
-            font-weight: 400;
-            line-height: 1.2;
-            z-index: 1;
-            pointer-events: none;
-            clip-path: inset(0 0 0 100%);
-            visibility: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            transition:
-                clip-path var(--user-notify-fold-ms) cubic-bezier(0.65, 0, 0.35, 1),
-                visibility 0s linear var(--user-notify-fold-ms);
-        }
-        .user_notify_bubble.is-open {
-            clip-path: inset(0);
-            visibility: visible;
-            pointer-events: auto;
-            transition:
-                clip-path var(--user-notify-fold-ms) cubic-bezier(0.65, 0, 0.35, 1),
-                visibility 0s linear 0s;
-        }
-        .user_notify_bubble.is-open:hover {
-            filter: brightness(1.06);
-        }
-        .user_notify_bubble.theme-warning {
-            background: #f59e0b;
-        }
-        .user_notify_bubble.theme-info {
-            background: #0284c7;
-        }
-        .user_notify_bubble.theme-success {
-            background: #16a34a;
-        }
-        .user_notify_bubble.theme-primary {
-            background: var(--color-brand-primary, #0d6efd);
-        }
-        .user_notify_bubble.is-scrolling .user_notify_viewport {
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%);
-            mask-image: linear-gradient(to right, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%);
-        }
-        .user_notify_viewport {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }
-        .user_notify_track {
-            position: relative;
-            display: flex;
-            align-items: center;
-            flex-shrink: 0;
-            white-space: nowrap;
-            will-change: transform;
-        }
-        .user_notify_bubble.is-static .user_notify_track {
-            display: block;
-            flex-shrink: 1;
-            width: 100%;
-            white-space: normal;
-            text-align: center;
-            line-height: 1.15;
-        }
-        .user_notify_bubble.is-static .user_notify_prefix::after {
-            content: " ";
-        }
-        .user_notify_action {
-            opacity: 0.92;
-            text-decoration: underline;
-            text-underline-offset: 2px;
-            margin-left: 6px;
-        }
-        @keyframes user_notify_pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-        }
-        .user_dropdown {
-            position: absolute;
-            top: 42px;
-            right: 0;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            min-width: 180px;
-            display: flex;
-            flex-direction: column;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-            z-index: 1000;
-            overflow: hidden;
-            border: 1px solid var(--color-border-default, #cbd5e1);
-        }
-        .user_dropdown.is-active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        .user_dropdown_name {
-            padding: 14px 16px;
-            font-weight: 600;
-            color: var(--color-text-heading, #1e293b);
-            font-size: 14px;
-            text-align: center;
-            background: #f8fafc;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .user_dropdown hr {
-            margin: 0;
-            border: none;
-            border-top: 1px solid var(--color-border-default, #cbd5e1);
-        }
-        .user_dropdown_btn {
-            background: transparent;
-            border: none;
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: background 0.2s ease;
-            color: var(--color-text-body, #333);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-        }
-        .user_dropdown_btn:hover {
-            background: #f1f5f9;
-        }
-        .text-danger {
-            color: var(--color-status-danger-text, #d93025);
-        }
-        .text-danger:hover {
-            background: #fef2f2;
-        }
-
-        /* =========================================
-           ส่วน UI ของ Popup ยืนยัน Logout
-           ========================================= */
-        .custom_modal {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 1;
-            visibility: visible;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-        }
-        .custom_modal.is-hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-        .custom_modal_content {
-            background: #fff;
-            padding: 24px 24px 30px;
-            border-radius: 12px;
-            max-width: 380px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transform: scale(1);
-            transition: transform 0.2s ease;
-        }
-        .custom_modal.is-hidden .custom_modal_content {
-            transform: scale(0.95);
-        }
-        .custom_modal_content h3 {
-            margin-top: 0;
-            color: var(--color-text-heading, #1e293b);
-            font-size: 18px;
-        }
-        .custom_modal_content p {
-            color: var(--color-text-body, #333);
-            margin-bottom: 24px;
-            line-height: 1.5;
-            font-size: 15px;
-        }
-        .custom_modal_actions {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
-        .btn_modal_cancel {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #cbd5e1;
-            padding: 10px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-            font-size: 14px;
-            transition: background 0.2s ease;
-        }
-        .btn_modal_cancel:hover {
-            background: #e2e8f0;
-        }
-        .btn_modal_confirm {
-            background: var(--color-status-danger-text, #d93025);
-            color: #fff;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-            font-size: 14px;
-            transition: background 0.2s ease;
-        }
-        .btn_modal_confirm:hover {
-            background: #b91c1c;
-        }
-
-        /* =========================================
-           ส่วน UI ของ Popup ลงทะเบียนผู้ใช้งาน (Register Modal)
-           ========================================= */
-        .register_modal_box {
-            max-width: 440px;
-            width: 92%;
-            text-align: left;
-            padding: 24px 28px;
-            border-radius: 12px;
-            background: #fff;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-        }
-        .register_modal_header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--color-border-default, #cbd5e1);
-            padding-bottom: 14px;
-            margin-bottom: 18px;
-        }
-        .register_modal_title {
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--color-text-heading, #1e293b);
-        }
-        .reg_step_box {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-        .reg_desc {
-            font-size: 14px;
-            color: var(--color-text-muted, #64748b);
-            line-height: 1.5;
-            margin: 0 0 10px 0;
-            text-align: center;
-        }
-        .reg_line_profile_badge {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-bottom: 4px;
-        }
-        .reg_line_avatar {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #06C755;
-            flex-shrink: 0;
-            background: #e2e8f0;
-        }
-        .reg_line_info {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .reg_line_label {
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 500;
-        }
-        .reg_line_name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .reg_form_group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .reg_form_label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--color-text-heading, #334155);
-        }
-        .reg_input, .reg_select {
-            width: 100%;
-            height: 42px;
-            padding: 8px 12px;
-            border: 1px solid var(--color-border-default, #cbd5e1);
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 14px;
-            color: var(--color-text-body, #1e293b);
-            background: #fff;
-            box-sizing: border-box;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .reg_input:focus, .reg_select:focus {
-            border-color: var(--color-brand-primary, #0d6efd);
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
-        }
-        .reg_actions_bar {
-            margin-top: 22px;
-            padding-top: 14px;
-            border-top: 1px solid var(--color-border-default, #cbd5e1);
-        }
-        .btn_modal_register {
-            background: var(--color-brand-primary, #0d6efd);
-            color: #fff;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-family: inherit;
-            font-size: 14px;
-            transition: background 0.2s ease, opacity 0.2s ease;
-        }
-        .btn_modal_register:hover:not(:disabled) {
-            background: #0b5ed7;
-        }
-        .btn_modal_register:disabled {
-            background: #cbd5e1;
-            color: #94a3b8;
-            cursor: not-allowed;
-            opacity: 0.8;
-        }
-    </style>
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
 
-    <!-- 1. Splash Screen -->
+    <!-- ==========================================
+         1. SPLASH SCREEN (หน้าจอโหลดเข้าแอป)
+         ========================================== -->
     <div id="splashScreen" class="splash_screen">
-        <div id="splashRingsBg" class="splash_rings_bg"></div>
+        <div class="splash_rings_bg">
+            <canvas id="magicRingsCanvas"></canvas>
+        </div>
         <div class="splash_content">
-            <h1 class="splash_title">BPNP DOCUMENT</h1>
-            <div id="splashSpinner" class="loader is-hidden"></div>
-            <p id="splashStatus" class="splash_status">กำลังเตรียมระบบและตรวจสอบสิทธิ์...</p>
-
+            <h1 class="splash_title">BPNP Document Center</h1>
+            <div id="splashStatus" class="splash_status">กำลังเตรียมพร้อมระบบ...</div>
             <div id="splashProgressWrap" class="splash_progress_wrap is-hidden">
                 <div class="splash_progress_track">
                     <div id="splashProgressFill" class="splash_progress_fill"></div>
                 </div>
                 <div id="splashProgressPercent" class="splash_progress_percent">0%</div>
             </div>
+            <button id="btnForceRefresh" class="splash_btn is-hidden">บังคับรีเฟรชข้อมูล</button>
         </div>
     </div>
 
-    <!-- 2. Landing Page (Login) -->
-    <div id="loginPage" class="auth_page is-hidden">
+    <!-- ==========================================
+         2. AUTH PAGE (หน้าเข้าสู่ระบบ)
+         ========================================== -->
+    <div id="authPage" class="auth_page is-hidden">
         <div class="auth_box">
-            <h1>เข้าสู่ระบบสารบรรณ</h1>
-            <p>กรุณายืนยันตัวตน</p>
-            <!-- ระบุ href เป็นลิงก์ liff.line.me ตามด้วย LIFF ID ของคุณ -->
-<button id="lineLoginBtn" class="btn_line">
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 64 64"><path d="M64 27.487c0-14.32-14.355-25.97-32-25.97S0 13.168 0 27.487c0 12.837 11.384 23.588 26.762 25.62 1.042.225 2.46.688 2.82 1.578.322.81.21 2.076.103 2.894l-.457 2.74c-.14.81-.643 3.164 2.772 1.725s18.428-10.852 25.143-18.58h-.001C61.78 38.38 64 33.218 64 27.487" fill="#fff"/><g fill="#00b900"><path d="M25.498 20.568h-2.245c-.344 0-.623.28-.623.623v13.943a.62.62 0 0 0 .623.62h2.245a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623m15.45-.01h-2.244c-.345 0-.624.28-.624.623v8.284l-6.4-8.63c-.014-.022-.03-.043-.048-.063l-.004-.004a.4.4 0 0 0-.038-.038l-.044-.04c-.006-.004-.01-.008-.016-.012l-.032-.022-.02-.012-.033-.02c-.006-.002-.014-.006-.02-.01-.012-.006-.023-.012-.036-.016s-.014-.006-.02-.006c-.012-.006-.025-.008-.037-.012l-.022-.006c-.012-.002-.023-.006-.035-.008l-.026-.004c-.008-.002-.022-.004-.033-.004l-.032-.002c-.008 0-.014-.001-.022-.001h-2.244c-.344 0-.623.28-.623.623V35.13a.62.62 0 0 0 .623.62h2.244c.344 0 .624-.278.624-.62v-8.28l6.397 8.64a.63.63 0 0 0 .158.154c.018.014.032.022.045.03.006.004.012.008.018.01s.02.01.03.014.02.008.03.014l.06.022a.62.62 0 0 0 .168.022h2.244a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623"/><path d="M20.087 32.264h-6.1V21.2c0-.344-.28-.623-.623-.623H11.12c-.344 0-.623.28-.623.623v13.942a.62.62 0 0 0 .174.431c.012.012.014.016.016.018.113.107.264.174.43.174h8.968c.344 0 .623-.28.623-.623v-2.245c0-.344-.278-.623-.623-.623m33.258-8.214c.344 0 .623-.28.623-.623V21.2c0-.344-.278-.623-.623-.623h-8.968c-.168 0-.32.067-.432.176-.012.01-.016.014-.018.018-.107.1-.173.262-.173.43v13.943a.62.62 0 0 0 .174.431l.016.016a.62.62 0 0 0 .431.174h8.968c.344 0 .623-.28.623-.623v-2.246c0-.344-.278-.623-.623-.623h-6.098v-2.357h6.098a.62.62 0 0 0 .623-.623V27.04c0-.344-.278-.624-.623-.624h-6.098V24.06h6.098z"/></g></svg>
-    เข้าสู่ระบบด้วย LINE
-</button>
-
+            <div class="jv_logo_wrap">
+                <!-- ใส่ URL โลโก้ของคุณ -->
+                <img src="https://raw.githubusercontent.com/map2go/bpnp/main/BPNP_JV_Logo.png" alt="BPNP Logo" class="logo_image" style="height: 60px; margin-bottom: 20px;">
+            </div>
+            <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
+            <p>เข้าสู่ระบบเพื่อตรวจสอบและดาวน์โหลดเอกสารโครงการ</p>
+            
+            <button id="btnLineLogin" class="btn_line">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.122.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967 1.739-1.907 2.572-3.843 2.572-5.992zM8.5 13.5h-2c-.276 0-.5-.224-.5-.5v-4c0-.276.224-.5.5-.5h2c.276 0 .5.224.5.5s-.224.5-.5.5h-1.5v1h1.5c.276 0 .5.224.5.5s-.224.5-.5.5h-1.5v1.5h1.5c.276 0 .5.224.5.5s-.224.5-.5.5zm4.5 0h-1c-.276 0-.5-.224-.5-.5v-4c0-.276.224-.5.5-.5h1c.276 0 .5.224.5.5v4c0 .276-.224.5-.5.5zm4.5 0h-1.5l-1.5-2v2c0 .276-.224.5-.5.5h-1c-.276 0-.5-.224-.5-.5v-4c0-.276.224-.5.5-.5h1.5l1.5 2v-2c0-.276.224-.5.5-.5h1c.276 0 .5.224.5.5v4c0 .276-.224.5-.5.5z"/>
+                </svg>
+                เข้าสู่ระบบด้วย LINE
+            </button>
         </div>
     </div>
 
-    <!-- 3. Error Page (สิทธิ์ไม่ผ่าน / role ไม่ถูกต้อง) -->
-    <div id="errorPage" class="auth_page is-hidden">
-        <div class="auth_box">
-            <h1 style="color: var(--color-status-danger-text);">ไม่ได้รับสิทธิ์เข้าใช้งาน</h1>
-            <p id="errorReason">คุณไม่มีสิทธิ์เข้าถึงระบบนี้ กรุณาติดต่อผู้ดูแลระบบ</p>
-            <button id="lineLogoutBtn" class="btn_logout">ออกจากระบบ</button>
-        </div>
-    </div>
-
-    <!-- 3.1 Follow Page -->
-    <!-- การ์ดแสดงรูป+ชื่อบัญชี LINE OA (Admin JVBP) และแก้ href เป็นลิงก์เพิ่มเพื่อนจริง -->
-    <div id="followPage" class="auth_page is-hidden">
-        <div class="auth_box">
-            <h1>กรุณาเพิ่มเพื่อน LINE OA</h1>
-            <p id="followReason">เพื่อใช้งานระบบ กรุณาเพิ่มเพื่อนบัญชีทางการก่อน แล้วกดตรวจสอบอีกครั้ง</p>
-
-            <div class="reg_line_profile_badge" style="justify-content: center;">
-                <img src="img/AdminJVBP.jpg" alt="Admin JVBP" class="reg_line_avatar">
-                <div class="reg_line_info">
-                    <span class="reg_line_label">เพิ่มเพื่อนบัญชีทางการ</span>
-                    <span class="reg_line_name">Admin JVBP</span>
-                </div>
-            </div>
-
-            <a id="btnAddFriend" href="https://line.me/R/ti/p/%40520qkrvo" target="_blank" rel="noopener" class="btn_line">
-                เพิ่มเพื่อน LINE OA
-            </a>
-            <button id="btnRecheckFriend" class="btn_recheck">ตรวจสอบอีกครั้ง</button>
-        </div>
-    </div>
-
-    <!-- 4. App Wrapper (Main Application - Hidden initially) -->
-    <div id="appWrapper" class="app_wrapper is-hidden" style="position: relative;">
-        
-        <!-- =========================================================================
-             กล่องโปรไฟล์ลอยอิสระ (มุมขวาบน - Absolute ไม่อิง Scroll)
-             ========================================================================= -->
-        <div class="user_profile_area" id="userProfileArea">
-            <div class="user_notify_bubble" id="userNotifyBubble" aria-hidden="true">
-                <div class="user_notify_viewport">
-                    <div class="user_notify_track">
-                        <span class="user_notify_prefix"></span>
-                        <span class="user_notify_action"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="user_profile_avatar_wrap" id="userProfileAvatarWrap">
-                <img src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile" id="userProfileImg" class="user_profile_img">
-                <div class="user_notify_badge is-hidden" id="userNotifyBadge"></div>
-            </div>
-            <div class="user_tooltip" id="userTooltip">ผู้ใช้งาน</div>
-            <div class="user_dropdown" id="userDropdown">
-                <div class="user_dropdown_name" id="userDropdownName">ผู้ใช้งาน</div>
-                <hr>
-                <button id="btnMySessionInfo" class="user_dropdown_btn">
-                    <span style="font-size: 16px;">🔐</span> ข้อมูลการเข้าใช้
-                    <span style="margin-left: auto; color: var(--color-text-muted); font-size: 14px;">›</span>
-                </button>
-                <button id="btnProfileRefresh" class="user_dropdown_btn">
-                    <span style="font-size: 16px;">🔄</span> รีเฟรชข้อมูล
-                </button>
-                <!-- ปุ่มนี้มี 2 สถานะภายใน สลับด้วย JS (initProfileUI):
-                     registerBtnContent_normal    = สถานะปกติ (เป็นเพื่อน LINE OA แล้ว) -> เปิด Registration Modal
-                     registerBtnContent_addFriend = สถานะยังไม่เป็นเพื่อน -> เปิดลิงก์เพิ่มเพื่อนแทน -->
-                <button id="btnOpenRegisterModal" class="user_dropdown_btn is-hidden">
-                    <div id="registerBtnContent_normal" style="display: flex; flex-direction: column; width: 100%; gap: 2px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 16px;">📝</span> <span>ลงทะเบียนเข้าใช้</span>
-                        </div>
-                        <span id="registerSubText" style="font-size: 11px; color: #f59e0b; margin-left: 26px; display: none; font-weight: 500;">(รออนุมัติ)</span>
-                    </div>
-                    <div id="registerBtnContent_addFriend" class="is-hidden" style="display: flex; align-items: center; gap: 10px; width: 100%;">
-                        <img src="img/AdminJVBP.jpg" alt="Admin JVBP" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #06C755; flex-shrink: 0; background: #fff;">
-                        <div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">
-                            <span style="font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Admin JVBP</span>
-                            <span style="font-size: 11px; color: #64748b;">แตะเพื่อเพิ่มเพื่อนก่อนลงทะเบียน</span>
-                        </div>
-                    </div>
-                </button>
-                <button id="btnProfileLogout" class="user_dropdown_btn text-danger">
-                    <span style="font-size: 16px;">↪️</span> ออกจากระบบ
-                </button>
-            </div>
-        </div>
-        <!-- ========================================================================= -->
-
-        <div class="main_dashboard_wrapper is-full-width">
-            <div class="looker_dashboard_container" id="dashboardContainer">
-                <!-- Top Section Grid (2 Columns Layout) -->
-                <header class="top_header_grid">
+    <!-- ==========================================
+         3. APP WRAPPER (หน้าหลัก Dashboard)
+         ========================================== -->
+    <div id="appWrapper" class="app_wrapper is-hidden">
+        <div class="main_dashboard_wrapper">
+            <div class="looker_dashboard_container">
+                
+                <!-- 3.1 Header Grid (โลโก้ / แบนเนอร์ / กราฟ / แท็บเมนู) -->
+                <div class="top_header_grid">
                     <div class="header_top_left">
                         <div class="logo_and_banner">
                             <div class="jv_logo_wrap">
-                                <img src="img/logo_JV.png" alt="AS - CH and Associates Joint Venture" class="logo_image" onerror="this.style.display='none'">
+                                <img src="https://raw.githubusercontent.com/map2go/bpnp/main/BPNP_JV_Logo.png" alt="BPNP Logo" class="logo_image">
                             </div>
                             <div class="title_banner">
-                                <h1>ระบบสารบรรณอิเล็กทรอนิกส์</h1>
+                                <h1>Document Center</h1>
                             </div>
                         </div>
+                        
+                        <div class="update_note_line">
+                            <span class="dev_note">อัปเดตล่าสุด: <span id="globalLatestUpdate">-</span></span>
+                            <span class="red_note">*ใช้สำหรับอ้างอิงเท่านั้น (For reference only)</span>
+                        </div>
+                    </div>
+
+                    <!-- ส่วนพื้นที่กราฟสรุปข้อมูล -->
+                    <div class="chart_area">
+                        <div class="chart_title">สัดส่วนประเภทเอกสาร (ตามแท็บ)</div>
+                        <div style="position: relative; width: var(--layout-pie-chart-width); height: var(--layout-pie-chart-height);">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- ส่วนเมนูแท็บ และช่องค้นหา -->
+                    <div class="center_control" id="centerControl">
                         <div class="typeDoc_tabs">
-                            <button class="typeDoc_tab active" data-tab="rfa" onclick="switchTab('rfa')">
-                                <span>RFA</span>
-                                <span class="tab_badge badge_rfa">0</span>
-                            </button>
-                            <button class="typeDoc_tab" data-tab="rfi" onclick="switchTab('rfi')">
-                                <span>RFI</span>
-                                <span class="tab_badge badge_rfi">0</span>
-                            </button>
-                            <button class="typeDoc_tab" data-tab="letter" onclick="switchTab('letter')">
-                                <span>Letter In</span>
-                                <span class="tab_badge badge_letter">0</span>
-                            </button>
+                            <button class="typeDoc_tab active" data-tab="rfa">RFA <span class="tab_badge badge_rfa" id="badge_rfa">0</span></button>
+                            <button class="typeDoc_tab" data-tab="rfi">RFI <span class="tab_badge badge_rfi" id="badge_rfi">0</span></button>
+                            <button class="typeDoc_tab" data-tab="letter">Letter In <span class="tab_badge badge_letter" id="badge_letter">0</span></button>
                         </div>
+                        
+                        <div class="search_count_box" id="searchCountBox" data-tab-theme="rfa">
+                            <div class="search_container">
+                                <input type="text" id="searchInput" class="search_input" placeholder="ค้นหา รหัสเอกสาร, ชื่อไฟล์...">
+                                <button id="btnClearSearch" class="search_clear_btn" title="ล้างการค้นหา">×</button>
+                            </div>
+                            <div class="doc_count_display">
+                                <div class="doc_count_label">จำนวนเอกสาร</div>
+                                <div class="doc_count_value" id="docCountValue">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3.2 User Profile Area (รูปผู้ใช้ / Dropdown / Notify Bubble) -->
+                <div id="userProfileArea" class="user_profile_area">
+                    <!-- Notify Bubble (ข้อความแจ้งเตือนข้างโปรไฟล์) -->
+                    <div id="userNotifyBubble" class="user_notify_bubble">
+                        <div class="user_notify_viewport">
+                            <div class="user_notify_track">
+                                <span class="user_notify_prefix"></span>
+                                <span class="user_notify_action"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="user_profile_avatar_wrap">
+                        <img id="userProfileImage" src="https://via.placeholder.com/150" alt="Profile" class="user_profile_img">
+                        <div id="userNotifyBadge" class="user_notify_badge is-hidden"></div>
                     </div>
 
-                    <div class="center_control">
-                        <div class="filter_dropdowns_row" id="dropdownsContainer"></div>
-                        <div class="search_and_count_row" id="searchCountRow"></div>
+                    <!-- User Dropdown Menu -->
+                    <div id="userDropdownMenu" class="user_dropdown">
+                        <div class="user_dropdown_name" id="dropdownUserName">ชื่อผู้ใช้งาน</div>
+                        <hr>
+                        <button id="btnOpenAbout" class="user_dropdown_btn">
+                            ℹ️ เกี่ยวกับระบบ
+                        </button>
+                        <!-- กำหนดลิงก์ติดต่อผู้ดูแลระบบตามจริง -->
+                        <a href="https://line.me/R/ti/p/%40520qkrvo" target="_blank" class="user_dropdown_btn">
+                            💬 ติดต่อผู้ดูแล
+                        </a>
+                        <hr>
+                        <button id="btnLogout" class="user_dropdown_btn text-danger">
+                            🚪 ออกจากระบบ
+                        </button>
                     </div>
+                </div>
 
-                    <div class="chart_area" id="chartsContainer">
-                        <div class="chart_col bar_col" id="barColContainer">
-                            <div class="code_btn_wrapper">
-                                <div class="code_header_badge">CODE</div>
-                            </div>
-                            <div class="bar_chart_wrapper">
-                                <canvas id="codeBarChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart_col pie_col">
-                            <div class="pie_chart_wrapper" id="pieWrapper">
-                                <canvas id="typePieChart"></canvas>
-                            </div>
-                            <div class="pie_update_date">
-                                <span>Update :</span>
-                                <strong id="globalLatestUpdate">--/--/----</strong>
-                            </div>
-                        </div>
-                    </div>
-                </header>
+                <!-- 3.3 สถานะข้อมูล (Cache Status / Warnings) -->
+                <div class="cache_control_And_sheet_status" style="margin-top: 15px;">
+                    <span id="cacheLastUpdateText">ตรวจสอบข้อมูล...</span>
+                </div>
 
                 <div id="dataWarningBanner" class="data_warning_banner is-hidden">
-                    <span class="data_warning_icon">⚠️</span>
-                    <div id="dataWarningBannerText" class="data_warning_text_group"></div>
+                    <div class="data_warning_icon">⚠️</div>
+                    <div class="data_warning_content" id="dataWarningBannerText"></div>
+                </div>
+                
+                <div id="noDataBox" class="no_data_box is-hidden">
+                    <p>ไม่พบข้อมูลเอกสารในขณะนี้</p>
                 </div>
 
-                <main class="table_section_container">
-                    <div class="table_card">
-                        <table class="document_table" id="mainDocTable">
-                            <thead id="tableHeadContainer"></thead>
-                            <tbody id="documentTableBody"></tbody>
+                <!-- 3.4 Table Area (ตารางแสดงข้อมูลเอกสาร) -->
+                <div class="table_card">
+                    <div class="table_wrapper">
+                        <table class="document_table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px; text-align: center;">ลำดับ</th>
+                                    <th style="width: 140px;">หมวดหมู่</th>
+                                    <th style="width: 250px;">รหัสอ้างอิง / ทะเบียนรับ</th>
+                                    <th class="col-filename" style="width: auto;">ชื่อเอกสาร / รายละเอียด</th>
+                                    <th class="col-update" style="width: 120px;">อัปเดตล่าสุด</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentTableBody">
+                                <!-- JavaScript จะนำข้อมูลตารางมาแสดงที่นี่ -->
+                            </tbody>
                         </table>
-                        <div class="pagination_footer">
-                            <div class="page_info" id="pageInfoText">แสดง 0 ถึง 0 รายการ</div>
-                            <div class="page_controls">
-                                <button class="btn_nav" id="btnPrev" disabled>◀ </button>
-                                <div class="page_numbers_container" id="pageNumbers"></div>
-                                <button class="btn_nav" id="btnNext"> ▶</button>
-                            </div>
-                        </div>
                     </div>
-
-                    <div id="noDataBox" class="no_data_box is-hidden">
-                        <div class="no_data_icon">📭</div>
-                        <div class="no_data_title">ไม่พบข้อมูล</div>
-                        <div class="no_data_subtitle">ไม่สามารถเชื่อมต่อฐานข้อมูลได้ และไม่มีข้อมูลสำรองที่เคยบันทึกไว้</div>
-                        <button type="button" class="no_data_retry_btn" onclick="document.getElementById('btnForceRefresh').click()">🔄 ลองใหม่อีกครั้ง</button>
-                    </div>
-                </main>
-
-                <div class="system_info_box" style="background-color: #f1f5f9; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
-                        <span class="dev_note" style="font-size: 0.8rem; color: #64748b;">Dev. by monkeyole X <span class="dev_attribution">mr.pairot</span></span>
-                        <span class="red_note" style="font-size: 0.8rem; color: #ef4444;">* วันที่ Update เป็นวันที่ Upload เอกสาร</span>
-                    </div>
-                    <div class="cache_control_And_sheet_status" >
-                        <div id="cacheLastUpdateText" >ข้อมูลล่าสุด : กำลังตรวจสอบ...</div>
-                        <div class="Refresh_Link" >
-                            <button id="btnForceRefresh" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: none; background: #e0f2fe; color: #0284c7; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; transition: background 0.2s;">
-                                <span>🔄</span> รีเฟรช
-                            </button>
-                            <div class="separator_line"></div>
-                            <div class="sheet_status_bar" id="sheetStatusBar" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
-                                <a href="#" target="_blank" class="sheet_link" style="color: #0284c7; text-decoration: none; font-weight: 500;">📊 เปิดไฟล์ Google Sheets</a>
-                            </div>
+                    
+                    <!-- แถบเลื่อนหน้าข้อมูล (Pagination) -->
+                    <div class="pagination_footer">
+                        <div class="page_info" id="pageInfo">แสดงรายการที่ 0 ถึง 0 จากทั้งหมด 0 รายการ</div>
+                        <div class="page_controls">
+                            <button id="btnPrevPage" class="btn_nav" disabled>ก่อนหน้า</button>
+                            <div id="pageNumbers" class="page_numbers_container"></div>
+                            <button id="btnNextPage" class="btn_nav" disabled>ถัดไป</button>
                         </div>
                     </div>
                 </div>
-                <div class="info_version" id="infoVersionBox">
-                    <span id="infoVersionText"></span>
-                    <span id="infoScreenResText"></span>
+                
+                <!-- 3.5 เวอร์ชั่นและ Diagnostic Tools -->
+                <div class="info_version">
+                    <span>Version <span id="appVersionText">1.0.0</span></span>
                 </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <button id="btnToggleDiagnostic" class="cache_diagnostic_toggle" style="background:none; border:none; color:var(--color-text-placeholder); cursor:pointer; font-size:10px;">🔍 สถานะหน่วยความจำ (Cache)</button>
+                </div>
+                <div id="cacheDiagnosticBox" class="cache_diagnostic_box is-hidden">
+                    <div class="cache_diagnostic_header">
+                        <span class="cache_diagnostic_title">Cache Diagnostic Report</span>
+                    </div>
+                    <div id="cacheDiagnosticContent" class="cache_diagnostic_content"></div>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Modal Popup ยืนยันการออกจากระบบ -->
+    <!-- ==========================================
+         4. MODALS (หน้าต่างป๊อปอัปต่างๆ)
+         ========================================== -->
+         
+    <!-- 4.1 Logout Confirm Modal (ออกจากระบบ) -->
     <div id="logoutConfirmModal" class="custom_modal is-hidden">
         <div class="custom_modal_content">
             <h3>ยืนยันการออกจากระบบ</h3>
-            <p>คุณ <span id="logoutModalUserName" style="font-weight:bold; color:var(--color-brand-primary);"></span><br>ต้องการออกจากระบบใช่หรือไม่?</p>
+            <p>คุณต้องการออกจากระบบจากอุปกรณ์นี้ใช่หรือไม่?</p>
             <div class="custom_modal_actions">
-                <button id="btnCancelLogout" class="btn_modal_cancel">ยกเลิก</button>
-                <button id="btnConfirmLogout" class="btn_modal_confirm">ออกจากระบบ</button>
+                <button id="btnCancelLogout" class="btn_modal_cancel btn_modal_action btn_modal_action--neutral">ยกเลิก</button>
+                <button id="btnConfirmLogout" class="btn_modal_confirm btn_modal_action btn_modal_action--danger">ออกจากระบบ</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal แสดงข้อมูลอุปกรณ์ที่กำลังเข้าใช้งาน (Active Sessions) -->
-    <div id="sessionInfoModal" class="custom_modal is-hidden">
-        <div class="custom_modal_content session_modal_box">
-            <div class="session_modal_header">
-                <div class="session_modal_title">
-                    <span>🔐 อุปกรณ์ที่กำลังใช้งาน (<span id="sessionCount">0</span>)</span>
-                </div>
-                <button type="button" id="btnCloseSessionModal" class="btn_close_session_modal" aria-label="ปิด">✕</button>
-            </div>
-            <div id="sessionListContainer" class="session_list">
-                <!-- render โดย renderSessionList() -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Popup ลงทะเบียนเข้าใช้งานระบบ (Register Modal) -->
+    <!-- 4.2 Register Modal (ขอสิทธิ์เข้าใช้งาน) -->
     <div id="registerModal" class="custom_modal is-hidden">
         <div class="custom_modal_content register_modal_box">
             <div class="register_modal_header">
-                <div class="register_modal_title">
-                    <span>📝 ลงทะเบียนเข้าใช้งานระบบ</span>
-                </div>
-                <button type="button" id="btnCloseRegisterModal" class="btn_close_session_modal" aria-label="ปิด">✕</button>
+                <div class="register_modal_title">ลงทะเบียนขอเข้าใช้งาน</div>
             </div>
-
-            <!-- Step 1: ถ้ายังไม่ได้ต่อ LINE -->
-            <div id="regStepLineConnect" class="reg_step_box">
-                <p class="reg_desc">กรุณาเชื่อมต่อบัญชี LINE เพื่อลงทะเบียนเข้าใช้งานระบบ</p>
-                <button id="btnLineConnectForReg" type="button" class="btn_line">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64"><path d="M64 27.487c0-14.32-14.355-25.97-32-25.97S0 13.168 0 27.487c0 12.837 11.384 23.588 26.762 25.62 1.042.225 2.46.688 2.82 1.578.322.81.21 2.076.103 2.894l-.457 2.74c-.14.81-.643 3.164 2.772 1.725s18.428-10.852 25.143-18.58h-.001C61.78 38.38 64 33.218 64 27.487" fill="#fff"/><g fill="#00b900"><path d="M25.498 20.568h-2.245c-.344 0-.623.28-.623.623v13.943a.62.62 0 0 0 .623.62h2.245a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623m15.45-.01h-2.244c-.345 0-.624.28-.624.623v8.284l-6.4-8.63c-.014-.022-.03-.043-.048-.063l-.004-.004a.4.4 0 0 0-.038-.038l-.044-.04c-.006-.004-.01-.008-.016-.012l-.032-.022-.02-.012-.033-.02c-.006-.002-.014-.006-.02-.01-.012-.006-.023-.012-.036-.016s-.014-.006-.02-.006c-.012-.006-.025-.008-.037-.012l-.022-.006c-.012-.002-.023-.006-.035-.008l-.026-.004c-.008-.002-.022-.004-.033-.004l-.032-.002c-.008 0-.014-.001-.022-.001h-2.244c-.344 0-.623.28-.623.623V35.13a.62.62 0 0 0 .623.62h2.244c.344 0 .624-.278.624-.62v-8.28l6.397 8.64a.63.63 0 0 0 .158.154c.018.014.032.022.045.03.006.004.012.008.018.01s.02.01.03.014.02.008.03.014l.06.022a.62.62 0 0 0 .168.022h2.244a.62.62 0 0 0 .623-.62V21.2c0-.343-.28-.623-.623-.623"/><path d="M20.087 32.264h-6.1V21.2c0-.344-.28-.623-.623-.623H11.12c-.344 0-.623.28-.623.623v13.942a.62.62 0 0 0 .174.431c.012.012.014.016.016.018.113.107.264.174.43.174h8.968c.344 0 .623-.28.623-.623v-2.245c0-.344-.278-.623-.623-.623m33.258-8.214c.344 0 .623-.28.623-.623V21.2c0-.344-.278-.623-.623-.623h-8.968c-.168 0-.32.067-.432.176-.012.01-.016.014-.018.018-.107.1-.173.262-.173.43v13.943a.62.62 0 0 0 .174.431l.016.016a.62.62 0 0 0 .431.174h8.968c.344 0 .623-.28.623-.623v-2.246c0-.344-.278-.623-.623-.623h-6.098v-2.357h6.098a.62.62 0 0 0 .623-.623V27.04c0-.344-.278-.624-.623-.624h-6.098V24.06h6.098z"/></g></svg>
-                    เชื่อมต่อด้วย LINE
-                </button>
-            </div>
-
-            <!-- Step 2: เมื่อเชื่อมต่อ LINE แล้ว -->
-            <div id="regStepForm" class="reg_step_box is-hidden">
+            <div class="reg_step_box">
+                <p class="reg_desc">ระบบสารบรรณจำกัดสิทธิ์เฉพาะบุคลากรที่เกี่ยวข้อง กรุณาระบุข้อมูลเพื่อส่งให้ผู้ดูแลระบบตรวจสอบ</p>
                 <div class="reg_line_profile_badge">
-                    <img id="regLineAvatar" src="img/doc-icon.svg" alt="Line Profile" class="reg_line_avatar">
+                    <img id="regLineAvatar" src="https://via.placeholder.com/150" alt="Avatar" class="reg_line_avatar">
                     <div class="reg_line_info">
-                        <span class="reg_line_label">บัญชี LINE ที่เชื่อมต่อ:</span>
-                        <span id="regLineDisplayName" class="reg_line_name">-</span>
+                        <span class="reg_line_label">บัญชี LINE ที่ใช้เชื่อมต่อ</span>
+                        <span id="regLineName" class="reg_line_name">Loading...</span>
                     </div>
                 </div>
-
                 <div class="reg_form_group">
-                    <label for="regNicknameInput" class="reg_form_label">ชื่อจริงหรือชื่อเล่น <span class="text-danger">*</span></label>
-                    <input type="text" id="regNicknameInput" class="reg_input" placeholder="เช่น นายสมชาย (บอล)" autocomplete="off">
+                    <label class="reg_form_label">ชื่อ-นามสกุล (จริง) <span style="color:#ef4444">*</span></label>
+                    <input type="text" id="regFullName" class="reg_input" placeholder="เช่น สมชาย ใจดี">
                 </div>
-
                 <div class="reg_form_group">
-                    <label for="regOrgSelect" class="reg_form_label">หน่วยงาน <span class="text-danger">*</span></label>
-                    <select id="regOrgSelect" class="reg_select">
-                        <option value="">-- กรุณาเลือกหน่วยงาน --</option>
-                        <option value="JV">JV</option>
-                        <option value="CSBN">CSBN</option>
-                        <option value="SRT">SRT</option>
-                        <option value="Zone1">Zone1</option>
-                        <option value="Zone2">Zone2</option>
-                        <option value="Zone3">Zone3</option>
-                        <option value="Zone4">Zone4</option>
-                        <option value="อื่นๆ(ระบุ)">อื่นๆ(ระบุ)</option>
-                    </select>
-                </div>
-
-                <div id="regOtherOrgGroup" class="reg_form_group is-hidden">
-                    <label for="regOtherOrgInput" class="reg_form_label">โปรดระบุชื่อหน่วยงาน <span class="text-danger">*</span></label>
-                    <input type="text" id="regOtherOrgInput" class="reg_input" placeholder="ระบุชื่อหน่วยงานของคุณ" autocomplete="off">
+                    <label class="reg_form_label">บริษัท/สังกัด <span style="color:#ef4444">*</span></label>
+                    <input type="text" id="regCompany" class="reg_input" placeholder="เช่น BPNP JV">
                 </div>
             </div>
-
             <div class="custom_modal_actions reg_actions_bar">
-                <button type="button" id="btnCancelRegister" class="btn_modal_cancel">ยกเลิก</button>
-                <button type="button" id="btnSubmitRegister" class="btn_modal_register" disabled>ลงทะเบียน</button>
+                <button id="btnCancelRegister" class="btn_modal_cancel btn_modal_action btn_modal_action--neutral">ยกเลิก</button>
+                <button id="btnSubmitRegister" class="btn_modal_register btn_modal_action btn_modal_action--brand" disabled>ส่งคำขอลงทะเบียน</button>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- 4.3 About Modal (เกี่ยวกับระบบ) -->
+    <div id="aboutModal" class="about_modal_backdrop is-hidden">
+        <div class="about_modal_content">
+            <div class="about_modal_header">
+                <h2>เกี่ยวกับระบบ</h2>
+                <button class="about_modal_close" id="btnCloseAbout">&times;</button>
+            </div>
+            <div class="about_modal_body">
+                <p>ระบบตรวจสอบและดึงข้อมูลเอกสารสารบรรณ BPNP (BPNP Document Center)</p>
+                <div class="changelog_section">
+                    <h3>การอัปเดต (Changelog)</h3>
+                    <div class="changelog_item">
+                        <div class="changelog_version">v1.1.0</div>
+                        <ul class="changelog_list">
+                            <li>เพิ่มระบบ Cache ด้วย IndexedDB โหลดเร็วขึ้น</li>
+                            <li>เพิ่มระบบแจ้งเตือนแบบ Pop-up มุมขวาล่าง</li>
+                            <li>จัดระเบียบโครงสร้าง CSS รูปแบบโมดูล</li>
+                        </ul>
+                    </div>
+                </div>
+                <a href="https://line.me/R/ti/p/@yourline" target="_blank" class="dev-line-btn">
+                    ติดต่อผู้พัฒนา
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         5. SCRIPTS (ไลบรารี และไฟล์การทำงานหลัก)
+         ========================================== -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        (async () => {
-            let v = Date.now(); // fallback กันเน็ตหลุด/fetch พัง
-            try {
-                const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
-                const manifest = await res.json();
-                if (manifest && manifest.version) v = manifest.version;
-            } catch (e) {
-                console.warn('อ่าน version.json ไม่ได้ ใช้ timestamp กันแคชแทน', e);
-            }
-            window.__APP_VERSION = v;
-
-            const loadScript = (src) => new Promise((resolve) => {
-                const s = document.createElement('script');
-                s.src = `${src}?v=${encodeURIComponent(v)}`;
-                s.onload = resolve;
-                s.onerror = resolve;
-                document.body.appendChild(s);
-            });
-
-            await loadScript('js/magic-rings-bg.js');
-            if (typeof window.startMagicRingsBg === 'function') {
-                window.startMagicRingsBg();
-            }
-            await loadScript('js/auth.js');
-        })();
-    </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- <script src="js/config.js"></script> -->
+    <script src="js/user-notify.js"></script>
+    <script src="js/data-service.js"></script>
+    <script src="js/ui-render.js"></script>
+    <script src="js/auth.js"></script>
+    
 </body>
 </html>
