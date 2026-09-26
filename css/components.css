@@ -2,17 +2,24 @@
    ส่วนประกอบเชิงฟังก์ชันของหน้า (Interactive / Data Components)
    ต้องโหลดหลัง variables.css เพราะอ้างอิงตัวแปรจากไฟล์นั้น
 
-   หมวดหมู่ในไฟล์นี้:
-     7. Dropdown Filters
-     7.1 Chip Filter Group (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย)
-     8. Search & Document Count
-     9. Chart Area (Pie/Donut + Bar)
-     10. Filter Status Box
-     11. Document Table
+   หมวดหมู่ในไฟล์นี้ (นับเลขต่อเนื่องเฉพาะไฟล์นี้ 1–13):
+     1.  Dropdown Filters
+     2.  Chip Filter Group (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย)
+     3.  Search & Document Count
+     4.  Filter Status Box (ย้ายมาอยู่ติดกับ Search เพราะแสดงผลใต้ช่องค้นหาโดยตรง)
+     5.  Chart Area (Pie/Donut + Bar)
+     6.  Document Table
+     7.  Data Warning Banner (ย้ายมาอยู่ติดกลุ่มตาราง เพราะเป็นแถบเตือนเกี่ยวกับข้อมูลตาราง)
+     8.  No Data Box (ย้ายมาอยู่ติดกลุ่มตาราง เพราะเป็นสถานะไม่มีข้อมูลของตาราง)
+     9.  Cache Diagnostic Report (เครื่องมือ debug แยกต่างหาก)
+     10. Update Notify Button & Bubble (แจ้งเตือนอัปเดตแอป/ข้อมูล — คนละระบบกับ user_notify_bubble ใน auth.css โดยเจตนา ดูหมายเหตุในหมวดนี้)
+     11. About Developer Modal
+     12. Session Management Modal & Cards
+     13. SweetAlert2 Z-index Override
    ========================================================================= */
 
 /* =============================================================================
-   7. DROPDOWN FILTERS
+   1. DROPDOWN FILTERS
    ========================================================================= */
 .filter_dropdowns_row {
     display: flex;
@@ -206,7 +213,7 @@
 }
 
 /* =============================================================================
-   7.1 CHIP FILTER GROUP (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย เช่น
+   2. CHIP FILTER GROUP (ตัวกรองแบบการ์ด/chip สำหรับตัวเลือกจำนวนน้อย เช่น
    "หมวดงาน" ของ RFA และ "ที่มา" ของ Letter In)
    แทนที่ dropdown+popup เดิมในตำแหน่งเดียวกัน — ใช้ checkbox จริงซ่อนอยู่ใต้การ์ด
    ========================================================================= */
@@ -338,7 +345,7 @@
 
 
 /* =============================================================================
-   8. SEARCH & DOCUMENT COUNT
+   3. SEARCH & DOCUMENT COUNT
    ========================================================================= */
 .search_and_count_row {
     display: flex;
@@ -522,7 +529,59 @@
 
 
 /* =============================================================================
-   9. CHART AREA (Pie/Donut + Bar)
+   4. FILTER STATUS BOX (กล่องสรุปสถานะการกรอง — ใต้ search box)
+   ========================================================================= */
+.filter_status_box {
+    display: grid;
+    grid-template-rows: 0fr;
+    width: 100%;
+    margin-top: 0;
+    border-radius: 6px;
+    background: var(--color-brand-primary-soft-bg);
+    border: 1px solid transparent;
+    transition:
+        grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        margin-top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.35s ease,
+        opacity 0.3s ease;
+    opacity: 0;
+}
+
+.filter_status_box.has-filter {
+    grid-template-rows: 1fr;
+    margin-top: 6px;
+    border-color: var(--color-brand-primary-soft-border);
+    opacity: 1;
+}
+
+.filter_status_inner {
+    overflow: hidden;
+    min-height: 0;
+    padding: 0 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+}
+
+.filter_status_box.has-filter .filter_status_inner {
+    padding: 4px 8px;
+}
+
+.filter_status_line {
+    font-size: 10px;
+    line-height: 1.3;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-brand-primary-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* ยาวเกินตัดเป็น ... */
+    max-width: 100%;
+}
+
+
+/* =============================================================================
+   5. CHART AREA (Pie/Donut + Bar)
    ========================================================================= */
 .chart_col {
     display: flex;
@@ -592,58 +651,7 @@
 }
 
 /* =============================================================================
-   10. FILTER STATUS BOX (กล่องสรุปสถานะการกรอง — ใต้ search box)
-   ========================================================================= */
-.filter_status_box {
-    display: grid;
-    grid-template-rows: 0fr;
-    width: 100%;
-    margin-top: 0;
-    border-radius: 6px;
-    background: var(--color-brand-primary-soft-bg);
-    border: 1px solid transparent;
-    transition:
-        grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-        margin-top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 0.35s ease,
-        opacity 0.3s ease;
-    opacity: 0;
-}
-
-.filter_status_box.has-filter {
-    grid-template-rows: 1fr;
-    margin-top: 6px;
-    border-color: var(--color-brand-primary-soft-border);
-    opacity: 1;
-}
-
-.filter_status_inner {
-    overflow: hidden;
-    min-height: 0;
-    padding: 0 8px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 1px;
-}
-
-.filter_status_box.has-filter .filter_status_inner {
-    padding: 4px 8px;
-}
-
-.filter_status_line {
-    font-size: 10px;
-    line-height: 1.3;
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-brand-primary-dark);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* ยาวเกินตัดเป็น ... */
-    max-width: 100%;
-}
-
-/* =============================================================================
-   11. DOCUMENT TABLE
+   6. DOCUMENT TABLE
    ========================================================================= */
 .table_section_container {
     margin-top: 8px;
@@ -873,8 +881,100 @@ button.doc_hyperlink_title.btn-as-link:disabled {
    .col_receive { width: 80px; }
    .col_letterno { width: 120px; }
 }
+
 /* =============================================================================
-   12. CACHE DIAGNOSTIC REPORT (รายงานตรวจสอบระบบแคช)
+   7. DATA WARNING BANNER (แถบเตือนข้อมูลผิดปกติจาก Google Sheets)
+   ========================================================================= */
+.data_warning_banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fef9c3;
+    border: 1px solid #fde047;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.data_warning_icon {
+    font-size: 16px;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.data_warning_text_group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.data_warning_headline {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: #854d0e;
+}
+
+.data_warning_reason_line {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: #92700e;
+}
+
+/* =============================================================================
+   8. NO DATA BOX (กรณีไม่มีข้อมูลใดๆ เลย ไม่มีแคชสำรอง)
+   ========================================================================= */
+.no_data_box {
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-border-default);
+    border-radius: 6px;
+    box-shadow: var(--shadow-table-card);
+    padding: 60px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+}
+
+.no_data_icon {
+    font-size: 42px;
+    margin-bottom: 6px;
+}
+
+.no_data_title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-heading);
+}
+
+.no_data_subtitle {
+    font-size: var(--font-size-base);
+    color: var(--color-text-muted);
+    margin-bottom: 14px;
+}
+
+.no_data_retry_btn {
+    background: var(--color-brand-primary);
+    color: var(--color-text-on-brand);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 22px;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background var(--transition-base);
+}
+
+.no_data_retry_btn:hover {
+    background: var(--color-brand-primary-dark);
+}
+
+
+/* =============================================================================
+   9. CACHE DIAGNOSTIC REPORT (รายงานตรวจสอบระบบแคช)
    ใช้แสดงผลตรวจสอบ localStorage/cache บนหน้าจอโดยตรง สำหรับอุปกรณ์ที่เปิด
    DevTools ไม่ได้ เช่น แท็บเล็ต/มือถือบางรุ่น
    ========================================================================= */
@@ -958,101 +1058,21 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     color: #d93025;
 }
 
-/* =============================================================================
-   13. DATA WARNING BANNER (แถบเตือนข้อมูลผิดปกติจาก Google Sheets)
-   ========================================================================= */
-.data_warning_banner {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    background: #fef9c3;
-    border: 1px solid #fde047;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.data_warning_icon {
-    font-size: 16px;
-    line-height: 1.4;
-    flex-shrink: 0;
-}
-
-.data_warning_text_group {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.data_warning_headline {
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
-    color: #854d0e;
-}
-
-.data_warning_reason_line {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: #92700e;
-}
 
 /* =============================================================================
-   14. NO DATA BOX (กรณีไม่มีข้อมูลใดๆ เลย ไม่มีแคชสำรอง)
+   10. UPDATE NOTIFY BUTTON & BUBBLE (แจ้งเตือนอัปเดตเวอร์ชันแอป/ข้อมูล Google Sheet)
+   ควบคุมโดย js/data-service.js เท่านั้น ปุ่มลอยมุมขวาล่างของจอ
+
+   หมายเหตุ (จากการตรวจสอบร่วมกับผู้ใช้งานระบบ): บล็อกนี้มีรูปแบบโครงสร้างคล้ายกับ
+   .user_notify_bubble ใน css/auth.css (กลไกคลี่/ยุบด้วย clip-path, โครง viewport/track
+   สำหรับ marquee, โหมด is-static) โดยเจตนา แต่ทั้งสองเป็นคนละระบบที่แยกจากกันจริง:
+   - บล็อกนี้ (.update_notify_btn/.update_notify_bubble) ควบคุมโดย js/data-service.js
+     ใช้แจ้งเตือนอัปเดตเวอร์ชันแอป/ข้อมูล Google Sheet เท่านั้น
+   - .user_notify_bubble (ใน css/auth.css) ควบคุมโดย js/user-notify.js
+     ใช้แจ้งเตือนผู้ใช้ตามสถานะบัญชีจาก data/notify.json เท่านั้น
+   จึงตั้งใจ "ไม่รวม" เป็น base class เดียวกัน เพื่อไม่ต้องแก้ไข js/user-notify.js
+   และ js/data-service.js ทั้งสองไฟล์ยังคงแยก selector/ตัวแปร CSS ของตัวเองเหมือนเดิม
    ========================================================================= */
-.no_data_box {
-    background: var(--color-surface-card);
-    border: 1px solid var(--color-border-default);
-    border-radius: 6px;
-    box-shadow: var(--shadow-table-card);
-    padding: 60px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 6px;
-}
-
-.no_data_icon {
-    font-size: 42px;
-    margin-bottom: 6px;
-}
-
-.no_data_title {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-heading);
-}
-
-.no_data_subtitle {
-    font-size: var(--font-size-base);
-    color: var(--color-text-muted);
-    margin-bottom: 14px;
-}
-
-.no_data_retry_btn {
-    background: var(--color-brand-primary);
-    color: var(--color-text-on-brand);
-    border: none;
-    border-radius: 6px;
-    padding: 8px 22px;
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-semibold);
-    font-family: inherit;
-    cursor: pointer;
-    transition: background var(--transition-base);
-}
-
-.no_data_retry_btn:hover {
-    background: var(--color-brand-primary-dark);
-}
-
-
-/* -------------------------------------------------------------------
-   ปุ่มแจ้งเตือนอัปเดตข้อมูลใหม่ (Update Notify Button)
-   + กล่องข้อความสีน้ำเงินที่คลี่ออกทางซ้ายของปุ่ม (Update Notify Bubble)
-   ------------------------------------------------------------------- */
 .update_notify_btn {
     position: fixed;
     bottom: 24px;
@@ -1181,8 +1201,8 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 
 
 /* =============================================================================
-   15. ABOUT DEVELOPER MODAL (Popup ข้อมูลผู้พัฒนา — เปิดจากข้อความ "mr.pairot")
-   ต่อท้าย components.css — ใช้ตัวแปรจาก variables.css เพื่อให้เข้าธีมเดิมของระบบ
+   11. ABOUT DEVELOPER MODAL (Popup ข้อมูลผู้พัฒนา — เปิดจากข้อความ "mr.pairot")
+   ใช้ตัวแปรจาก variables.css เพื่อให้เข้าธีมเดิมของระบบ
    ========================================================================= */
 
 /* จุดคลิก "mr.pairot" ใต้ Footer */
@@ -1361,11 +1381,11 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 
 .dev-line-btn {
     color: #ffffff;
-    background: #06c755; /* สีทางการของ LINE */
+    background: var(--color-line-brand); /* สีทางการของ LINE (ตัวแปรกลาง — เดิม hardcode #06c755) */
 }
 
 .dev-line-btn:hover {
-    background: #05a648;
+    background: var(--color-line-brand-hover);
 }
 
 /* กล่องวัตถุประสงค์โครงการ (Auto-Scroll) */
@@ -1545,6 +1565,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 
 /* =============================================================================
    12. SESSION MANAGEMENT MODAL & CARDS
+   (เดิมเลข "12" ซ้ำกับ "Cache Diagnostic Report" — แก้ไขให้เป็นเลขต่อเนื่องไม่ซ้ำแล้ว)
    ========================================================================= */
 .session_modal_box {
     max-width: 480px;
@@ -1560,7 +1581,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--color-border-default, #cbd5e1);
+    border-bottom: 1px solid var(--color-border-default);
     padding-bottom: 12px;
     margin-bottom: 14px;
 }
@@ -1599,7 +1620,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 
 .session_card {
     background: #f8fafc;
-    border: 1px solid var(--color-border-default, #cbd5e1);
+    border: 1px solid var(--color-border-default);
     border-radius: 8px;
     padding: 12px 14px;
     display: flex;
@@ -1689,7 +1710,7 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 }
 
 /* =============================================================================
-   16. SWEETALERT2 Z-INDEX OVERRIDE (กันไม่ให้ถูกบังโดย session modal / about modal)
+   13. SWEETALERT2 Z-INDEX OVERRIDE (กันไม่ให้ถูกบังโดย session modal / about modal)
    ========================================================================= */
 #sessionInfoModal {
     z-index: 900 !important;
