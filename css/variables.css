@@ -51,6 +51,10 @@
     --color-brand-primary-soft-bg: #eff6ff;
     --color-brand-primary-soft-border: #3b82f6;
 
+    /* สีแบรนด์ LINE (ใช้ซ้ำหลายจุด: ปุ่ม LINE Login, avatar ขอบ, ปุ่มติดต่อผู้พัฒนา) */
+    --color-line-brand: #06C755;
+    --color-line-brand-hover: #05b04c;
+
     /* -------------------------------------------------------------------
        1.3 สี — ประเภทเอกสาร (Document Type Accents: RFA / RFI / Letter)
        ------------------------------------------------------------------- */
