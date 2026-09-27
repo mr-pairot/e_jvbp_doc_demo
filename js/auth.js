@@ -4,12 +4,20 @@
 // [แก้ไขรอบก่อนหน้า] checkBackendAuth_() ถูกห่อด้วย Web Locks API (navigator.locks) เพื่อป้องกัน
 // การยิง login_auth ซ้ำซ้อนข้ามแท็บ/หน้าต่างของ origin เดียวกัน — ดูคอมเมนต์ // [FIX]
 //
-// [แก้ไขรอบนี้] เพิ่ม flow ตรวจสอบสถานะการเป็นเพื่อน LINE OA สำหรับผู้ใช้สถานะ NotFound:
+// [แก้ไขรอบก่อนหน้า] เพิ่ม flow ตรวจสอบสถานะการเป็นเพื่อน LINE OA สำหรับผู้ใช้สถานะ NotFound:
 //   - Guest Mode มีสิทธิ์เหนือกว่า Follow Page เสมอ (แสดง Follow Page เฉพาะตอน Guest Mode หมดอายุแล้ว)
 //   - ถ้ายังไม่เป็นเพื่อน -> บังคับแสดง Follow Page ก่อน
 //   - ถ้าเป็นเพื่อนแล้ว -> ให้เป็นไปตามเกณฑ์ผู้ใช้ login LINE แล้ว (เปิด Registration Modal)
 //   - เมนู "ลงทะเบียนเข้าใช้" ใน Guest Mode จะสลับเป็นลิงก์เพิ่มเพื่อนถ้ายังไม่เป็นเพื่อน
 //   ดูคอมเมนต์ // [เพิ่ม] ทุกจุดที่เกี่ยวข้อง
+//
+// [แก้ไขรอบนี้] ย้าย showAlert()/showConfirm() มาไว้ที่ไฟล์นี้ (เดิมอยู่ใน config.js)
+//   เหตุผล: หน้า Login/Error/Follow Page และ Register Modal (กรณี Guest Mode หมดอายุ
+//   ก่อน login สำเร็จ) ยังไม่ได้โหลด config.js (โหลดผ่าน loadAppAssets() ตอน showApp()
+//   เท่านั้น) แต่ auth.js โหลดก่อนเสมอไม่ว่าจะอยู่หน้าไหน จึงย้ายมาไว้ที่นี่เพื่อให้
+//   เรียกใช้ได้แน่นอนทุกจุด พร้อมแทนที่ alert() เดิมทั้งหมดด้วย showAlert() ที่เลือก
+//   icon ให้เหมาะกับบริบท (validation -> warning, ปัญหาระบบ/เครือข่าย -> error,
+//   แจ้งข้อมูลทั่วไป -> info) ดูคอมเมนต์ // [เพิ่ม-Alert] ทุกจุดที่เกี่ยวข้อง
 
 const AUTH_CONFIG = {
     liffId: '2007032148-vWobwLNE', // Demo 
@@ -57,6 +65,51 @@ const APP_ASSETS = {
         'js/user-notify.js'
     ]
 };
+
+// ---------------------------------------------------------------------------
+// [เพิ่ม-Alert] Alert / Confirm Helpers (ย้ายมาจาก config.js)
+// ---------------------------------------------------------------------------
+// ใช้แทน alert()/confirm() ของเบราว์เซอร์ทั้งระบบ ด้วย SweetAlert2 (โหลดแบบไม่มี
+// เงื่อนไขใน index.html จึงพร้อมใช้งานตั้งแต่หน้า splash/login/error/follow แล้ว)
+// ถ้าโหลด SweetAlert2 ไม่สำเร็จ (เช่น เน็ตหลุด) จะ fallback ไปใช้ alert()/confirm()
+// ปกติของเบราว์เซอร์แทน เพื่อไม่ให้ผู้ใช้ไม่เห็นข้อความแจ้งเตือนเลย
+async function showAlert(message, icon = 'info', title = 'แจ้งเตือน') {
+    if (typeof window.Swal !== "undefined") {
+        await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon, // 'success', 'error', 'warning', 'info', 'question'
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#3b82f6',
+            heightAuto: false
+        });
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        alert(message);
+    }
+}
+
+async function showConfirm(message, title = 'ยืนยัน', confirmText = 'ตกลง', cancelText = 'ยกเลิก', icon = 'warning') {
+    if (typeof window.Swal !== "undefined") {
+        const result = await window.Swal.fire({
+            title: title,
+            text: message,
+            icon: icon,
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            confirmButtonColor: '#dc2626', // สีแดง (ใช้กับ action สำคัญเช่น ออกจากระบบ)
+            cancelButtonColor: '#64748b',  // สีเทา
+            reverseButtons: true,
+            focusCancel: true,
+            heightAuto: false
+        });
+        return result.isConfirmed;
+    } else {
+        // Fallback กรณีโหลด SweetAlert ไม่สำเร็จ
+        return window.confirm(message);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // State Guards
@@ -244,18 +297,12 @@ if (ui.recheckFriendBtn) {
             }
             ui.recheckFriendBtn.disabled = false;
             ui.recheckFriendBtn.innerText = originalText;
-            const msg = 'ยังไม่พบการเพิ่มเพื่อน กรุณากดปุ่ม "เพิ่มเพื่อน LINE OA" แล้วลองตรวจสอบอีกครั้ง';
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'ยังไม่พบการเพิ่มเพื่อน',
-                    text: msg,
-                    confirmButtonText: 'รับทราบ',
-                    confirmButtonColor: '#0d6efd'
-                });
-            } else {
-                alert(msg);
-            }
+            // [เพิ่ม-Alert] แจ้งข้อมูลทั่วไป (ยังไม่พบการเพิ่มเพื่อน) -> icon: info
+            await showAlert(
+                'ยังไม่พบการเพิ่มเพื่อน กรุณากดปุ่ม "เพิ่มเพื่อน LINE OA" แล้วลองตรวจสอบอีกครั้ง',
+                'info',
+                'ยังไม่พบการเพิ่มเพื่อน'
+            );
         } catch (err) {
             console.warn('ตรวจสอบสถานะเพื่อนล้มเหลว:', err);
             // เผื่อ error ไม่คาดคิด ให้ reload กลับไปเริ่ม flow ใหม่ตามพฤติกรรมเดิม
@@ -764,7 +811,9 @@ async function backgroundVerify(cachedUser = null) {
 // ---------------------------------------------------------------------------
 // 5. Logout & Cache Clearing
 // ---------------------------------------------------------------------------
-function clearLocalSessionAndRedirect_(message) {
+// [แก้ไข] เปลี่ยนเป็น async function เพื่อ await showAlert() ก่อน reload
+// (ไม่งั้นข้อความจะโผล่มาพร้อมหน้ารีโหลดพอดี ผู้ใช้อ่านไม่ทัน)
+async function clearLocalSessionAndRedirect_(message) {
     clearCachedUser();
     try {
         if (typeof openCacheDB === 'function') {
@@ -778,7 +827,8 @@ function clearLocalSessionAndRedirect_(message) {
     if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
         try { liff.logout(); } catch (e) {}
     }
-    if (message) alert(message);
+    // [เพิ่ม-Alert] แจ้งเตือนสิทธิ์/session ถูกยกเลิก -> icon: warning
+    if (message) await showAlert(message, 'warning', 'แจ้งเตือน');
     window.location.reload();
 }
 window.clearLocalSessionAndRedirect_ = clearLocalSessionAndRedirect_;
@@ -853,7 +903,8 @@ async function logoutCurrentSession_() {
         
     } catch (error) {
         console.error('Logout error:', error);
-        alert('ไม่สามารถบันทึกการออกจากระบบได้ แต่ข้อมูลในเครื่องถูกลบแล้ว');
+        // [เพิ่ม-Alert] ออกจากระบบสำเร็จบางส่วน (ข้อมูลในเครื่องถูกลบแล้ว) -> icon: warning
+        await showAlert('ไม่สามารถบันทึกการออกจากระบบได้ แต่ข้อมูลในเครื่องถูกลบแล้ว', 'warning', 'เกิดข้อผิดพลาด');
         clearCachedUser();
         window.location.reload();
         return false;
@@ -1205,7 +1256,8 @@ function setupRegisterModalEvents() {
             try {
                 setPendingFlag_(REGISTRATION_PENDING_KEY);
                 if (typeof liff === 'undefined') {
-                    alert('ไม่พบ LINE LIFF SDK');
+                    // [เพิ่ม-Alert] ปัญหาระบบ (ไม่พบ LIFF SDK) -> icon: error
+                    await showAlert('ไม่พบ LINE LIFF SDK', 'error', 'เกิดข้อผิดพลาด');
                     return;
                 }
                 if (!liff.isLoggedIn()) {
@@ -1247,7 +1299,8 @@ function setupRegisterModalEvents() {
                 }
             } catch (err) {
                 console.error('Line login for reg error:', err);
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE: ' + (err.message || err));
+                // [เพิ่ม-Alert] ปัญหาการเชื่อมต่อ LINE -> icon: error
+                await showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE: ' + (err.message || err), 'error', 'เชื่อมต่อ LINE ไม่สำเร็จ');
             } finally {
                 lineConnectBtn.disabled = false;
             }
@@ -1286,25 +1339,29 @@ async function submitRegistration() {
     const otherOrgInput = document.getElementById('regOtherOrgInput');
 
     if (!currentRegisterProfile || !currentRegisterProfile.userId) {
-        alert('กรุณาเชื่อมต่อบัญชี LINE ก่อนลงทะเบียน');
+        // [เพิ่ม-Alert] ข้อมูลไม่ครบถ้วน (ยังไม่เชื่อมต่อ LINE) -> icon: warning
+        await showAlert('กรุณาเชื่อมต่อบัญชี LINE ก่อนลงทะเบียน', 'warning', 'ข้อมูลไม่ครบถ้วน');
         return;
     }
 
     const nickname = (nicknameInput ? nicknameInput.value : '').trim();
     if (!nickname) {
-        alert('กรุณากรอกชื่อจริงหรือชื่อเล่น');
+        // [เพิ่ม-Alert] ข้อมูลไม่ครบถ้วน (ไม่กรอกชื่อ) -> icon: warning
+        await showAlert('กรุณากรอกชื่อจริงหรือชื่อเล่น', 'warning', 'ข้อมูลไม่ครบถ้วน');
         return;
     }
 
     let finalOrg = (orgSelect ? orgSelect.value : '').trim();
     if (!finalOrg) {
-        alert('กรุณาเลือกหน่วยงาน');
+        // [เพิ่ม-Alert] ข้อมูลไม่ครบถ้วน (ไม่เลือกหน่วยงาน) -> icon: warning
+        await showAlert('กรุณาเลือกหน่วยงาน', 'warning', 'ข้อมูลไม่ครบถ้วน');
         return;
     }
     if (finalOrg === 'อื่นๆ(ระบุ)') {
         finalOrg = (otherOrgInput ? otherOrgInput.value.trim() : '');
         if (!finalOrg) {
-            alert('กรุณาระบุชื่อหน่วยงาน');
+            // [เพิ่ม-Alert] ข้อมูลไม่ครบถ้วน (ไม่ระบุชื่อหน่วยงาน) -> icon: warning
+            await showAlert('กรุณาระบุชื่อหน่วยงาน', 'warning', 'ข้อมูลไม่ครบถ้วน');
             return;
         }
     }
@@ -1406,7 +1463,8 @@ async function submitRegistration() {
         }
     } catch (err) {
         console.error('Submit registration error:', err);
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ลงทะเบียน: ' + (err.message || err));
+        // [เพิ่ม-Alert] ปัญหาการเชื่อมต่อเซิร์ฟเวอร์ -> icon: error
+        await showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ลงทะเบียน: ' + (err.message || err), 'error', 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');
     } finally {
         if (submitBtn) {
             submitBtn.innerText = 'ลงทะเบียน';
