@@ -424,8 +424,8 @@ async function refreshAuthState(reason) {
                         return;
                     }
 
-                    // เชื่อมต่อ LINE สำเร็จแล้ว แต่ยังไม่ได้รับอนุมัติ -> เลื่อนไปหน้ากรอกฟอร์ม (Step 2) อัตโนมัติ
-                    openRegisterModal(profile);
+                    // เชื่อมต่อ LINE สำเร็จแล้ว แต่ยังไม่ Active -> เช็คเพื่อนก่อน แล้วค่อยเลื่อนไปฟอร์ม (Step 2)
+                    await routeNonActiveAfterLineLogin_(profile, authResult);
                 }
             }
             // ยังไม่ได้ Login (ผู้ใช้กดยกเลิก/ปิดหน้าต่าง LINE) -> คง Modal ไว้ที่ Step 1 เหมือนเดิม ไม่ปิดเอง
@@ -525,6 +525,71 @@ async function checkBackendAuth_(profile) {
     return await doFetch();
 }
 
+// ---------------------------------------------------------------------------
+// [เพิ่ม-Login] จุดตัดสินใจกลางหลัง login LINE สำเร็จ แต่ backend ยังไม่ตอบ Active
+// ---------------------------------------------------------------------------
+// ลำดับที่ถูกต้อง: login LINE -> เช็ค backend (Active? เข้าระบบเลย) -> ถ้ายังไม่ Active
+// ค่อยเช็คสถานะเพื่อน (เชื่อถือได้แล้วเพราะ login LIFF แล้ว) ->
+//   - ยังไม่เป็นเพื่อน: Guest Mode ยังไม่หมดอายุ -> popup ชวนเพิ่มเพื่อน (คงอยู่ในแอป)
+//                       Guest Mode หมดอายุ       -> Follow Page
+//   - เป็นเพื่อนแล้ว: เปิดฟอร์มลงทะเบียน Step 2
+// ข้ามการเช็คเพื่อนถ้า status === 'Pending' (เคยลงทะเบียนแล้ว รออนุมัติ)
+// คืน true ถ้าเปิดฟอร์มลงทะเบียน, false ถ้าถูกกันไว้ที่ขั้นเพิ่มเพื่อน
+async function routeNonActiveAfterLineLogin_(profile, authResult) {
+    const isPendingApproval = !!(authResult && authResult.status === 'Pending');
+
+    if (!isPendingApproval) {
+        let isFriend = false;
+        if (!(authResult && authResult.needFollow)) {
+            isFriend = await checkAndStoreFriendshipStatus_();
+        } else {
+            setLineFriendStatus_(false); // backend แจ้งชัดเจนว่ายังไม่เป็นเพื่อน
+        }
+
+        if (!isFriend) {
+            currentRegisterProfile = null;
+            window.__pendingLineProfile = null;
+            clearPendingFlag_(REGISTRATION_PENDING_KEY);
+            closeRegisterModal();
+
+            if (isGuestModeValid()) {
+                await promptAddFriendInGuest_();
+            } else {
+                showFollowPrompt('เพื่อใช้งานระบบ กรุณาเพิ่มเพื่อนบัญชีทางการก่อน แล้วกดตรวจสอบอีกครั้ง');
+            }
+            return false;
+        }
+    }
+
+    window.__pendingLineProfile = profile;
+    openRegisterModal(profile);
+    return true;
+}
+
+// popup ชวนเพิ่มเพื่อนสำหรับ Guest (ไม่บังคับออกจากแอป ผู้ใช้กลับมากดลงทะเบียนใหม่ได้)
+async function promptAddFriendInGuest_() {
+    if (typeof window.Swal === 'undefined') {
+        await showAlert('กรุณาเพิ่มเพื่อน LINE OA (Admin JVBP) ก่อนลงทะเบียน แล้วกดลงทะเบียนอีกครั้ง', 'info', 'กรุณาเพิ่มเพื่อนก่อน');
+        window.open(LINE_OA_ADD_FRIEND_URL, '_blank', 'noopener');
+        return;
+    }
+    const result = await window.Swal.fire({
+        icon: 'info',
+        title: 'กรุณาเพิ่มเพื่อน LINE OA ก่อน',
+        text: 'เพิ่มเพื่อนบัญชี Admin JVBP แล้วกดปุ่ม "ลงทะเบียนเข้าใช้" อีกครั้งเพื่อดำเนินการต่อ',
+        showCancelButton: true,
+        confirmButtonText: 'เพิ่มเพื่อน LINE OA',
+        cancelButtonText: 'ปิด',
+        confirmButtonColor: '#06C755',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+        heightAuto: false
+    });
+    if (result.isConfirmed) {
+        window.open(LINE_OA_ADD_FRIEND_URL, '_blank', 'noopener');
+    }
+}
+
 async function initApp() {
     if (authInitializing) return;
     authInitializing = true;
@@ -611,7 +676,8 @@ async function initApp() {
                         ui.app.classList.add('is-hidden');
                         ui.login.classList.remove('is-hidden');
                     }
-                    openRegisterModal(profile);
+                    // [แก้ไข-Login] เช็คเพื่อนหลัง login ก่อนเปิดฟอร์มเสมอ
+                    await routeNonActiveAfterLineLogin_(profile, authResult);
                     return;
                 }
 
@@ -994,16 +1060,13 @@ function initProfileUI() {
             if (registerSubText) registerSubText.style.display = 'none';
         }
 
-        // [เพิ่ม] สลับเนื้อหาปุ่ม "ลงทะเบียนเข้าใช้" ตามสถานะเพื่อน LINE OA
-        // ยังไม่เป็นเพื่อน -> แสดงเป็นลิงก์เพิ่มเพื่อนแทน (พร้อมรูป+ชื่อ Admin JVBP)
-        // เป็นเพื่อนแล้ว -> แสดงเมนูลงทะเบียนแบบเดิม
-        const isFriendNow = getLineFriendStatus_();
+        // [แก้ไข-Login] แสดงเมนู "ลงทะเบียนเข้าใช้" แบบปกติเสมอ (ไม่สลับเป็นลิงก์เพิ่มเพื่อนแล้ว)
+        // เพราะการกดปุ่มนี้ต้องพาไป Register Modal -> "เชื่อมต่อด้วย LINE" ก่อน
+        // ส่วนการเตือนให้เพิ่มเพื่อนจะเกิดหลัง login แล้วเท่านั้น (ถ้าจำเป็น)
         const regBtnNormal = document.getElementById('registerBtnContent_normal');
         const regBtnAddFriend = document.getElementById('registerBtnContent_addFriend');
-        if (regBtnNormal && regBtnAddFriend) {
-            regBtnNormal.classList.toggle('is-hidden', !isFriendNow);
-            regBtnAddFriend.classList.toggle('is-hidden', isFriendNow);
-        }
+        if (regBtnNormal) regBtnNormal.classList.remove('is-hidden');
+        if (regBtnAddFriend) regBtnAddFriend.classList.add('is-hidden');
     } else {
         // --- สถานะ Registered User ---
         if (profileImg && cachedUser.pictureUrl) profileImg.src = cachedUser.pictureUrl;
@@ -1066,12 +1129,11 @@ function initProfileUI() {
         btnOpenRegisterModal.addEventListener('click', () => {
             dropdown.classList.remove('is-active');
 
-            // [เพิ่ม] ถ้ายังไม่เป็นเพื่อน LINE OA -> เปิดลิงก์เพิ่มเพื่อนแทนการเปิด Modal ลงทะเบียน
-            if (!getLineFriendStatus_()) {
-                window.open(LINE_OA_ADD_FRIEND_URL, '_blank', 'noopener');
-                return;
-            }
-
+            // [แก้ไข-Login] ตัด gate "ต้องเป็นเพื่อนก่อนถึงจะเปิด Modal" ออก
+            // เหตุผล: liff.getFriendship() เชื่อถือได้เฉพาะหลัง login LIFF แล้วเท่านั้น
+            // ถ้าเช็คก่อน login ค่าจะเป็น false ตลอด ทำให้ผู้ใช้ Guest ไม่มีทางไปถึงปุ่ม
+            // "เชื่อมต่อด้วย LINE" (ปุ่ม login จริง) ได้เลย แม้แอดมินอนุมัติแล้วก็ตาม
+            // การเช็คเพื่อนย้ายไปทำหลัง login แล้วแทน ดู routeNonActiveAfterLineLogin_()
             const regStatus = localStorage.getItem(REGISTRATION_STATUS_KEY);
             if (regStatus === 'pending') {
                 const rawInfo = localStorage.getItem('bpnp_reg_info');
@@ -1295,7 +1357,8 @@ function setupRegisterModalEvents() {
                         }
                         return;
                     }
-                    openRegisterModal(profile);
+                    // [แก้ไข-Login] ยังไม่ Active -> เช็คเพื่อน (login แล้ว เชื่อถือได้) ก่อนเปิดฟอร์ม
+                    await routeNonActiveAfterLineLogin_(profile, authResult);
                 }
             } catch (err) {
                 console.error('Line login for reg error:', err);
