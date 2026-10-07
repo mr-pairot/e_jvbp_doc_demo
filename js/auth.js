@@ -33,10 +33,10 @@ const LINE_FRIEND_STATUS_KEY = 'bpnp_is_line_friend'; // 'true' | 'false' — �
 
 // ---------------------------------------------------------------------------
 // Guest Mode Configuration
-// กำหนดวันและเวลาสิ้นสุด Guest Mode (1 ตุลาคม 2569 เวลา 12:00 น.)
+// กำหนดวันและเวลาสิ้นสุด Guest Mode (15 ตุลาคม 2569 เวลา 12:00 น.)
 // ---------------------------------------------------------------------------
 const GUEST_CONFIG = {
-    expiryDate: window.__GUEST_EXPIRY_DATE || '2026-10-01T12:00:00+07:00',
+    expiryDate: window.__GUEST_EXPIRY_DATE || '2026-10-15T12:00:00+07:00',
     guestName: 'Guest',
     guestAvatar: 'img/guest.svg',
     guestRole: 'Guest'
