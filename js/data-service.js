@@ -1142,6 +1142,19 @@ function hasTabWithMoreRowsThanBaseline(liveData, baselineRecord) {
     });
 }
 
+// ตรวจว่า tab ใดมีแถวลดลงจาก baseline (แม้แค่ 1 แถว)
+// ถ้าใช่ แสดงว่า GAS กำลังอัปเดต sheet อยู่ → ข้อมูลยังไม่สมบูรณ์ → ไม่ควร apply
+function hasAnyTabDecreased(liveData, baselineRecord) {
+    if (!baselineRecord) return false;
+    const tabs = ["rfa", "rfi", "letter"];
+    return tabs.some(tab => {
+        const oldCount = (baselineRecord[tab] || []).length;
+        const newCount = (liveData[tab] || []).length;
+        // ไม่นับ tab ที่ baseline ว่างเปล่า (ยังไม่มีข้อมูลเดิม)
+        return oldCount > 0 && newCount < oldCount;
+    });
+}
+
 async function applyPendingUpdate() {
     // เวอร์ชันแอปมีความสำคัญกว่าข้อมูล: reload เพื่อรับ JavaScript/CSS ชุดใหม่ก่อน
     if (pendingAppVersion) {
@@ -1153,6 +1166,24 @@ async function applyPendingUpdate() {
     }
 
     if (!pendingUpdateData) return;
+
+    // ตรวจสอบข้อมูลซ้ำก่อน apply
+    // ป้องกันกรณี GAS ยังอัปเดต sheet ไม่เสร็จในช่วงที่ผู้ใช้รอกดปุ่ม
+    const baseline = await getRawCacheRecord();
+    const revalidation = validateLiveDataAgainstBaseline(pendingUpdateData, baseline);
+    const anyDecreased = hasAnyTabDecreased(pendingUpdateData, baseline);
+
+    if (!revalidation.valid || anyDecreased) {
+        // ข้อมูลยังไม่สมบูรณ์ → ยกเลิก apply แจ้งเตือนผู้ใช้แทน
+        pendingUpdateData = null;
+        hideUpdateNotifyButton();
+        const reasons = anyDecreased
+            ? ["ข้อมูลบางชีทยังอัปเดตไม่เสร็จ ระบบจะรอตรวจสอบรอบถัดไปโดยอัตโนมัติ"]
+            : revalidation.reasons;
+        showDataWarningBanner(reasons);
+        return;
+    }
+
     hideUpdateNotifyButton();
 
     DOCUMENTS_BY_TAB.rfa = pendingUpdateData.rfa;
@@ -1210,7 +1241,13 @@ async function performBackgroundCheck() {
         const validation = validateLiveDataAgainstBaseline(liveResult.data, baselineRecord);
 
         if (validation.valid) {
-            if (hasTabWithMoreRowsThanBaseline(liveResult.data, baselineRecord)) {
+            // ตรวจว่า tab ใดมีแถวลดลงจาก baseline ก่อน (บ่งชี้ว่า GAS กำลังอัปเดต sheet อยู่)
+            // ถ้าใช่ → ข้อมูลยังไม่สมบูรณ์ → ไม่ show notify / ไม่ apply → รอรอบถัดไป
+            if (hasAnyTabDecreased(liveResult.data, baselineRecord)) {
+                showDataWarningBanner([
+                    "ตรวจพบข้อมูลบางชีทมีจำนวนรายการลดลงชั่วคราว (อาจกำลังอัปเดตอยู่) ระบบจะรอตรวจสอบรอบถัดไป"
+                ]);
+            } else if (hasTabWithMoreRowsThanBaseline(liveResult.data, baselineRecord)) {
                 pendingUpdateData = liveResult.data;
                 showUpdateNotifyButton();
             } else {
@@ -1292,9 +1329,17 @@ async function initAppFlow(forceRefresh = false) {
     const baselineRecord = await getRawCacheRecord(); 
 
     if (liveResult.success && liveResult.totalRows > 0) {
-        const validation = validateLiveDataAgainstBaseline(liveResult.data, baselineRecord);
+        // เมื่อ forceRefresh=true ให้ข้ามการเปรียบกับ baseline เดิม
+        // เพราะ cache อาจเสียอยู่ (มีข้อมูลผิดบันทึกไว้) → ใช้ live data ตรงๆ
+        // แต่ยังตรวจ hasAnyTabDecreased เพื่อป้องกันกรณี sheet กำลัง update อยู่จริง
+        const skipBaseline = forceRefresh;
+        const validation = skipBaseline
+            ? { valid: true, reasons: [] }
+            : validateLiveDataAgainstBaseline(liveResult.data, baselineRecord);
 
-        if (validation.valid) {
+        const anyDecreased = hasAnyTabDecreased(liveResult.data, baselineRecord);
+
+        if ((validation.valid && !anyDecreased) || skipBaseline) {
             DOCUMENTS_BY_TAB.rfa = liveResult.data.rfa;
             DOCUMENTS_BY_TAB.rfi = liveResult.data.rfi;
             DOCUMENTS_BY_TAB.letter = liveResult.data.letter;
@@ -1312,7 +1357,10 @@ async function initAppFlow(forceRefresh = false) {
             DOCUMENTS_BY_TAB.letter = baselineRecord.letter || [];
 
             updateCacheStatusUI(formatTimestampTo24H(baselineRecord.timestamp));
-            showDataWarningBanner(validation.reasons);
+            const reasons = anyDecreased
+                ? ["ตรวจพบข้อมูลบางชีทมีจำนวนรายการลดลงชั่วคราว (อาจกำลังอัปเดตอยู่) ระบบแสดงข้อมูลล่าสุดที่เคยบันทึกไว้แทน", ...validation.reasons]
+                : validation.reasons;
+            showDataWarningBanner(reasons);
             hideNoDataState();
             appHasEverLoadedData = true;
             startApp(currentTab || "rfa");
