@@ -16,8 +16,8 @@ const APP_CACHE_VERSION = window.__APP_VERSION || "260920.02";
 // ใช้ตรวจหาเวอร์ชันใหม่จาก server โดยไม่พึ่ง JavaScript cache ของ browser
 const APP_VERSION_MANIFEST_URL = "version.json";
 
-// Guest Mode Expiry Configuration (1 ตุลาคม 2569 เวลา 12:00 น.)
-const GUEST_EXPIRY_DATE = window.__GUEST_EXPIRY_DATE || "2026-10-01T12:00:00+07:00";
+// Guest Mode Expiry Configuration (16 ตุลาคม 2569 เวลา 12:00 น.)
+const GUEST_EXPIRY_DATE = window.__GUEST_EXPIRY_DATE || "2026-10-16T12:00:00+07:00";
 
 // ---------------------------------------------------------------------------
 // URL Hash State (อ่าน/เขียนแท็บ + คำค้นหา + ตัวกรองทั้งหมดผ่าน URL hash)
