@@ -139,7 +139,6 @@
     justify-content: center;
     z-index: 2;
 }
-/* ขอบหมุนวน (conic-gradient)  */
 .user_profile_avatar_wrap::before {
     content: '';
     position: absolute;
@@ -157,11 +156,6 @@
     animation: profile_ring_spin 3s linear infinite;
     z-index: -1;
     box-shadow: 0 0 8px rgba(250, 250, 250, 1);
-}
-/* สถานะ active: วงแหวนขยายออกและมองเห็น */
-.user_profile_area.is-open .user_profile_avatar_wrap::before {
-    inset: -4px;
-    opacity: 1;
 }
 @keyframes profile_ring_spin {
     to { transform: rotate(360deg); }
