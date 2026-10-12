@@ -139,6 +139,33 @@
     justify-content: center;
     z-index: 2;
 }
+/* ขอบหมุนวน (conic-gradient) — ซ่อนไว้ก่อน แสดงเมื่อเมนูเปิด */
+.user_profile_avatar_wrap::before {
+    content: '';
+    position: absolute;
+    inset: 2px;                       /* เริ่มเล็ก (ซ่อน) */
+    border-radius: 50%;
+    background: conic-gradient(
+        from 0deg,
+        var(--color-brand-primary) 0%,
+        var(--color-brand-primary) 75%,
+        #ffffff 90%,
+        var(--color-brand-primary) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease, inset 0.25s ease;
+    animation: profile_ring_spin 3s linear infinite;
+    z-index: 0;
+}
+/* สถานะ active: วงแหวนขยายออกและมองเห็น */
+.user_profile_area.is-open .user_profile_avatar_wrap::before {
+    inset: -4px;
+    opacity: 1;
+}
+@keyframes profile_ring_spin {
+    to { transform: rotate(360deg); }
+}
+
 .user_profile_img {
     width: 38px;
     height: 38px;
