@@ -149,14 +149,14 @@
         from 0deg,
         var(--color-brand-primary) 0%,
         var(--color-brand-primary) 75%,
-        #fffffa 90%,
+        #fffafa 90%,
         var(--color-brand-primary) 100%
     );
     opacity: 1;
     transition: opacity 0.25s ease, inset 0.25s ease;
     animation: profile_ring_spin 3s linear infinite;
     z-index: -1;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
 }
 /* สถานะ active: วงแหวนขยายออกและมองเห็น */
 .user_profile_area.is-open .user_profile_avatar_wrap::before {
