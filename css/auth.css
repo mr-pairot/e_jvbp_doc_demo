@@ -156,7 +156,7 @@
     transition: opacity 0.25s ease, inset 0.25s ease;
     animation: profile_ring_spin 3s linear infinite;
     z-index: -1;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 8px rgba(250, 250, 250, 1);
 }
 /* สถานะ active: วงแหวนขยายออกและมองเห็น */
 .user_profile_area.is-open .user_profile_avatar_wrap::before {
