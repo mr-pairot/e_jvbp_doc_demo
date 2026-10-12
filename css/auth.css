@@ -143,7 +143,7 @@
 .user_profile_avatar_wrap::before {
     content: '';
     position: absolute;
-    inset: 2px;                       /* เริ่มเล็ก (ซ่อน) */
+    inset: -2px;                       /* เริ่มเล็ก (ซ่อน) */
     border-radius: 50%;
     background: conic-gradient(
         from 0deg,
@@ -155,7 +155,7 @@
     opacity: 0;
     transition: opacity 0.25s ease, inset 0.25s ease;
     animation: profile_ring_spin 3s linear infinite;
-    z-index: 0;
+    z-index: -1;
 }
 /* สถานะ active: วงแหวนขยายออกและมองเห็น */
 .user_profile_area.is-open .user_profile_avatar_wrap::before {
