@@ -139,11 +139,11 @@
     justify-content: center;
     z-index: 2;
 }
-/* ขอบหมุนวน (conic-gradient) — ซ่อนไว้ก่อน แสดงเมื่อเมนูเปิด */
+/* ขอบหมุนวน (conic-gradient)  */
 .user_profile_avatar_wrap::before {
     content: '';
     position: absolute;
-    inset: -2px;                       /* เริ่มเล็ก (ซ่อน) */
+    inset: -2px;            
     border-radius: 50%;
     background: conic-gradient(
         from 0deg,
@@ -156,6 +156,7 @@
     transition: opacity 0.25s ease, inset 0.25s ease;
     animation: profile_ring_spin 3s linear infinite;
     z-index: -1;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
 }
 /* สถานะ active: วงแหวนขยายออกและมองเห็น */
 .user_profile_area.is-open .user_profile_avatar_wrap::before {
