@@ -149,10 +149,10 @@
         from 0deg,
         var(--color-brand-primary) 0%,
         var(--color-brand-primary) 75%,
-        #ffffff 90%,
+        var(--color-brand-primary-violet) 90%,
         var(--color-brand-primary) 100%
     );
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.25s ease, inset 0.25s ease;
     animation: profile_ring_spin 3s linear infinite;
     z-index: -1;
