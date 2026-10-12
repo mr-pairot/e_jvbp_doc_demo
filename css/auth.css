@@ -143,7 +143,7 @@
 .user_profile_avatar_wrap::before {
     content: '';
     position: absolute;
-    inset: -2px;            
+    inset: -1px;            
     border-radius: 50%;
     background: conic-gradient(
         from 0deg,
