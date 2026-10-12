@@ -149,7 +149,7 @@
         from 0deg,
         var(--color-brand-primary) 0%,
         var(--color-brand-primary) 75%,
-        var(--color-brand-primary-violet) 90%,
+        #fffffa 90%,
         var(--color-brand-primary) 100%
     );
     opacity: 1;
