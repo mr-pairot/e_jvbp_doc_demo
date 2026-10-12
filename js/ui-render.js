@@ -1265,6 +1265,8 @@ async function openSessionInfoModal() {
     if (!modal || !listContainer) return;
 
     modal.classList.remove("is-hidden");
+    const wrapper = document.querySelector(".main_dashboard_wrapper");
+    if (wrapper) wrapper.classList.add("about-modal-open");
     listContainer.innerHTML = `<div class="session_loading">กำลังโหลดข้อมูลอุปกรณ์...</div>`;
 
     try {
@@ -1288,6 +1290,9 @@ window.openSessionInfoModal = openSessionInfoModal;
 function closeSessionInfoModal() {
     const modal = document.getElementById("sessionInfoModal");
     if (modal) modal.classList.add("is-hidden");
+    
+    const wrapper = document.querySelector(".main_dashboard_wrapper");
+    if (wrapper) wrapper.classList.remove("about-modal-open");
 }
 window.closeSessionInfoModal = closeSessionInfoModal;
 
