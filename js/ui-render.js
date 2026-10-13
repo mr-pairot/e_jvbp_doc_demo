@@ -1,4 +1,4 @@
-/* ui-render.js — ระบบสารบรรณอิเล็กทรอนิกส์
+/* ui-render.js — 20261013 0905
    การแสดงผลหน้าจอทั้งหมด: แท็บ, ดรอปดาวน์ตัวกรอง, ช่องค้นหา, ตารางเอกสาร,
    pagination และกราฟ (Pie/Donut + Bar)
 
@@ -551,7 +551,8 @@ function toggleSort() {
 }
 
 // สร้าง URL ที่ใช้เปิดจริงจาก documentUrl ซึ่งเป็นฟิลด์ที่ data-service.js เก็บไว้
-// - แปลงลิงก์ Google Drive แบบ "/view" ให้เป็น "/preview" (เพื่อเปิดแบบฝัง/ดูตรงๆ ได้)
+// - แปลงลิงก์ Google Drive (/file/d/ID/view, /file/d/ID/view?usp=sharing, /open?id=ID)
+//   ให้เป็น "/file/d/ID/preview" เพื่อฝังใน iframe (PDF Panel) ได้
 // - คืนค่า null ถ้าไม่มีลิงก์ที่ใช้งานได้จริง แทนที่จะปล่อยให้เป็น "#" ซึ่งกดแล้วไม่เปิดอะไรเลย
 function resolveDocumentUrl_(doc) {
     // documentUrl เป็นฟิลด์มาตรฐานของข้อมูลทุกแท็บ (RFA, RFI และ Letter)
@@ -561,11 +562,11 @@ function resolveDocumentUrl_(doc) {
     // ต้องเป็น http(s) URL จริงเท่านั้น กันค่าขยะ เช่น "-", "#", ช่องว่าง
     if (!raw || !/^https?:\/\//i.test(raw)) return null;
 
-    let url = raw;
-    if (url.includes('drive.google.com/file/d/') && url.includes('/view')) {
-        url = url.replace('/view', '/preview');
+    const driveMatch = raw.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/i);
+    if (driveMatch) {
+        return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
     }
-    return url;
+    return raw;
 }
 
 function renderTableBody() {
@@ -600,10 +601,11 @@ function renderTableBody() {
 
             // ใช้ URL และชื่อเรื่องชุดเดียวกันกับทุกคอลัมน์ที่เปิดเอกสารได้
             // (Letter In: เลขรับ, เลขหนังสือ และชื่อเรื่อง)
+            // เปิดผ่าน PDF Panel ในแอป (ไม่ใช้ target="_blank" เพื่อไม่ให้เด้งออกนอก PWA)
             const createDocumentLinkHTML = (safeText) => {
                 if (docUrl) {
                     const safeDocUrl = escapeHTML(docUrl);
-                    return `<a href="${safeDocUrl}" target="_blank" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="checkAuthInBackground(this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeText}</a>`;
+                    return `<a href="${safeDocUrl}" rel="noopener" class="doc_hyperlink_title btn-as-link" data-title="${safeTitle}" data-category="${doc.category}" onclick="return openDocInPanel(event, this)" title="คลิกเพื่อเปิด ${safeTitle}">${safeText}</a>`;
                 }
                 return `<span class="doc_hyperlink_title doc_hyperlink_title--disabled" title="${safeText}">${safeText}</span>`;
             };
@@ -1231,6 +1233,68 @@ window.checkAuthInBackground = async function(linkEl) {
     } catch (err) {
         console.error("Background auth check error:", err);
     }
+};
+
+// ---------------------------------------------------------------------------
+// PDF Panel (เปิดเอกสารในแอป ไม่เด้งออกนอก PWA)
+// - ฝังลิงก์ Google Drive (/preview) ใน iframe เต็มจอ
+// - ใช้ history.pushState/popstate เพื่อให้ปุ่ม Back ของเครื่องปิด panel แทนการออกจากแอป
+//   (pushState ด้วย URL เดิม จึงไม่ทำให้เกิด hashchange และไม่ชนกับ syncURLHash ที่ใช้ replaceState)
+// ---------------------------------------------------------------------------
+let pdfPanelEl = null;
+let pdfPanelOpen = false;
+
+function ensurePdfPanel_() {
+    if (pdfPanelEl) return pdfPanelEl;
+    pdfPanelEl = document.createElement("div");
+    pdfPanelEl.className = "pdf_panel";
+    pdfPanelEl.innerHTML = `
+        <div class="pdf_panel_bar">
+            <button type="button" class="pdf_panel_close">← กลับ</button>
+            <span class="pdf_panel_title"></span>
+            <a class="pdf_panel_external" target="_blank" rel="noopener">เปิดนอกแอป</a>
+        </div>
+        <iframe class="pdf_panel_frame" allow="autoplay"></iframe>`;
+    document.body.appendChild(pdfPanelEl);
+    pdfPanelEl.querySelector(".pdf_panel_close").addEventListener("click", closePdfPanel);
+    return pdfPanelEl;
+}
+
+function openPdfPanel(url, title) {
+    const panel = ensurePdfPanel_();
+    panel.querySelector(".pdf_panel_title").textContent = title || "";
+    panel.querySelector(".pdf_panel_external").href = url;
+    panel.querySelector("iframe").src = url;
+
+    panel.classList.add("open");
+    document.body.classList.add("pdf_panel_lock");
+    if (!pdfPanelOpen) {
+        pdfPanelOpen = true;
+        history.pushState({ pdfPanel: true }, "", window.location.href); // ให้ปุ่ม Back ปิด panel
+    }
+}
+
+function closePdfPanel() {
+    if (!pdfPanelOpen) return;
+    history.back(); // ไปปิดจริงใน popstate
+}
+
+function hidePdfPanel_() {
+    if (!pdfPanelEl) return;
+    pdfPanelEl.classList.remove("open");
+    pdfPanelEl.querySelector("iframe").src = "about:blank";
+    document.body.classList.remove("pdf_panel_lock");
+    pdfPanelOpen = false;
+}
+
+window.addEventListener("popstate", () => { if (pdfPanelOpen) hidePdfPanel_(); });
+
+window.openDocInPanel = function (event, linkEl) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey) return true; // ให้เปิดแท็บเองได้บนเดสก์ท็อป
+    event.preventDefault();
+    window.checkAuthInBackground(linkEl); // log + ตรวจสิทธิ์ทำงานเบื้องหลังเหมือนเดิม
+    openPdfPanel(linkEl.href, linkEl.dataset.title);
+    return false;
 };
 
 // ---------------------------------------------------------------------------
