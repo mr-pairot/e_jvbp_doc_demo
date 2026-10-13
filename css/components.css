@@ -16,6 +16,7 @@
      11. About Developer Modal
      12. Session Management Modal & Cards
      13. SweetAlert2 Z-index Override
+     14. PDF Panel
    ========================================================================= */
 
 /* =============================================================================
@@ -1723,4 +1724,67 @@ button.doc_hyperlink_title.btn-as-link:disabled {
     font-size: 0.7rem; 
     opacity: 0.4; 
     font-family: monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   14. PDF Panel 
+   --------------------------------------------------------------------------- */
+.pdf_panel {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    background: #fff;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pdf_panel.open {
+    display: flex;
+}
+
+.pdf_panel_bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.pdf_panel_close {
+    flex-shrink: 0;
+    border: 0;
+    background: #3b82f6;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.pdf_panel_title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.pdf_panel_external {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.pdf_panel_frame {
+    flex: 1;
+    width: 100%;
+    border: 0;
+}
+
+body.pdf_panel_lock {
+    overflow: hidden;
 }
