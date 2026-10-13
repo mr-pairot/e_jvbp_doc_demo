@@ -1859,12 +1859,12 @@ body.pdf_panel_lock {
     margin-left: 0;       /* ยกเลิก margin-left:auto ของปุ่มต้นแบบ */
     flex-shrink: 0;
     padding: 4px;         /* เดิม 2px */
-    font-size: var(--font-size-base);   /* เดิม 12.5px */
+    font-size: var(--font-size-sm);   
 }
 
 .pdf_panel_copy .copy_search_link_icon {
-    width: 28px;          /* เดิม 18px */
-    height: 28px;
+    width: 24px;        
+    height: 24px;
 }
 
 /* ตอนขยายแสดงข้อความ ให้ padding สัมพันธ์กับขนาดใหม่ */
