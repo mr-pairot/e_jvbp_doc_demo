@@ -1250,7 +1250,7 @@ function ensurePdfPanel_() {
     pdfPanelEl.className = "pdf_panel";
     pdfPanelEl.innerHTML = `
         <div class="pdf_panel_bar">
-            <button type="button" class="pdf_panel_close">← กลับ</button>
+            <button type="button" class="pdf_panel_close">◀️กลับ</button>
             <span class="pdf_panel_title"></span>
             <a class="pdf_panel_external" target="_blank" rel="noopener">เปิดนอกแอป</a>
         </div>
