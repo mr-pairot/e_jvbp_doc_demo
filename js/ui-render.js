@@ -1270,7 +1270,7 @@ function ensurePdfPanel_() {
                 </svg>
             </a>
         </div>
-        <iframe class="pdf_panel_frame" allow="autoplay"></iframe>`;
+        <div class="pdf_panel_body"></div>`;
     document.body.appendChild(pdfPanelEl);
     pdfPanelEl.querySelector(".pdf_panel_close").addEventListener("click", closePdfPanel);
     return pdfPanelEl;
@@ -1280,27 +1280,34 @@ function openPdfPanel(url, title) {
     const panel = ensurePdfPanel_();
     panel.querySelector(".pdf_panel_title").textContent = title || "";
     panel.querySelector(".pdf_panel_external").href = url;
-    panel.querySelector("iframe").src = url;
+    const body = panel.querySelector(".pdf_panel_body");
+    body.innerHTML = "";
+    const frame = document.createElement("iframe");
+    frame.className = "pdf_panel_frame";
+    frame.setAttribute("allow", "autoplay");
+    body.appendChild(frame);  
+    frame.src = url;
 
     panel.classList.add("open");
     document.body.classList.add("pdf_panel_lock");
     if (!pdfPanelOpen) {
         pdfPanelOpen = true;
-        history.pushState({ pdfPanel: true }, "", window.location.href); // ให้ปุ่ม Back ปิด panel
+        history.pushState({ pdfPanel: true }, "", window.location.href);
     }
-}
-
-function closePdfPanel() {
-    if (!pdfPanelOpen) return;
-    history.back(); // ไปปิดจริงใน popstate
 }
 
 function hidePdfPanel_() {
     if (!pdfPanelEl) return;
     pdfPanelEl.classList.remove("open");
-    pdfPanelEl.querySelector("iframe").src = "about:blank";
+    const body = pdfPanelEl.querySelector(".pdf_panel_body");
+    if (body) body.innerHTML = "";
     document.body.classList.remove("pdf_panel_lock");
     pdfPanelOpen = false;
+}
+
+function closePdfPanel() {
+    if (!pdfPanelOpen) return;
+    history.back(); 
 }
 
 window.addEventListener("popstate", () => { if (pdfPanelOpen) hidePdfPanel_(); });
