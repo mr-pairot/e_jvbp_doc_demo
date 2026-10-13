@@ -1856,8 +1856,29 @@ body.pdf_panel_lock {
 
 /* ---- ปุ่มคัดลอกลิงก์ (ใช้สไตล์ร่วมกับ .copy_search_link_btn) ---- */
 .pdf_panel_copy {
-    margin-left: 0;     /* ยกเลิก margin-left:auto ของปุ่มต้นแบบ */
+    margin-left: 0;       /* ยกเลิก margin-left:auto ของปุ่มต้นแบบ */
     flex-shrink: 0;
+    padding: 4px;         /* เดิม 2px */
+    font-size: var(--font-size-base);   /* เดิม 12.5px */
+}
+
+.pdf_panel_copy .copy_search_link_icon {
+    width: 28px;          /* เดิม 18px */
+    height: 28px;
+}
+
+/* ตอนขยายแสดงข้อความ ให้ padding สัมพันธ์กับขนาดใหม่ */
+.pdf_panel_copy:active,
+.pdf_panel_copy.is-pen-hover,
+.pdf_panel_copy.is-copy-success,
+.pdf_panel_copy.is-copy-error {
+    padding: 4px 14px 4px 6px;
+}
+
+@media (hover: hover) {
+    .pdf_panel_copy:hover {
+        padding: 4px 14px 4px 6px;
+    }
 }
 
 /* ---- จอเล็ก: ซ่อนข้อความ "เปิดนอกแอป" เหลือแต่ไอคอน ---- */
