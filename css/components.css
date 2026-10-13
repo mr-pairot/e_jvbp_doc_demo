@@ -1854,6 +1854,12 @@ body.pdf_panel_lock {
     background: var(--color-surface-tabs-bg);
 }
 
+/* ---- ปุ่มคัดลอกลิงก์ (ใช้สไตล์ร่วมกับ .copy_search_link_btn) ---- */
+.pdf_panel_copy {
+    margin-left: 0;     /* ยกเลิก margin-left:auto ของปุ่มต้นแบบ */
+    flex-shrink: 0;
+}
+
 /* ---- จอเล็ก: ซ่อนข้อความ "เปิดนอกแอป" เหลือแต่ไอคอน ---- */
 @media (max-width: 480px) {
     .pdf_panel_external span {
