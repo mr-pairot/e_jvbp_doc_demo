@@ -1250,9 +1250,25 @@ function ensurePdfPanel_() {
     pdfPanelEl.className = "pdf_panel";
     pdfPanelEl.innerHTML = `
         <div class="pdf_panel_bar">
-            <button type="button" class="pdf_panel_close">◀️กลับ</button>
+            <button type="button" class="pdf_panel_close" aria-label="กลับ">
+                <svg class="pdf_panel_icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>กลับ</span>
+            </button>
             <span class="pdf_panel_title"></span>
-            <a class="pdf_panel_external" target="_blank" rel="noopener">เปิดนอกแอป</a>
+            <a class="pdf_panel_external" target="_blank" rel="noopener">
+                <span>เปิดนอกแอป</span>
+                <svg class="pdf_panel_icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </a>
         </div>
         <iframe class="pdf_panel_frame" allow="autoplay"></iframe>`;
     document.body.appendChild(pdfPanelEl);
