@@ -1259,6 +1259,10 @@ function ensurePdfPanel_() {
                 <span>กลับ</span>
             </button>
             <span class="pdf_panel_title"></span>
+            <button type="button" class="copy_search_link_btn pdf_panel_copy" id="btnCopyPdfLink" title="คัดลอกลิงก์เอกสาร">
+                <img src="img/share_link.png" alt="" class="copy_search_link_icon">
+                <span class="copy_search_link_text">คัดลอก Link</span>
+            </button>
             <a class="pdf_panel_external" target="_blank" rel="noopener">
                 <span>เปิดนอกแอป</span>
                 <svg class="pdf_panel_icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -1273,11 +1277,70 @@ function ensurePdfPanel_() {
         <div class="pdf_panel_body"></div>`;
     document.body.appendChild(pdfPanelEl);
     pdfPanelEl.querySelector(".pdf_panel_close").addEventListener("click", closePdfPanel);
+    initPdfPanelCopyButton_(pdfPanelEl);
     return pdfPanelEl;
+}
+
+// เก็บข้อมูลเอกสารที่เปิดอยู่ใน panel เพื่อให้ปุ่มคัดลอกลิงก์ใช้
+let pdfPanelCurrent = { url: "", title: "" };
+
+function initPdfPanelCopyButton_(panel) {
+    const btn = panel.querySelector(".pdf_panel_copy");
+    if (!btn) return;
+
+    btn.addEventListener("pointerenter", (e) => {
+        if (e.pointerType === "pen") btn.classList.add("is-pen-hover");
+    });
+    btn.addEventListener("pointerleave", (e) => {
+        if (e.pointerType === "pen") btn.classList.remove("is-pen-hover");
+    });
+
+    const textSpan = btn.querySelector(".copy_search_link_text");
+    const defaultLabel = textSpan ? textSpan.textContent : "คัดลอก Link";
+    let resetTimer = null;
+
+    function flashLabel(label, isError) {
+        if (!textSpan) return;
+        if (resetTimer) clearTimeout(resetTimer);
+        textSpan.textContent = label;
+        btn.classList.toggle("is-copy-error", !!isError);
+        btn.classList.toggle("is-copy-success", !isError);
+        resetTimer = setTimeout(() => {
+            textSpan.textContent = defaultLabel;
+            btn.classList.remove("is-copy-error", "is-copy-success");
+        }, 2000);
+    }
+
+    btn.addEventListener("click", async () => {
+        if (!pdfPanelCurrent.url) return;
+        const textToCopy = pdfPanelCurrent.title
+            ? `${pdfPanelCurrent.title}\n${pdfPanelCurrent.url}`
+            : pdfPanelCurrent.url;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(textToCopy);
+            } else {
+                const tmp = document.createElement("textarea");
+                tmp.value = textToCopy;
+                tmp.style.position = "fixed";
+                tmp.style.opacity = "0";
+                document.body.appendChild(tmp);
+                tmp.focus();
+                tmp.select();
+                document.execCommand("copy");
+                document.body.removeChild(tmp);
+            }
+            flashLabel("คัดลอกแล้ว ✓", false);
+        } catch (err) {
+            console.warn("คัดลอกลิงก์เอกสารไม่สำเร็จ:", err);
+            flashLabel("คัดลอกไม่สำเร็จ ✕", true);
+        }
+    });
 }
 
 function openPdfPanel(url, title) {
     const panel = ensurePdfPanel_();
+    pdfPanelCurrent = { url: url, title: title || "" }; 
     panel.querySelector(".pdf_panel_title").textContent = title || "";
     panel.querySelector(".pdf_panel_external").href = url;
     const body = panel.querySelector(".pdf_panel_body");
