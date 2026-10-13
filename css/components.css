@@ -1808,7 +1808,7 @@ body.pdf_panel_lock {
 .pdf_panel_title {
     flex: 1;
     min-width: 0;
-    font-size: var(--font-size-2xs);
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-heading);
     white-space: nowrap;
