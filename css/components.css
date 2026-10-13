@@ -1756,10 +1756,10 @@ button.doc_hyperlink_title.btn-as-link:disabled {
 .pdf_panel_close {
     flex-shrink: 0;
     border: 0;
-    background: #3b82f6;
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 6px;
+    background: #c2e7ff;
+    color: #0842a0;
+    padding: 6px 8px;
+    border-radius: 4px;
     font: inherit;
     cursor: pointer;
 }
